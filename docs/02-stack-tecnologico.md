@@ -12,17 +12,18 @@
 |---|---|---|
 | **Frontend (Portal)** | Next.js 14+ (App Router) + React 18 + TypeScript | **Cambio** vs. Angular del PDF (justificación §2.3) |
 | **UI** | Tailwind CSS + shadcn/ui + lucide-react | SUPUESTO S-UI |
-| **Backend (API)** | Node.js 20 LTS + NestJS 10 | PDF (sección 3) |
-| **ORM** | Prisma 5 | SUPUESTO S-ORM |
+| **Backend (API)** | Node.js 24.X + NestJS 10 | PDF (sección 3) |
+| **ORM** | Prisma 7 | SUPUESTO S-ORM |
 | **Validación** | Zod (compartido FE/BE) | SUPUESTO S-Validación |
 | **Base de datos** | PostgreSQL 16 | PDF (sección 3) |
 | **Autenticación** | Auth.js (NextAuth v5) + JWT compartido con NestJS (HS256) | Decisión D3 |
 | **Almacenamiento de archivos** | MinIO (compatible S3) | PDF (sección 3) |
+| **Generación de reportes** | jsreport 4.13 (`jsreport/jsreport:4.13.0`) como contenedor Docker separado. El backend NO instala librerías de generación; solo hace de proxy HTTP al servicio de jsreport. | Decisión del equipo |
 | **Email transaccional** | SMTP (Nodemailer en NestJS) | PDF (sección 3) |
 | **Calendario interactivo** | FullCalendar (`@fullcalendar/react`) | SUPUESTO S-Calendario |
 | **Fechas y TZ** | `date-fns` + `date-fns-tz` | SUPUESTO S-Fechas |
 | **Despliegue (referencia)** | Docker + docker-compose | SUPUESTO S-Deploy |
-| **Tests** | Vitest (unit FE), Jest (NestJS), Playwright (e2e) | SUPUESTO S-Tests |
+| **Tests** | Sin tests unitarios. Verificación funcional manual de cada endpoint con el backend levantado (ver §2.11). | Decisión del equipo |
 | **Calidad de código** | ESLint + Prettier + TypeScript strict | Estándar |
 | **Control de versiones** | Git (GitHub o GitLab, a definir con cliente) | Estándar |
 
@@ -51,9 +52,10 @@
 │  BACKEND — NestJS 10 (API REST /api/v1)                           │
 │  - Guards: JwtAuthGuard + PlazaScopeGuard + RolesGuard            │
 │  - Validación: class-validator + Zod en DTOs                      │
-│  - Módulos: auth, plazas, usuarios, locales, contratos,           │
-│             solicitudes, aprobaciones, notificaciones,            │
-│             calendario, adjuntos, reportes, admin, auditoria      │
+│  - Módulos: auth, plazas, usuarios, roles-staff, locales,        │
+│             contratos, categorias, solicitudes, aprobaciones,     │
+│             notificaciones, calendario, adjuntos, reportes,       │
+│             admin, auditoria                                      │
 └──────┬──────────────────┬──────────────────┬──────────────────────┘
        │                  │                  │
        ▼                  ▼                  ▼
@@ -91,7 +93,6 @@
 - **Implicación 2 — Hosting:** Next.js puede desplegarse en Vercel, pero la cotización no incluye hosting. Se recomienda Dockerizar y orquestar con `docker-compose` o Kubernetes para mantener coherencia con NestJS y MinIO. (SUPUESTO S-Deploy.)
 - **Implicación 3 — Estado del lado cliente:** para datos globales (sesión, permisos, plaza actual) se prefiere Server Components + `cache()` de Next.js en lugar de Redux/Zustand, salvo en módulos que lo necesiten (calendario, drag-and-drop).
 - **Implicación 4 — Forms:** se recomienda **React Hook Form + Zod** para formularios complejos (crear/editar solicitudes, usuarios, locales).
-- **Implicación 5 — Testing:** Vitest + React Testing Library en lugar de Karma/Jasmine.
 
 ### 2.3.3. Riesgos mitigados
 
@@ -125,6 +126,7 @@ src/
 │   ├── auth/              # /api/v1/auth
 │   ├── plazas/            # /api/v1/plazas
 │   ├── usuarios/          # /api/v1/usuarios
+│   ├── roles-staff/       # /api/v1/roles-staff  ← NUEVO: CRUD de roles operativos
 │   ├── locales/           # /api/v1/locales
 │   ├── contratos/         # /api/v1/contratos
 │   ├── solicitudes/       # /api/v1/solicitudes
@@ -132,7 +134,21 @@ src/
 │   ├── notificaciones/    # servicio interno, /api/v1/notificaciones (log)
 │   ├── calendario/        # /api/v1/calendario
 │   ├── adjuntos/          # /api/v1/solicitudes/:id/adjuntos
-│   ├── reportes/          # /api/v1/reportes
+│   ├── reportes/          # /api/v1/reportes (BFF: delega PDF/XLSX a jsreport; CSV inline)
+│   │   ├── controllers/
+│   │   ├── services/
+│   │   │   ├── reportes.service.ts        # orquesta query BD + llamada a jsreport
+│   │   │   └── jsreport.client.ts         # wrapper HTTP fino (fetch/undici)
+│   │   ├── templates/                     # HTML/handlebars inline, versionados en git
+│   │   │   ├── solicitudes-pdf.html
+│   │   │   ├── solicitudes-xlsx.html
+│   │   │   ├── locales-pdf.html
+│   │   │   ├── locales-xlsx.html
+│   │   │   ├── inquilinos-pdf.html
+│   │   │   └── inquilinos-xlsx.html
+│   │   ├── dto/
+│   │   └── csv/                           # generador inline de CSV (sin librería)
+│   ├── categorias/        # /api/v1/categorias  ← NUEVO: CRUD con sub-recurso subcategorias
 │   └── admin/             # /api/v1/admin (superadmin)
 └── prisma/
     ├── schema.prisma
@@ -202,7 +218,6 @@ Según cotización. Se usa como base única para todos los tenants. Estrategia m
 ### 2.6.4. ¿Por qué no solo NextAuth con sesiones?
 
 - Para mantener **una sola fuente de verdad de identidad** (NestJS) que puede ser consumida por clientes no web en el futuro (CLI, integraciones).
-- Para que **los tests e2e de Playwright** puedan simular cualquier rol creando JWTs firmados con la misma clave.
 
 ---
 
@@ -235,7 +250,10 @@ Según cotización. Implementación con **Nodemailer** en NestJS, dentro del mó
 
 | Evento | Destinatario | Plantilla |
 |---|---|---|
-| Solicitud enviada | `admin_plaza` de la plaza | `solicitud-recibida.html` |
+| Solicitud enviada (legacy: estado `enviada` sin responsable) | `admin_plaza` de la plaza | `solicitud-recibida.html` |
+| Solicitud auto-asignada al responsable de la subcategoría | Responsable de `subcategoria.responsable_id` | `solicitud-asignada-responsable.html` |
+| Nueva solicitud notificada a supervisor de subcategoría | Cada uno de los hasta 5 supervisores | `solicitud-nueva-supervisor.html` |
+| Solicitud reasignada manualmente a otro staff | Nuevo `admin_asignado_id` | `solicitud-reasignada.html` |
 | Solicitud aprobada | `inquilino` solicitante | `solicitud-aprobada.html` |
 | Solicitud rechazada | `inquilino` solicitante | `solicitud-rechazada.html` |
 | Solicitud requiere subsanación | `inquilino` solicitante | `solicitud-subsanacion.html` |
@@ -276,33 +294,189 @@ Renderizado como **Client Component** (requiere DOM).
 
 ---
 
-## 2.11. Testing
+## 2.11. Verificación funcional de endpoints
 
-**SUPUESTO S-Tests.** Pirámide:
+> **Decisión del equipo.** No se escriben tests unitarios (Vitest, Jest), ni tests de integración (Supertest), ni tests e2e automatizados (Playwright). La verificación de cada endpoint se hace **manualmente** levantando el backend real y probando el endpoint con `curl`, Postman, Insomnia o Bruno. La validación de la respuesta se hace contra el Zod schema correspondiente en `packages/contracts/`.
 
-| Nivel | Herramienta | Cobertura objetivo |
+### 2.11.1. Procedimiento al crear o modificar un endpoint
+
+1. **Comprobar si el backend ya está escuchando en `:4000`.**
+
+   - PowerShell (Windows):
+     ```powershell
+     Test-NetConnection -ComputerName localhost -Port 4000 -InformationLevel Quiet
+     # o, para ver el PID:
+     Get-NetTCPConnection -LocalPort 4000 -State Listen
+     ```
+   - Bash (Git Bash / Linux / macOS):
+     ```bash
+     lsof -i :4000
+     # o:
+     ss -ltn 'sport = :4000'
+     ```
+   - Si el puerto está ocupado: **hay una instancia activa del backend; reutilizarla y saltar al paso 3.**
+   - Si el puerto está libre: continuar al paso 2.
+
+2. **Levantar el backend (solo si no había nada escuchando).**
+
+   - En la raíz del repo: `docker-compose up -d` (postgres, minio, mailhog).
+   - En `backend/`: `npm run start:dev` (NestJS en `:4000` con watch mode, reinicia al guardar).
+
+3. **Probar el endpoint con la herramienta disponible:**
+
+   - Con `curl`:
+     ```bash
+     curl -X POST http://localhost:4000/api/v1/auth/login \
+       -H "Content-Type: application/json" \
+       -d '{"email":"admin@acme.test","password":"..."}'
+     ```
+   - Con Postman / Insomnia / Bruno: importar la request o crearla, enviando el JWT en `Authorization: Bearer <token>` cuando aplique.
+
+4. **Validar la respuesta:**
+
+   - **Status code** esperado (200, 201, 400, 401, 403, 404, 409, 500).
+   - **Shape del body** contra el Zod schema en `packages/contracts/` (importarlo y usar `.safeParse()` mentalmente; o copiar el JSON en un REPL de Node con el schema).
+   - **Side effects** cuando aplique: fila creada/actualizada en BD, entrada en `email_log`, objeto en MinIO, fila en `auditoria`, etc.
+
+5. **Si la prueba falla:**
+
+   - Revisar los logs del backend en consola (formato `pino`).
+   - Si el código cambió, NestJS en watch mode ya reinició; **repetir el paso 3** sin reiniciar manualmente.
+   - Si la instancia quedó en mal estado (procesos colgados, conexión a BD rota): detenerla con `Ctrl+C` en su terminal, o matar el PID que retornó `Get-NetTCPConnection` / `lsof`, y volver al paso 1.
+
+### 2.11.2. Comandos de referencia rápida
+
+| Acción | Windows (PowerShell) | Bash (Git Bash / Linux / macOS) |
 |---|---|---|
-| Unit (frontend) | Vitest + React Testing Library | > 70% en módulos críticos |
-| Unit (backend) | Jest (nativo NestJS) | > 80% en services |
-| Integración (backend) | Jest + Supertest contra PostgreSQL de test | 100% de los endpoints |
-| E2E (flujos) | Playwright | Flujos: login, crear solicitud, aprobar, ver calendario |
-| Multi-tenant | Tests de aislamiento | Cada endpoint valida que A no ve datos de B |
+| ¿Hay algo en `:4000`? | `Test-NetConnection localhost -Port 4000 -InformationLevel Quiet` | `lsof -i :4000` |
+| Ver PID que escucha en `:4000` | `Get-NetTCPConnection -LocalPort 4000 -State Listen` | `lsof -ti:4000` |
+| Levantar backend | `cd backend ; npm run start:dev` | `cd backend && npm run start:dev` |
+| Apagar backend | `Ctrl+C` en la terminal del backend, o `Stop-Process -Id <PID> -Force` | `Ctrl+C`, o `kill <PID>` |
+| Probar endpoint | `curl -X METHOD http://localhost:4000/api/v1/...` | igual |
+
+### 2.11.3. Lo que esta estrategia excluye explícitamente
+
+- No se instalan ni configuran frameworks de test (Vitest, Jest, Playwright, Supertest).
+- No se generan archivos `*.spec.ts`, `*.test.ts` ni equivalentes.
+- No se ejecutan suites automáticas en CI (ver §2.13 / `docs/07-arquitectura.md` §7.9 para el CI resultante).
+- No se mockean dependencias: la verificación corre contra el backend real con la BD, MinIO y SMTP (MailHog en dev) levantados.
 
 ---
 
-## 2.12. DevOps y despliegue
+## 2.12. Generación de reportes con jsreport
+
+> **Decisión del equipo.** Los reportes **no se generan en el backend**. Se levantará un contenedor independiente con **jsreport 4.13** ([documentación oficial](https://jsreport.net/learn/docker)) y el backend actuará como proxy HTTP (BFF) hacia él.
+
+### 2.12.1. Arquitectura
+
+```
+┌───────────┐  GET /api/v1/reportes/.../export.{pdf,xlsx}  ┌───────────┐  POST /api/report
+│ Frontend  │ ───────────────────────────────────────────▶ │ Backend   │ ────────────────────▶ ┌───────────┐
+│ (Next.js) │ ◀────────────── binario (PDF/XLSX) ───────── │ (NestJS)  │ ◀───── binario ────  │ jsreport  │
+└───────────┘                                              └───────────┘                      │ (Docker)  │
+                                                                                              └───────────┘
+                                                       ▲
+                                                       │ Prisma query (con plaza_id)
+                                                       │
+                                                  ┌───────────┐
+                                                  │ PostgreSQL│
+                                                  └───────────┘
+```
+
+- **El frontend** llama al endpoint NestJS como hasta ahora (sin cambios en la UX).
+- **El backend** (módulo `reportes`) hace: (1) valida JWT, (2) aplica `PlazaScopeGuard` + `RolesGuard`, (3) consulta la BD con Prisma aplicando el `plaza_id` del token, (4) arma el HTML/handlebars a partir de la plantilla y los datos, (5) hace `POST http://jsreport:5488/api/report` con `template.content` + `recipe` + `data`, (6) streamea la respuesta binaria de vuelta al frontend con el `Content-Type` adecuado.
+- **jsreport** corre como contenedor separado (`jsreport/jsreport:4.13.0`), escucha en `5488`, expone `chrome-pdf` (PDF) y `xlsx` (Excel). No tiene acceso directo a PostgreSQL; recibe todo lo que necesita en el body de la request.
+
+### 2.12.2. Versión y origen
+
+- **Imagen Docker:** `jsreport/jsreport:4.13.0` (estable al día de hoy). Fuente: <https://jsreport.net/learn/docker>.
+- **Puerto interno:** `5488/tcp`. Mapeo recomendado host `5488:5488` en desarrollo.
+- **Recipes usados:** `chrome-pdf` (PDF, headless Chromium embebido) y `xlsx` (Excel nativo, sin Chromium). La elección de `xlsx` (no `html-to-xlsx`) es deliberada: produce archivos más livianos y respeta mejor los anchos de columna.
+
+### 2.12.3. Plantillas (templates)
+
+> Las plantillas se almacenan **inline en el backend** (no en el volumen de jsreport). Esto permite versionarlas en git, revisarlas en PRs y no perderlas al borrar el volumen.
+
+- **Ubicación:** `backend/src/modules/reportes/templates/`. Archivos `.html` con placeholders de Handlebars (`{{variable}}`, `{{#each rows}}...{{/each}}`).
+- **Por módulo:** una plantilla por formato y por entidad (ej.: `solicitudes-pdf.html`, `solicitudes-xlsx.html`, `locales-pdf.html`, etc.).
+- **Carga:** el `reportes.service.ts` lee el archivo correspondiente con `fs.readFile` y lo envía a jsreport en el campo `template.content` del body. No se persisten plantillas dentro del contenedor jsreport.
+- **Hot reload:** durante el desarrollo, los cambios en `backend/src/modules/reportes/templates/*.html` se ven reflejados al volver a llamar al endpoint, sin reiniciar nada (NestJS no compila esos archivos; el backend los lee en cada request).
+
+### 2.12.4. Configuración de jsreport (env vars del contenedor)
+
+| Variable | Valor ejemplo | Propósito |
+|---|---|---|
+| `chrome_launchOptions_args` | `--no-sandbox,--disable-dev-shm-usage,--disable-gpu` | Necesario para que el Chromium embebido arranque en Docker. |
+| `extensions_authentication_admin_username` | `admin` | Usuario para HTTP Basic. |
+| `extensions_authentication_admin_password` | (secreto fuerte) | Contraseña. |
+| `extensions_authentication_cookieSession_secret` | (32+ chars random) | Secreto de sesión para el Studio. |
+
+Estas variables se cargan en `docker-compose.yml` y se referencian desde el `.env` raíz.
+
+### 2.12.5. Llamada HTTP del backend a jsreport (referencia)
+
+Sin instalar el cliente oficial (`@jsreport/nodejs-client`), se usa `fetch` nativo de Node 24:
+
+```ts
+const res = await fetch(`${process.env.JSREPORT_URL}/api/report`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Basic ' + Buffer.from(
+      `${process.env.JSREPORT_ADMIN_USER}:${process.env.JSREPORT_ADMIN_PASSWORD}`
+    ).toString('base64'),
+  },
+  body: JSON.stringify({
+    template: { content: htmlString, engine: 'handlebars', recipe: 'chrome-pdf' },
+    data: queryResult,
+  }),
+});
+// res.body es un ReadableStream<NodeJS.ReadableStream> que se streamea al cliente.
+```
+
+### 2.12.6. Endpoints del backend (sin cambios en la URL, solo se agrega `.pdf`)
+
+| Verbo | Ruta | Formato | Generación |
+|---|---|---|---|
+| `GET` | `/api/v1/reportes/solicitudes/export.csv` | text/csv | Backend, inline (concatenación de strings, separador `,`, UTF-8 con BOM). Sin librería. |
+| `GET` | `/api/v1/reportes/solicitudes/export.xlsx` | application/vnd.openxmlformats-officedocument.spreadsheetml.sheet | Backend → jsreport (`recipe: 'xlsx'`). |
+| `GET` | `/api/v1/reportes/solicitudes/export.pdf` | application/pdf | Backend → jsreport (`recipe: 'chrome-pdf'`). |
+| `GET` | `/api/v1/reportes/locales/:id/export.pdf` | application/pdf | idem. |
+| `GET` | `/api/v1/reportes/inquilinos/:id/export.pdf` | application/pdf | idem. |
+
+(Se mantiene el patrón `export.{formato}` ya documentado en `docs/07-arquitectura.md` §7.5.2; solo se agrega `.pdf` para todas las entidades.)
+
+### 2.12.7. Lo que el backend NO debe instalar
+
+Documentar explícitamente para que nadie agregue dependencias por su cuenta:
+
+- ❌ `@jsreport/nodejs-client` (cliente oficial; no es necesario, fetch basta).
+- ❌ `exceljs`, `xlsx-populate`, `excel4node`, `node-xlsx`, `write-excel-file`.
+- ❌ `pdfkit`, `pdfmake`, `pdf-lib`, `jspdf`, `html-pdf-node`, `puppeteer`, `playwright` (para PDF).
+- ❌ Cualquier wrapper o binding a LibreOffice / wkhtmltopdf / WeasyPrint.
+
+Si alguien necesita un formato nuevo, el camino es: **agregar una receta de jsreport + una plantilla**, no instalar una librería de Node.
+
+### 2.12.8. Healthcheck de jsreport
+
+- **Endpoint:** `GET /api/ping` (no requiere autenticación, según la documentación oficial de jsreport).
+- **Uso:** el backend puede llamarlo al inicio o el `docker-compose` puede definir un `healthcheck` para esperar a que jsreport esté listo antes de levantar el backend.
+
+---
+
+## 2.13. DevOps y despliegue
 
 > La cotización indica "Hosting: NO INCLUIDO". El cliente debe decidir proveedor. Mientras tanto:
 
 - **Dockerfile multi-stage** para `frontend` y `backend`.
-- **`docker-compose.yml`** con servicios: `frontend`, `backend`, `postgres`, `minio`, `mailhog` (SMTP de desarrollo).
+- **`docker-compose.yml`** con servicios: `frontend`, `backend`, `postgres`, `minio`, `mailhog`, `jsreport` (contenedor independiente para generación de reportes; ver §2.12).
 - **Variables de entorno** documentadas en `.env.example`.
 - **Migraciones** con `prisma migrate deploy` en el arranque del backend.
 - **CI/CD** con GitHub Actions sugerido (SUPUESTO): build, lint, test, build de imagen Docker, push a registry. (No está en la cotización.)
 
 ---
 
-## 2.13. Resumen de SUPUESTOS técnicos pendientes de validar
+## 2.14. Resumen de SUPUESTOS técnicos pendientes de validar
 
 | ID | Supuesto | Impacto si cambia |
 |---|---|---|
@@ -312,9 +486,9 @@ Renderizado como **Client Component** (requiere DOM).
 | S-Calendario | FullCalendar React | Cambia el módulo de calendario |
 | S-Fechas | `date-fns` + TZ | Bajo, aislado en utilidades |
 | S-Deploy | Docker + compose | Bajo, contenedorizado de todos modos |
-| S-Tests | Vitest/Jest/Playwright | Bajo, reescritura de tests |
 | S-Reset | Token de 30 min | Reglas de seguridad |
 | S-TamañoMax | 25 MB por archivo | Reglas de upload |
 | S-MimeTypes | Lista de la §2.7.1 | Lista permitida en adjuntos |
 | S-Branding | Color primario por plaza | CSS variables y módulo de configuración |
 | S-EstrategiaMT | DB compartida + `plaza_id` | Alto — define el modelo de datos |
+| S-JSReport | jsreport 4.13 como contenedor separado; backend no instala libs de generación | Bajo: cualquier contenedor compatible con el API funciona |

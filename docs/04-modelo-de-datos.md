@@ -24,6 +24,8 @@
 ```mermaid
 erDiagram
     plaza ||--o{ usuario : "tiene"
+    plaza ||--o{ rol_staff : "define"
+    plaza ||--o{ categoria : "define"
     plaza ||--o{ local : "agrupa"
     plaza ||--o{ inquilino : "agrupa"
     plaza ||--o{ solicitud : "contiene"
@@ -34,7 +36,8 @@ erDiagram
 
     usuario ||--o{ refresh_token : "tiene"
     usuario ||--o{ password_reset_token : "solicita"
-    usuario }o--|| rol : "tiene"
+    usuario }o--|| rol : "tiene (rol global)"
+    usuario }o--o| rol_staff : "tiene (rol operativo, si admin_plaza)"
     usuario }o--o| inquilino : "representa (si rol=inquilino)"
 
     inquilino ||--o{ contrato : "firma"
@@ -46,6 +49,13 @@ erDiagram
 
     contrato ||--o{ adjunto_contrato : "tiene (PDF firmado)"
 
+    categoria ||--o{ subcategoria : "agrupa"
+    subcategoria }o--|| usuario : "tiene responsable"
+    subcategoria ||--o{ subcategoria_supervisor : "tiene (max 5)"
+    subcategoria_supervisor }o--|| usuario : "es supervisor"
+
+    solicitud }o--o| categoria : "clasificada por"
+    solicitud }o--o| subcategoria : "enrutada por"
     solicitud ||--o{ solicitud_historial : "registra"
     solicitud ||--o{ comentario : "tiene"
     solicitud ||--o{ adjunto : "tiene"
@@ -69,6 +79,7 @@ erDiagram
         uuid plaza_id FK
         uuid inquilino_id FK "nullable, solo si rol=inquilino"
         uuid rol_id FK
+        uuid rol_staff_id FK "nullable, solo si rol=admin_plaza"
         string email
         string password_hash
         string nombre
@@ -81,9 +92,45 @@ erDiagram
     }
     rol {
         uuid id PK
-        string codigo UK "superadmin|admin_plaza|inquilino"
+        string codigo UK "superadmin|admin_plaza|inquilino (catálogo global)"
         string nombre
         string descripcion
+    }
+    rol_staff {
+        uuid id PK
+        uuid plaza_id FK
+        string codigo "slug, único por plaza"
+        string nombre
+        string descripcion
+        boolean activo
+        timestamp created_at
+        timestamp updated_at
+    }
+    categoria {
+        uuid id PK
+        uuid plaza_id FK
+        string nombre "único por plaza"
+        string descripcion
+        boolean activo
+        timestamp created_at
+        timestamp updated_at
+    }
+    subcategoria {
+        uuid id PK
+        uuid plaza_id FK
+        uuid categoria_id FK
+        uuid responsable_id FK "usuario con rol admin_plaza"
+        string nombre "único por categoria"
+        string descripcion
+        string prioridad "A|B|C|D|F (default B)"
+        boolean activo
+        timestamp created_at
+        timestamp updated_at
+    }
+    subcategoria_supervisor {
+        uuid subcategoria_id PK,FK
+        uuid usuario_id PK,FK "supervisor (admin_plaza)"
+        timestamp created_at
     }
     inquilino {
         uuid id PK
@@ -134,9 +181,12 @@ erDiagram
         uuid local_id FK
         uuid inquilino_id FK
         uuid usuario_creador_id FK
-        uuid admin_asignado_id FK "nullable"
+        uuid admin_asignado_id FK "auto-set desde subcategoria.responsable_id"
+        uuid categoria_id FK "nullable si tipo=otro con categoria_libre"
+        uuid subcategoria_id FK "nullable si tipo=otro con categoria_libre"
         string codigo "formato SOL-{plaza_id_short}-{seq}"
         string tipo "mantenimiento|evento|remodelacion|otro"
+        string prioridad "A|B|C|D|F (heredada de subcategoria, modificable)"
         string titulo
         string descripcion
         string estado "borrador|enviada|en_revision|aprobada|rechazada|cancelada|requerida_subsanacion"
@@ -146,6 +196,7 @@ erDiagram
         time hora_inicio
         time hora_fin
         timestamp enviada_at
+        timestamp asignada_at "cuándo se asignó al responsable actual"
         timestamp decision_at
         timestamp created_at
         timestamp updated_at
@@ -281,13 +332,77 @@ Raíz del multi-tenant. Una fila por plaza comercial dada de alta.
 
 ### 4.3.2. `rol`
 
-Catálogo fijo cargado por migración (no editable por UI).
+Catálogo fijo cargado por migración (no editable por UI). Define el **eje global** del usuario: a qué ámbito pertenece y qué tipo de operaciones puede hacer a nivel de plataforma.
 
 | `codigo` | Uso |
 |---|---|
 | `superadmin` | Plataforma. Gestiona plazas. |
-| `admin_plaza` | Cliente. Gestiona su plaza. |
+| `admin_plaza` | Cliente. Gestiona su plaza. Se complementa con `rol_staff` (eje operativo per-plaza, ver §4.3.2b). |
 | `inquilino` | Cliente. Gestiona sus solicitudes. |
+
+### 4.3.2b. `rol_staff`
+
+Catálogo **configurable por plaza** de roles operativos del personal de la administración. Cada `admin_plaza` puede crear los roles que necesite (técnico, ingeniero, supervisor, auxiliar, etc.) mediante CRUD (`/api/v1/roles-staff`). No hay catálogo fijo de plataforma: cada plaza define los suyos.
+
+| Atributo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID PK | |
+| `plaza_id` | UUID FK → `plaza.id` | |
+| `codigo` | TEXT NOT NULL | Slug único por plaza (`UNIQUE(plaza_id, codigo)`). Se usa internamente; p. ej. `tecnico`, `ingeniero-hvac`. |
+| `nombre` | TEXT NOT NULL | Nombre visible. P. ej. `Técnico HVAC`. |
+| `descripcion` | TEXT | |
+| `activo` | BOOLEAN NOT NULL DEFAULT TRUE | Soft delete. |
+| `created_at`, `updated_at` | TIMESTAMPTZ | |
+
+**Índices:** UNIQUE(`plaza_id`, `codigo`), INDEX(`plaza_id`, `activo`).
+
+> **SUPUESTO S-RolStaff:** los roles de staff son configurables libremente por cada plaza (no hay catálogo de plataforma fijo en v1).
+
+### 4.3.2c. `categoria`
+
+Agrupador de primer nivel de subcategorías, configurable por plaza. Reemplaza al enum embebido `campos_extra.categoria` (electricidad, plomería, etc.) de la versión anterior.
+
+| Atributo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID PK | |
+| `plaza_id` | UUID FK → `plaza.id` | |
+| `nombre` | TEXT NOT NULL | Único por plaza. |
+| `descripcion` | TEXT | |
+| `activo` | BOOLEAN NOT NULL DEFAULT TRUE | |
+| `created_at`, `updated_at` | TIMESTAMPTZ | |
+
+**Índices:** UNIQUE(`plaza_id`, `nombre`), INDEX(`plaza_id`, `activo`).
+
+### 4.3.2d. `subcategoria`
+
+Configuración de enrutamiento de solicitudes. Combina una categoría padre con una persona responsable, hasta 5 supervisores y una prioridad por defecto. Al crear una solicitud con esta subcategoría, el sistema asigna automáticamente al responsable.
+
+| Atributo | Tipo | Notas |
+|---|---|---|
+| `id` | UUID PK | |
+| `plaza_id` | UUID FK → `plaza.id` | |
+| `categoria_id` | UUID FK → `categoria.id` | |
+| `nombre` | TEXT NOT NULL | Único por categoría. |
+| `descripcion` | TEXT | |
+| `prioridad` | `solicitud_prioridad` NOT NULL DEFAULT `'B'` | ENUM `A\|B\|C\|D\|F`. Heredada por la solicitud al crearla; modificable después. |
+| `responsable_id` | UUID FK → `usuario.id` | Debe ser un usuario con rol global `admin_plaza` y mismo `plaza_id` (validado en app y en `SC-6` de §6.3). |
+| `activo` | BOOLEAN NOT NULL DEFAULT TRUE | |
+| `created_at`, `updated_at` | TIMESTAMPTZ | |
+
+**Índices:** UNIQUE(`categoria_id`, `nombre`), INDEX(`plaza_id`, `activo`), INDEX(`responsable_id`).
+
+### 4.3.2e. `subcategoria_supervisor`
+
+Tabla de rompimiento N:M entre `subcategoria` y `usuario` (supervisores). Una subcategoría puede tener **entre 0 y 5** supervisores (enforcement en `RI-7`).
+
+| Atributo | Tipo | Notas |
+|---|---|---|
+| `subcategoria_id` | UUID FK → `subcategoria.id` | Parte de la PK compuesta. |
+| `usuario_id` | UUID FK → `usuario.id` | Parte de la PK compuesta. Debe ser `admin_plaza` con mismo `plaza_id`. |
+| `created_at` | TIMESTAMPTZ | |
+
+**PK compuesta:** (`subcategoria_id`, `usuario_id`).
+**Trigger:** `tg_subcategoria_max_5_supervisores` (PL/pgSQL) rechaza el INSERT si ya existen 5 filas para el mismo `subcategoria_id`.
 
 ### 4.3.3. `usuario`
 
@@ -297,6 +412,7 @@ Catálogo fijo cargado por migración (no editable por UI).
 | `plaza_id` | UUID FK → `plaza.id` | NULL para `superadmin`. |
 | `inquilino_id` | UUID FK → `inquilino.id` | NULL salvo si `rol=inquilino`. |
 | `rol_id` | UUID FK → `rol.id` | |
+| `rol_staff_id` | UUID FK → `rol_staff.id` | **NOT NULL** cuando `rol=admin_plaza` (validado en app y en `SC-6`); NULL para `superadmin` e `inquilino`. Define el rol operativo (técnico, ingeniero, etc.). |
 | `email` | TEXT NOT NULL | Único por plaza: `UNIQUE(plaza_id, email)`. |
 | `password_hash` | TEXT NOT NULL | bcrypt cost 12. |
 | `nombre` | TEXT NOT NULL | |
@@ -369,16 +485,21 @@ Núcleo del sistema. Ver [`05-flujo-de-solicitudes.md`](./05-flujo-de-solicitude
 | `local_id` | UUID FK | |
 | `inquilino_id` | UUID FK | |
 | `usuario_creador_id` | UUID FK → `usuario.id` | |
-| `admin_asignado_id` | UUID FK → `usuario.id` | NULL hasta que se toma. |
+| `admin_asignado_id` | UUID FK → `usuario.id` | Set automáticamente desde `subcategoria.responsable_id` al enviar (T2). Cambia con cada reasignación manual (T12). |
+| `categoria_id` | UUID FK → `categoria.id` | NOT NULL para `tipo` ∈ {`mantenimiento`, `evento`, `remodelacion`}. NULL si `tipo=otro` con `categoria_libre`. |
+| `subcategoria_id` | UUID FK → `subcategoria.id` | Idem. Determina el responsable y los supervisores notificados. |
 | `codigo` | TEXT | Formato `SOL-{plaza_short}-{seq}` (SUPUESTO). |
 | `tipo` | ENUM | `mantenimiento`, `evento`, `remodelacion`, `otro`. |
+| `prioridad` | `solicitud_prioridad` NOT NULL DEFAULT `'B'` | Heredada de `subcategoria.prioridad` al crear (T1); modificable por `admin_plaza` con `PATCH /solicitudes/:id`. |
 | `titulo` | TEXT | ≤ 120 chars. |
 | `descripcion` | TEXT | ≤ 4000 chars. |
 | `estado` | ENUM | Ver §4.3.8. |
-| `campos_extra` | JSONB | Validados con Zod por tipo. |
+| `campos_extra` | JSONB | Validados con Zod por tipo. Para `tipo=otro` puede incluir `categoria_libre` (texto) como fallback. |
 | `fecha_evento_inicio`, `fecha_evento_fin` | DATE | Solo si tipo = `evento` o `remodelacion`. |
 | `hora_inicio`, `hora_fin` | TIME | Solo si tipo = `evento`. |
-| `enviada_at`, `decision_at` | TIMESTAMPTZ | |
+| `enviada_at` | TIMESTAMPTZ | Set en T2 (envío) o T9 (re-envío tras subsanación). |
+| `asignada_at` | TIMESTAMPTZ | Set cada vez que `admin_asignado_id` cambia (T2 inicial, T12 reasignación). |
+| `decision_at` | TIMESTAMPTZ | Set en T6 (aprobada) o T7 (rechazada). |
 
 **Índices:**
 - UNIQUE(`plaza_id`, `codigo`).
@@ -400,6 +521,18 @@ CREATE TYPE solicitud_estado AS ENUM (
   'requerida_subsanacion'
 );
 ```
+
+### 4.3.8b. ENUM `solicitud_prioridad`
+
+Valores permitidos (DDL canónico en §4.10):
+
+- `A` = crítica (intervención inmediata, SLA más corto).
+- `B` = alta (default).
+- `C` = normal.
+- `D` = baja.
+- `F` = informativa (sin acción operativa, solo registro).
+
+> **SUPUESTO S-Prioridad:** la prioridad se hereda de la subcategoría al crear la solicitud, pero el `admin_plaza` puede modificarla después con `PATCH /solicitudes/:id`. El SLA visual puede usar `configuracion.sla_multiplicador_por_prioridad` para ajustar el umbral por prioridad (SUPUESTO S-SLA-Prioridad).
 
 ### 4.3.9. `solicitud_historial`
 
@@ -482,12 +615,20 @@ FUERA DE ALCANCE v1 (SUPUESTO S-ScheduledReports). La tabla se define por comple
 | Origen | Cardinalidad | Destino | Descripción |
 |---|---|---|---|
 | `plaza` | 1 — N | `usuario` | Una plaza tiene muchos usuarios (excepto superadmin). |
+| `plaza` | 1 — N | `rol_staff` | Cada plaza define sus roles de staff. |
+| `plaza` | 1 — N | `categoria` | Cada plaza define sus categorías. |
 | `plaza` | 1 — N | `local` | |
 | `plaza` | 1 — N | `inquilino` | |
 | `plaza` | 1 — N | `solicitud` | |
+| `rol_staff` | 1 — N | `usuario` | Cada `admin_plaza` tiene un `rol_staff` asignado. |
+| `categoria` | 1 — N | `subcategoria` | |
+| `subcategoria` | 1 — 1 | `usuario` (responsable) | FK a `responsable_id`. |
+| `subcategoria` | 1 — N (max 5) | `usuario` (supervisores) | Vía `subcategoria_supervisor`. |
 | `inquilino` | 1 — N | `usuario` | Un inquilino puede tener varios usuarios. |
 | `inquilino` | 1 — N | `contrato` | |
 | `inquilino` | 1 — N | `solicitud` | |
+| `categoria` | 1 — N | `solicitud` | Toda solicitud nueva (excepto `tipo=otro` con `categoria_libre`) tiene una categoría. |
+| `subcategoria` | 1 — N | `solicitud` | Determina responsable, supervisores notificados y prioridad heredada. |
 | `local` | 1 — N | `contrato` | Históricamente, pero solo uno vigente a la vez. |
 | `local` | 1 — N | `solicitud` | |
 | `solicitud` | 1 — N | `solicitud_historial` | |
@@ -537,6 +678,8 @@ CREATE POLICY solicitud_plaza_isolation ON solicitud
 - **RI-3:** una `solicitud` no puede pasar a `aprobada` sin `decision_at` y `admin_asignado_id` distintos de NULL.
 - **RI-4:** un `email_log.estado = 'enviado'` requiere `sent_at` no NULL.
 - **RI-5:** los `password_hash` siempre son `bcrypt` (validado por prefijo `$2b$` o `$2a$`).
+- **RI-6:** una `solicitud` en estado `en_revision` requiere `admin_asignado_id` y `asignada_at` no NULL, y debe existir `solicitud.subcategoria_id` con `responsable_id` que coincide con `admin_asignado_id`. (Validado en app en T2, T12 y al transicionar a `en_revision`.)
+- **RI-7:** una `subcategoria` no puede tener más de 5 filas en `subcategoria_supervisor`. Enforced por el trigger `tg_subcategoria_max_5_supervisores` (PL/pgSQL) que rechaza el INSERT si ya hay 5.
 
 ---
 
@@ -603,6 +746,7 @@ CREATE TABLE usuario (
   plaza_id UUID REFERENCES plaza(id),
   inquilino_id UUID REFERENCES inquilino(id),
   rol_id UUID NOT NULL REFERENCES rol(id),
+  rol_staff_id UUID REFERENCES rol_staff(id),  -- NOT NULL cuando rol=admin_plaza (validado en app)
   email TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   nombre TEXT NOT NULL,
@@ -613,6 +757,31 @@ CREATE TABLE usuario (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at TIMESTAMPTZ,
   CONSTRAINT usuario_email_uniq_por_plaza UNIQUE (plaza_id, email)
+);
+
+-- ROLES DE STAFF (configurables por plaza)
+CREATE TABLE rol_staff (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  plaza_id UUID NOT NULL REFERENCES plaza(id),
+  codigo TEXT NOT NULL,
+  nombre TEXT NOT NULL,
+  descripcion TEXT,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT rol_staff_uniq_por_plaza UNIQUE (plaza_id, codigo)
+);
+
+-- CATEGORÍAS
+CREATE TABLE categoria (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  plaza_id UUID NOT NULL REFERENCES plaza(id),
+  nombre TEXT NOT NULL,
+  descripcion TEXT,
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT categoria_nombre_uniq_por_plaza UNIQUE (plaza_id, nombre)
 );
 
 -- INQUILINOS
@@ -668,6 +837,45 @@ CREATE TABLE contrato (
   CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)
 );
 
+-- SUBCATEGORÍAS (enrutamiento de solicitudes)
+CREATE TYPE solicitud_prioridad AS ENUM ('A','B','C','D','F');
+CREATE TABLE subcategoria (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  plaza_id UUID NOT NULL REFERENCES plaza(id),
+  categoria_id UUID NOT NULL REFERENCES categoria(id),
+  nombre TEXT NOT NULL,
+  descripcion TEXT,
+  prioridad solicitud_prioridad NOT NULL DEFAULT 'B',
+  responsable_id UUID NOT NULL REFERENCES usuario(id),  -- debe ser admin_plaza del mismo plaza_id (validado en app)
+  activo BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT subcategoria_nombre_uniq_por_categoria UNIQUE (categoria_id, nombre)
+);
+
+-- SUPERVISORES DE SUBCATEGORÍA (N:M, max 5)
+CREATE TABLE subcategoria_supervisor (
+  subcategoria_id UUID NOT NULL REFERENCES subcategoria(id) ON DELETE CASCADE,
+  usuario_id UUID NOT NULL REFERENCES usuario(id),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (subcategoria_id, usuario_id)
+);
+
+-- Trigger: máximo 5 supervisores por subcategoría
+CREATE OR REPLACE FUNCTION tg_subcategoria_max_5_supervisores()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (SELECT COUNT(*) FROM subcategoria_supervisor WHERE subcategoria_id = NEW.subcategoria_id) >= 5 THEN
+    RAISE EXCEPTION 'SUBCATEGORIA_MAX_5_SUPERVISORES: una subcategoría no puede tener más de 5 supervisores (id=%)', NEW.subcategoria_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER tg_subcategoria_supervisor_max_5
+  BEFORE INSERT ON subcategoria_supervisor
+  FOR EACH ROW EXECUTE FUNCTION tg_subcategoria_max_5_supervisores();
+
 -- SOLICITUDES
 CREATE TYPE solicitud_tipo AS ENUM ('mantenimiento','evento','remodelacion','otro');
 CREATE TYPE solicitud_estado AS ENUM (
@@ -679,9 +887,12 @@ CREATE TABLE solicitud (
   local_id UUID NOT NULL REFERENCES local(id),
   inquilino_id UUID NOT NULL REFERENCES inquilino(id),
   usuario_creador_id UUID NOT NULL REFERENCES usuario(id),
-  admin_asignado_id UUID REFERENCES usuario(id),
+  admin_asignado_id UUID REFERENCES usuario(id),  -- auto-set desde subcategoria.responsable_id en T2
+  categoria_id UUID REFERENCES categoria(id),     -- NULL si tipo=otro con categoria_libre
+  subcategoria_id UUID REFERENCES subcategoria(id), -- NULL si tipo=otro con categoria_libre
   codigo TEXT NOT NULL,
   tipo solicitud_tipo NOT NULL,
+  prioridad solicitud_prioridad NOT NULL DEFAULT 'B',  -- heredada de subcategoria, modificable
   titulo TEXT NOT NULL,
   descripcion TEXT NOT NULL,
   estado solicitud_estado NOT NULL DEFAULT 'borrador',
@@ -691,6 +902,7 @@ CREATE TABLE solicitud (
   hora_inicio TIME,
   hora_fin TIME,
   enviada_at TIMESTAMPTZ,
+  asignada_at TIMESTAMPTZ,        -- cuándo se asignó al responsable actual
   decision_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -717,3 +929,6 @@ CREATE TABLE solicitud (
 | S-MD-H | Campos dinámicos en JSONB validados con Zod en backend. |
 | S-MD-I | La conexión a PostgreSQL se hace con un rol sin `BYPASSRLS`. |
 | S-MD-J | Tabla `reporte_programado` existe por completitud, sin uso en v1. |
+| S-MD-K | `rol_staff` configurable libremente por plaza (sin catálogo de plataforma). |
+| S-MD-L | `categoria` y `subcategoria` reemplazan al enum embebido `campos_extra.categoria`. Toda solicitud nueva (excepto `tipo=otro` con `categoria_libre`) debe tener `categoria_id` y `subcategoria_id`. |
+| S-MD-M | Trigger `tg_subcategoria_max_5_supervisores` rechaza INSERT en `subcategoria_supervisor` cuando ya hay 5 filas para la subcategoría. |

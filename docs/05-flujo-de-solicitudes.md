@@ -25,14 +25,16 @@ Este documento define:
 | Estado | Descripción corta | Estado terminal |
 |---|---|---|
 | `borrador` | Creada por el inquilino, aún no enviada. | No |
-| `enviada` | Enviada al admin_plaza, en espera de ser tomada. | No |
-| `en_revision` | Un admin_plaza la está revisando. | No |
+| `enviada` | **Estado de transición tras reasignación**: cuando se libera un lock y la solicitud queda sin responsable, queda brevemente en `enviada` mientras el sistema la re-asigna. No es estado inicial del flujo nuevo. | No |
+| `en_revision` | Un admin_plaza la está revisando (auto-asignada al responsable de la subcategoría al enviar, o reasignada manualmente). | No |
 | `requerida_subsanacion` | El admin pidió cambios al inquilino. | No |
 | `aprobada` | Aprobada por el admin_plaza. | **Sí** |
 | `rechazada` | Rechazada por el admin_plaza. | **Sí** |
 | `cancelada` | Cancelada por el inquilino o por el admin. | **Sí** |
 
 > **SUPUESTO:** el cliente puede requerir un estado `pausada` o `en_ejecucion` para distinguir entre "aprobada" y "ya ejecutada". Esto se aborda en una posible v1.1.
+>
+> **SUPUESTO S-AutoAsignacion:** con la auto-asignación, una solicitud **nueva** con `subcategoria_id` transita `borrador → en_revision` directamente, sin pasar por `enviada`. El estado `enviada` se conserva en el modelo para representar el caso de reasignación manual (T12) cuando el sistema aún no ha elegido nuevo responsable.
 
 ---
 
@@ -42,17 +44,16 @@ Este documento define:
 stateDiagram-v2
     [*] --> borrador : Inquilino crea solicitud
 
-    borrador --> enviada : Inquilino envía
+    borrador --> en_revision : Inquilino envía (auto-asignada a responsable de subcategoría)
     borrador --> cancelada : Inquilino cancela
-
-    enviada --> en_revision : Admin toma para revisión
-    enviada --> cancelada : Inquilino cancela
 
     en_revision --> aprobada : Admin aprueba (con o sin comentario)
     en_revision --> rechazada : Admin rechaza (comentario obligatorio)
     en_revision --> requerida_subsanacion : Admin pide subsanación (comentario obligatorio)
+    en_revision --> en_revision : Admin reasigna a otro staff (T12)
+    en_revision --> cancelada : Inquilino o admin cancela
 
-    requerida_subsanacion --> enviada : Inquilino subsana y reenvía
+    requerida_subsanacion --> en_revision : Inquilino subsana y reenvía (auto-asignada al responsable)
     requerida_subsanacion --> cancelada : Inquilino cancela
 
     aprobada --> [*]
@@ -68,17 +69,19 @@ stateDiagram-v2
 
 | # | Transición | Actor | Validaciones | Efectos secundarios |
 |---|---|---|---|---|
-| T1 | `* → borrador` | Inquilino (creación) | `local_id` pertenece a un local del inquilino; el local no está `fuera_de_servicio`. | Inserta `solicitud_historial.evento=creada`. |
-| T2 | `borrador → enviada` | Inquilino | Título y descripción no vacíos; al menos 1 adjunto si la plaza lo exige (SUPUESTO). | `enviada_at = now()`; inserta historial `enviada`; email al admin_plaza. |
+| T1 | `* → borrador` | Inquilino (creación) | `local_id` pertenece a un local del inquilino; el local no está `fuera_de_servicio`; `categoria_id` y `subcategoria_id` presentes (salvo `tipo=otro` con `categoria_libre`); la subcategoría está `activo=true`. | Inserta `solicitud_historial.evento=creada`; `prioridad` se setea con la default de la subcategoría (heredada). |
+| **T2 (nuevo)** | `borrador → en_revision` | Inquilino | Título y descripción no vacíos; al menos 1 adjunto si la plaza lo exige (SUPUESTO); `subcategoria.responsable_id` debe ser un `admin_plaza` activo con `rol_staff` activo. | `enviada_at = now()`; `admin_asignado_id = subcategoria.responsable_id`; `asignada_at = now()`; `lock_expira_at = now() + 30 min`; inserta historial `tomada` (auto-toma); email `solicitud-asignada-responsable.html` al responsable; un email `solicitud-nueva-supervisor.html` por cada supervisor (1..5) de la subcategoría, deduplicado si el mismo usuario es responsable. |
 | T3 | `borrador → cancelada` | Inquilino | La solicitud está en `borrador`. | Inserta historial `cancelada`; sin email. |
-| T4 | `enviada → en_revision` | Admin_plaza | La solicitud no está siendo revisada por otro admin (lock). | `admin_asignado_id` se setea; lock por 30 min; inserta historial `tomada`. |
-| T5 | `enviada → cancelada` | Inquilino | La solicitud aún no fue tomada. | Inserta historial `cancelada`; libera el lock. |
+| T5 | `en_revision → cancelada` | Inquilino o Admin_plaza | La solicitud está en `en_revision`. | Inserta historial `cancelada`; libera el lock. |
 | T6 | `en_revision → aprobada` | Admin_plaza | Comentario opcional; **no es admin que creó la solicitud** (defense in depth). | `decision_at = now()`; inserta historial `aprobada`; email al inquilino; si tipo=`evento`, crea `evento_calendario`; si tipo=`remodelacion`, marca `local.estado = en_mantenimiento` durante el rango. |
 | T7 | `en_revision → rechazada` | Admin_plaza | **Comentario obligatorio no vacío**. | `decision_at = now()`; inserta historial `rechazada`; email al inquilino. |
-| T8 | `en_revision → requerida_subsanacion` | Admin_plaza | **Comentario obligatorio no vacío**. | Inserta historial `subsanada` (en realidad evento `requerida_subsanacion`); email al inquilino. |
-| T9 | `requerida_subsanacion → enviada` | Inquilino | Comentarios del admin atendidos (SUPUESTO: no se exige marcado manual de items). | `enviada_at = now()`; inserta historial `enviada`; email al admin_plaza. |
+| T8 | `en_revision → requerida_subsanacion` | Admin_plaza | **Comentario obligatorio no vacío**. | Inserta historial `requerida_subsanacion`; email al inquilino. |
+| T9 | `requerida_subsanacion → en_revision` | Inquilino | Comentarios del admin atendidos (SUPUESTO: no se exige marcado manual de items); la solicitud se re-envía re-autoasignándose al **mismo responsable** que la tenía antes (o al `subcategoria.responsable_id` actual si la subcategoría cambió de responsable mientras tanto). | `enviada_at = now()`; `asignada_at = now()`; `lock_expira_at = now() + 30 min`; inserta historial `enviada`; email al responsable (re-asignación). |
 | T10 | `requerida_subsanacion → cancelada` | Inquilino | — | Inserta historial `cancelada`. |
+| **T12 (nuevo)** | `en_revision → en_revision` (reasignación) | Admin_plaza | Cualquier `admin_plaza` (SUPUESTO S-Reasignacion); `nuevo_responsable_id` debe ser un `admin_plaza` con `rol_staff` activo y misma plaza. Opcional: `comentario` para registrar motivo. | Libera el lock anterior; `admin_asignado_id = nuevo_responsable_id`; `asignada_at = now()`; `lock_expira_at = now() + 30 min`; inserta historial `reasignada` con `estado_anterior = en_revision`, `estado_nuevo = en_revision`, y `comentario` con el motivo; email `solicitud-reasignada.html` al nuevo responsable. |
 | T11 | Reversión (caso excepcional) | Superadmin (no UI) | Solo mediante intervención directa en BD. | Registrado en `auditoria`. **No se documenta como flujo de UI.** |
+
+> **SUPUESTO S-LockTimeout:** el lock de revisión dura 30 minutos desde la última asignación (T2 o T12). Al expirar, la solicitud vuelve al estado `enviada` y queda disponible para que cualquier `admin_plaza` la tome manualmente (T4 legacy) o el sistema la reasigne (futuro, S-Repick). En la v1 se reasigna manualmente.
 
 ---
 
@@ -86,11 +89,14 @@ stateDiagram-v2
 
 | Transición | Plantilla | Destinatario | Cuándo se envía |
 |---|---|---|---|
-| T2 (`→ enviada`) | `solicitud-recibida.html` | Todos los `admin_plaza` activos de la plaza | Inmediato (worker cada 1 min). |
+| **T2 (`borrador → en_revision`)** | `solicitud-asignada-responsable.html` | Responsable de la subcategoría (`subcategoria.responsable_id`). | Inmediato (worker cada 1 min). |
+| **T2 (mismo evento, 1 email por supervisor)** | `solicitud-nueva-supervisor.html` | Cada uno de los hasta 5 supervisores de la subcategoría. Deduplicado si coincide con el responsable. | Inmediato. |
+| T4 legacy (`enviada → en_revision`, tras lock expirado) | `solicitud-recibida.html` | `admin_asignado_id` (admin que tomó) o todos los `admin_plaza` activos de la plaza. | Inmediato. |
 | T6 (`→ aprobada`) | `solicitud-aprobada.html` | Inquilino solicitante | Inmediato. |
 | T7 (`→ rechazada`) | `solicitud-rechazada.html` | Inquilino solicitante | Inmediato. |
 | T8 (`→ requerida_subsanacion`) | `solicitud-subsanacion.html` | Inquilino solicitante | Inmediato. |
-| T9 (`requerida → enviada`) | `solicitud-recibida.html` | `admin_asignado_id` (si existe) o todos los admins | Inmediato. |
+| T9 (`requerida_subsanacion → en_revision`) | `solicitud-recibida.html` o `solicitud-asignada-responsable.html` | `admin_asignado_id` (re-asignado al mismo responsable o al nuevo si cambió la subcategoría). | Inmediato. |
+| **T12 (reasignación manual)** | `solicitud-reasignada.html` | Nuevo responsable. | Inmediato. |
 
 **Todas las notificaciones se registran en `email_log`** con `estado`, `reintentos`, `last_error` y se procesan por el worker con reintentos exponenciales.
 
@@ -142,20 +148,16 @@ sequenceDiagram
 
     I->>FE: Enviar
     FE->>API: POST /solicitudes/:id/enviar
-    API->>DB: UPDATE estado=enviada, enviada_at=now
-    API->>DB: INSERT historial
-    API->>MQ: enqueue email "solicitud-recibida"
+    API->>DB: SELECT subcategoria (responsable_id, supervisores)
+    API->>DB: UPDATE estado=en_revision, admin_asignado_id=responsable, lock_expira_at=now+30min, enviada_at=now, asignada_at=now, prioridad=subcategoria.prioridad
+    API->>DB: INSERT historial evento=tomada (auto-toma)
+    API->>MQ: enqueue email "solicitud-asignada-responsable" → responsable
+    API->>MQ: enqueue email "solicitud-nueva-supervisor" → cada supervisor (1..5, dedup)
     API-->>FE: 200 OK
 
-    MQ->>SMTP: send
+    MQ->>SMTP: send (responsable)
     SMTP-->>MQ: 250 OK
     MQ->>DB: UPDATE email_log estado=enviado
-
-    A->>FE: Tomar para revisión
-    FE->>API: POST /solicitudes/:id/tomar
-    API->>DB: UPDATE estado=en_revision, admin_asignado_id
-    API->>DB: INSERT historial
-    API-->>FE: 200 OK
 
     A->>FE: Aprobar
     FE->>API: POST /solicitudes/:id/aprobar
@@ -204,13 +206,14 @@ sequenceDiagram
 
 Para evitar que dos admins trabajen la misma solicitud a la vez:
 
-- Al tomar (`enviada → en_revision`) se setea `admin_asignado_id` y se registra `lock_expira_at = now() + 30 min` (SUPUESTO S-LockTimeout) en una tabla ligera o en `solicitud` mismo.
-- Cualquier otro `POST /tomar` recibe `409 Conflict` si el lock está vigente.
+- Al enviar la solicitud (T2) **o** al reasignar (T12), se setea `admin_asignado_id` y se registra `lock_expira_at = now() + 30 min` (SUPUESTO S-LockTimeout) en una tabla ligera o en `solicitud` mismo.
+- Cualquier intento de reasignar (T12) o de tomar la solicitud cuando hay un lock vigente y pertenece a otro admin recibe `409 Conflict`.
 - El lock se libera al:
   - Aprobar, rechazar o pedir subsanación.
   - Cancelar.
-  - Expirar los 30 min.
-- Si un admin quiere "liberar" el lock manualmente, hay un endpoint `POST /solicitudes/:id/liberar` (SUPUESTO) que requiere rol `admin_plaza`.
+  - Reasignar (T12) — el lock se transfiere al nuevo responsable con 30 min frescos.
+  - Expirar los 30 min — la solicitud vuelve a `enviada` y queda disponible para `tomar` o reasignar manualmente.
+- Si un admin quiere "liberar" el lock manualmente, hay un endpoint `POST /solicitudes/:id/liberar` (SUPUESTO) que requiere rol `admin_plaza`; al liberar, la solicitud queda en `enviada` y el sistema intentará re-autoasignar a un responsable.
 
 ---
 
@@ -218,9 +221,11 @@ Para evitar que dos admins trabajen la misma solicitud a la vez:
 
 **SUPUESTO S-SLA.** Por configuración de la plaza (`configuracion.sla_dias_por_tipo`), cada tipo de solicitud tiene un número máximo de días desde `enviada_at` hasta `decision_at`.
 
+**SUPUESTO S-SLA-Prioridad.** El `admin_plaza` puede configurar un **multiplicador de SLA por prioridad** en `configuracion.sla_multiplicador_por_prioridad` (JSONB, p. ej. `{"A": 0.5, "B": 1.0, "C": 1.0, "D": 1.5, "F": 2.0}`). El SLA efectivo se calcula como `sla_dias_por_tipo[tipo] * multiplicador_por_prioridad[prioridad]`.
+
 | Tiempo transcurrido | Color | Acción |
 |---|---|---|
-| `< 50%` del SLA | Verde | Sin resaltado. |
+| `< 50%` del SLA efectivo | Verde | Sin resaltado. |
 | `50% – 100%` | Amarillo | Resaltado en la bandeja. |
 | `> 100%` | Rojo | Resaltado + email opcional al superadmin. |
 
@@ -282,3 +287,7 @@ El SLA se calcula con un cron diario que actualiza una vista materializada `soli
 | S-FS-G | 10 adjuntos máximo por solicitud. |
 | S-FS-H | No se bloquean duplicados; se avisa. |
 | S-FS-I | Estados `pausada` y `en_ejecucion` no se contemplan en v1. |
+| S-FS-AutoAsignacion | Al enviar una solicitud, se asigna automáticamente al responsable de la subcategoría con lock 30 min; los supervisores de la subcategoría son notificados. |
+| S-FS-Prioridad | La `prioridad ∈ {A,B,C,D,F}` se hereda de la subcategoría al crear; modificable por `admin_plaza` con `PATCH /solicitudes/:id`. |
+| S-FS-Supervisores | Una subcategoría puede tener entre 0 y 5 supervisores (enforced por trigger PG `tg_subcategoria_max_5_supervisores`). |
+| S-FS-Reasignacion | Cualquier `admin_plaza` puede reasignar manualmente (T12) una solicitud a otro staff; el lock se transfiere con 30 min frescos. |

@@ -1,0 +1,326 @@
+# Módulo 02 — Autenticación y Usuarios
+
+> **Propósito:** Triple guard (`JwtAuthGuard`, `PlazaScopeGuard`, `RolesGuard`), Auth.js (NextAuth v5) en frontend con JWT compartido HS256, endpoints de auth (login, refresh, logout, reset, change-password, me), CRUD de usuarios, CRUD de roles de staff, bitácora de login, lockout 5/15 min, y pantallas de login/reset/perfil.
+>
+> **Pre-requisito:** T-001 a T-016 (`01-setup-base.md`) deben estar `Completada`.
+
+## Tabla de tareas
+
+| ID | Título | Prioridad | Estado |
+|---|---|---|---|
+| T-017 | Crear migración Prisma con `rol` (catálogo global) | Alta | Pendiente |
+| T-018 | Crear migración Prisma con `usuario` | Alta | Pendiente |
+| T-019 | Crear migración Prisma con `rol_staff` | Alta | Pendiente |
+| T-020 | Crear migración Prisma con `refresh_token` y `password_reset_token` | Alta | Pendiente |
+| T-021 | Crear migración Prisma con `auditoria_login` | Alta | Pendiente |
+| T-022 | Definir Zod schemas compartidos de auth y usuarios en @app/contracts | Alta | Pendiente |
+| T-023 | Configurar JwtAuthGuard en NestJS | Alta | Pendiente |
+| T-024 | Configurar PlazaScopeGuard | Alta | Pendiente |
+| T-025 | Configurar RolesGuard + @Roles decorator | Alta | Pendiente |
+| T-026 | Implementar POST /api/v1/auth/login (con lockout 5/15) | Alta | Pendiente |
+| T-027 | Implementar POST /api/v1/auth/refresh | Alta | Pendiente |
+| T-028 | Implementar POST /api/v1/auth/logout | Alta | Pendiente |
+| T-029 | Implementar flujo de reset de contraseña (POST /reset-password, /reset-password/confirm) | Alta | Pendiente |
+| T-030 | Implementar PATCH /api/v1/auth/change-password | Media | Pendiente |
+| T-031 | Implementar GET /api/v1/auth/me | Alta | Pendiente |
+| T-032 | Configurar Auth.js (NextAuth v5) en frontend con Credentials Provider | Alta | Pendiente |
+| T-033 | Configurar middleware Next.js para inyectar token JWT en requests a NestJS | Alta | Pendiente |
+| T-034 | Implementar pantalla /login | Alta | Pendiente |
+| T-035 | Implementar pantallas /reset-password y /reset-password/[token] | Media | Pendiente |
+
+---
+
+### T-017 — Crear migración Prisma con `rol` (catálogo global)
+
+- **Descripción:** Crear el modelo `rol` en `backend/prisma/schema.prisma` con seed de los 3 roles globales (`superadmin`, `admin_plaza`, `inquilino`). Catálogo global no editable. Migración generada con `prisma migrate dev`. Materializa D1, R2, y la decisión de catálogos sin `plaza_id` (docs/04 §1.1).
+- **Criterios de aceptación:**
+  - [ ] Modelo `rol` en schema.prisma con campos: `id` (UUID PK), `codigo` (TEXT UNIQUE NOT NULL), `nombre` (TEXT NOT NULL), `descripcion` (TEXT), `created_at` (TIMESTAMPTZ default now()).
+  - [ ] Sin `plaza_id` (catálogo global).
+  - [ ] Migración `0002_init_roles/migration.sql` generada.
+  - [ ] Seed en `backend/prisma/seed.ts` inserta los 3 roles con códigos fijos.
+  - [ ] `package.json` tiene script `prisma:seed` configurado con `ts-node prisma/seed.ts` y `prisma.seed` apunta al script.
+  - [ ] `npx prisma migrate dev` aplica la migración + seed.
+  - [ ] `npx prisma studio` muestra 3 filas en `rol`.
+- **Dependencias:** T-010 (en `01-setup-base.md`).
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-018 — Crear migración Prisma con `usuario`
+
+- **Descripción:** Crear el modelo `usuario` con `plaza_id` (nullable para `superadmin`), `rol_id` (FK a `rol`), `rol_staff_id` (FK a `rol_staff`, NULL salvo si `admin_plaza`), `inquilino_id` (FK a `inquilino`, NULL salvo si `inquilino`), `email` único por plaza, `password_hash` (bcrypt cost 12), `nombre`, `telefono`, `email_invalido` (bool, marcado tras hard bounce), `last_login_at`, `created_at`, `updated_at`, `deleted_at`. Materializa `docs/04` §1.1 y RN-AU-1 a RN-AU-10.
+- **Criterios de aceptación:**
+  - [ ] Modelo `usuario` con todos los campos, FKs e índices: `UNIQUE(plaza_id, email)`, `INDEX(rol_id)`, `INDEX(deleted_at)`.
+  - [ ] Migración generada y aplicada.
+  - [ ] Validación en aplicación (no en BD): `password_hash` siempre empieza con `$2b$` o `$2a$` (RI-5).
+  - [ ] Validación en aplicación: `rol=admin_plaza` requiere `rol_staff_id` NOT NULL (S-ResponsabilidadStaff).
+  - [ ] Seed de superadmin inicial creado en `prisma/seed.ts` con email `superadmin@plazapp.com` y password `Plazapp2026!` (documentado como solo dev).
+  - [ ] El seed es idempotente: no falla si ya existe.
+- **Dependencias:** T-017, T-019 (rol_staff y usuario se crean juntos), T-062 en `04-locales-inquilinos-contratos.md` (FK a inquilino, pero puede ser nullable).
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-019 — Crear migración Prisma con `rol_staff`
+
+- **Descripción:** Crear el modelo `rol_staff` configurable por plaza: `plaza_id` (FK), `codigo` (slug único por plaza), `nombre`, `descripcion`, `activo`, `created_at`, `updated_at`. Materializa S-RolStaff y S-MD-K.
+- **Criterios de aceptación:**
+  - [ ] Modelo `rol_staff` con todos los campos.
+  - [ ] Índice `UNIQUE(plaza_id, codigo)`, `INDEX(plaza_id, activo)`.
+  - [ ] Migración generada y aplicada.
+  - [ ] Seed inicial crea 3 roles de staff por plaza demo: `tecnico`, `ingeniero`, `supervisor` (solo si la plaza existe).
+- **Dependencias:** T-036 (en `03-plazas-multitenant.md`, plaza debe existir). En práctica se implementa después; T-018 puede referenciar este modelo aunque aún no haya filas.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-020 — Crear migración Prisma con `refresh_token` y `password_reset_token`
+
+- **Descripción:** Crear los modelos `refresh_token` (hasheado SHA-256, `expires_at`, `revoked_at`, `user_agent`, `ip`) y `password_reset_token` (hasheado, `expires_at`, `used_at`). Materializa D3 (JWT HS256 + refresh rotado).
+- **Criterios de aceptación:**
+  - [ ] Modelo `refresh_token` con campos: `id` (UUID PK), `usuario_id` (FK), `token_hash` (TEXT, SHA-256 del token), `expires_at` (TIMESTAMPTZ, +7 días), `revoked_at` (nullable), `user_agent` (TEXT), `ip` (TEXT), `created_at`.
+  - [ ] Modelo `password_reset_token` con campos: `id`, `usuario_id` (FK), `token_hash` (SHA-256), `expires_at` (+30 min), `used_at` (nullable), `created_at`.
+  - [ ] Índices: `INDEX(usuario_id)` en ambos.
+  - [ ] Migración generada y aplicada.
+  - [ ] Ningún campo expone el token original (solo el hash).
+- **Dependencias:** T-018.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-021 — Crear migración Prisma con `auditoria_login`
+
+- **Descripción:** Crear el modelo `auditoria_login` (separado de `auditoria` que es transversal) para registrar intentos de login: `id`, `plaza_id` (nullable si el email no existe), `email` (texto, aunque no exista), `exitoso` (bool), `ip`, `user_agent`, `motivo_fallo` (TEXT, ej. `password_invalido`, `usuario_no_existe`, `cuenta_bloqueada`), `created_at`. Materializa RN-AU-4 (5 intentos en 15 min).
+- **Criterios de aceptación:**
+  - [ ] Modelo con todos los campos.
+  - [ ] Índice `INDEX(email, created_at)` para consultar historial.
+  - [ ] Índice `INDEX(plaza_id, created_at)` para consultas por plaza.
+  - [ ] Migración aplicada.
+  - [ ] Endpoint `GET /api/v1/usuarios/auditoria-login` (admin_plaza ve su plaza, superadmin ve todas) — implementado en T-035.
+- **Dependencias:** T-018.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-022 — Definir Zod schemas compartidos de auth y usuarios en @app/contracts
+
+- **Descripción:** Crear los schemas Zod compartidos en `packages/contracts/src/`: `auth.ts` (LoginInput, RefreshInput, ResetPasswordRequest, ResetPasswordConfirm, ChangePasswordInput), `usuarios.ts` (CreateUsuarioInput, UpdateUsuarioInput, ListUsuariosQuery, UsuarioOutput), `roles-staff.ts` (CreateRolStaffInput, etc.). Materializa D7 (S-Validación) y la decisión de compartir FE/BE.
+- **Criterios de aceptación:**
+  - [ ] `packages/contracts/src/auth.ts` exporta `LoginSchema` (email, password), `RefreshSchema` (refreshToken), `ResetPasswordRequestSchema` (email), `ResetPasswordConfirmSchema` (token, newPassword), `ChangePasswordSchema` (currentPassword, newPassword), y los tipos inferidos.
+  - [ ] `packages/contracts/src/usuarios.ts` exporta schemas para CRUD de usuarios.
+  - [ ] `packages/contracts/src/roles-staff.ts` exporta schemas para CRUD de roles de staff.
+  - [ ] Política de contraseña validada con regex: `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).{10,}$` (RN-AU-1).
+  - [ ] El paquete compila sin errores y los tipos se infieren correctamente.
+  - [ ] Tanto el frontend como el backend importan los schemas (validación en tiempo de build).
+- **Dependencias:** T-005 (en `01-setup-base.md`).
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-023 — Configurar JwtAuthGuard en NestJS
+
+- **Descripción:** Implementar `JwtAuthGuard` que valida el JWT del header `Authorization: Bearer <token>`. Verifica la firma HS256 con `JWT_SECRET` compartido, la expiración (`exp`), y emite los claims (`sub`, `plaza_id`, `rol`, `rol_staff_id`, `iat`, `exp`) en `request.user`. Materializa D3, SEC-4.
+- **Criterios de aceptación:**
+  - [ ] `backend/src/modules/auth/guards/jwt-auth.guard.ts` con la lógica de `@nestjs/passport` y `passport-jwt`.
+  - [ ] `Strategy` configurada con `secretOrKey: process.env.JWT_SECRET`, `algorithms: ['HS256']`, `ignoreExpiration: false`.
+  - [ ] Decorator `@CurrentUser()` que extrae `request.user`.
+  - [ ] Token expirado → `401 Unauthorized` con código `TOKEN_EXPIRED`.
+  - [ ] Token inválido → `401 Unauthorized` con código `TOKEN_INVALID`.
+  - [ ] Token sin firma → `401 Unauthorized` con código `TOKEN_MISSING_SIGNATURE`.
+  - [ ] Token NO se acepta en query string (validar que venga en header).
+  - [ ] JwtAuthGuard global con `APP_GUARD` (excepto endpoints públicos como `/auth/login`, `/auth/reset-password`).
+  - [ ] Cada request autenticado lleva `request.user` con los claims correctos.
+- **Dependencias:** T-022.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-024 — Configurar PlazaScopeGuard
+
+- **Descripción:** Implementar `PlazaScopeGuard` que verifica que el `plaza_id` del token coincida con el `plaza_id` del recurso solicitado (extraído de la URL o de la query). `superadmin` pasa sin scope (puede operar entre plazas). Aplica el header `x-plaza-slug` que llega del middleware de Next.js. Materializa SC-1 y S-MT-A.
+- **Criterios de aceptación:**
+  - [ ] `backend/src/modules/auth/guards/plaza-scope.guard.ts` con la lógica.
+  - [ ] Si el `rol === 'superadmin'`, pasa sin restricción.
+  - [ ] Si el `rol !== 'superadmin'`, verifica que el `plaza_id` del recurso (extraído de la URL `:plazaId` o del body) coincida con `user.plaza_id`.
+  - [ ] Mismatch → `403 Forbidden` con código `PLAZA_SCOPE_VIOLATION`.
+  - [ ] `superadmin` puede listar todas las plazas pero no puede crear solicitudes (SC-5).
+  - [ ] Test manual: token de admin_plaza A no puede leer GET `/locales?plazaId=B` → 403.
+  - [ ] Test manual: token de superadmin sí puede.
+- **Dependencias:** T-023, T-038 (en `03-plazas-multitenant.md`, RLS).
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-025 — Configurar RolesGuard + @Roles decorator
+
+- **Descripción:** Implementar `RolesGuard` con decorator `@Roles('admin_plaza', 'superadmin')` que valida que el rol del usuario esté en la lista. Materializa SC-1, SC-5, y la matriz de permisos de `docs/06-roles-y-permisos.md` §6.2.
+- **Criterios de aceptación:**
+  - [ ] `backend/src/common/decorators/roles.decorator.ts` con `SetMetadata('roles', roles)`.
+  - [ ] `backend/src/common/guards/roles.guard.ts` que lee los metadatos y compara con `user.rol`.
+  - [ ] Guard global con `APP_GUARD` (después de JwtAuthGuard y PlazaScopeGuard, formando el triple guard).
+  - [ ] Si el rol no está en la lista → `403 Forbidden` con código `ROLE_FORBIDDEN`.
+  - [ ] Si no hay `@Roles()` definido, el endpoint es accesible para cualquier rol autenticado.
+  - [ ] Triple guard funciona en serie: una falla → 401 o 403 antes de llegar al handler.
+- **Dependencias:** T-023, T-024.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-026 — Implementar POST /api/v1/auth/login (con lockout 5/15)
+
+- **Descripción:** Implementar el endpoint de login con `email` + `password`. Verifica la contraseña con bcrypt, valida que el usuario no esté soft-deleted, registra el intento en `auditoria_login`, e implementa el lockout de 5 intentos en 15 min (RN-AU-4). Si es exitoso, emite access token (15 min) y refresh token (7 días), guarda el refresh hasheado en BD. Materializa S-PwdPolicy y S-Lockout.
+- **Criterios de aceptación:**
+  - [ ] `POST /api/v1/auth/login` con body `{ email, password }`.
+  - [ ] Validación con `LoginSchema` de `@app/contracts`.
+  - [ ] Verifica `bcrypt.compare(password, usuario.password_hash)`.
+  - [ ] Si el email no existe: registra `auditoria_login` con `motivo_fallo: 'usuario_no_existe'` y retorna `401 INVALID_CREDENTIALS` (no revela si el email existe).
+  - [ ] Si la contraseña es incorrecta: registra `auditoria_login` con `motivo_fallo: 'password_invalido'`.
+  - [ ] Si hay 5 o más intentos fallidos en los últimos 15 min para ese email (o para esa IP): retorna `429 ACCOUNT_LOCKED` con tiempo restante.
+  - [ ] Si es exitoso: emite access token JWT (HS256) con claims `sub`, `plaza_id`, `rol`, `rol_staff_id`, `iat`, `exp`. Genera refresh token UUID v4, lo hashea con SHA-256 y lo guarda en `refresh_token`.
+  - [ ] Actualiza `usuario.last_login_at = now()`.
+  - [ ] Retorna `{ accessToken, refreshToken, expiresIn: 900, user: { id, email, nombre, rol, plazaId, rolStaffId } }`.
+  - [ ] Throttle: 5 req/min por IP (T-014).
+  - [ ] Sanitización: el email siempre se trimea y se lowercases antes de buscar.
+- **Dependencias:** T-018, T-020, T-021, T-022, T-023, T-025.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-027 — Implementar POST /api/v1/auth/refresh
+
+- **Descripción:** Implementar la rotación del refresh token: recibe el `refreshToken` del frontend, valida que exista, no esté revocado, no esté expirado, lo revoca, y emite un nuevo par access+refresh. Implementa detección de reuso (si se usa un refresh revocado, se revocan todos los del usuario como medida de seguridad).
+- **Criterios de aceptación:**
+  - [ ] `POST /api/v1/auth/refresh` con body `{ refreshToken }`.
+  - [ ] Hashea el token recibido con SHA-256 y busca en `refresh_token`.
+  - [ ] Si no existe o `revoked_at` no es null → `401 REFRESH_INVALID`. Y se revocan todos los refresh del usuario por seguridad.
+  - [ ] Si `expires_at < now()` → `401 REFRESH_EXPIRED`.
+  - [ ] Si es válido: marca el actual como `revoked_at = now()`, genera uno nuevo, lo guarda.
+  - [ ] Retorna el nuevo par access+refresh.
+  - [ ] El endpoint NO está protegido por JwtAuthGuard (es el que se usa cuando el access expiró).
+- **Dependencias:** T-020, T-023, T-026.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-028 — Implementar POST /api/v1/auth/logout
+
+- **Descripción:** Implementar logout que revoca el refresh token actual. El access token expira solo (15 min), pero el refresh se marca como `revoked_at = now()`.
+- **Criterios de aceptación:**
+  - [ ] `POST /api/v1/auth/logout` con body `{ refreshToken }` (alternativamente, Auth.js limpia la cookie).
+  - [ ] Marca el refresh como `revoked_at = now()`.
+  - [ ] Retorna `204 No Content`.
+  - [ ] Endpoint protegido por JwtAuthGuard.
+  - [ ] Opcional: si se llama con un access token que tiene un `refreshToken` en sus claims, también lo revoca.
+- **Dependencias:** T-020, T-023, T-027.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-029 — Implementar flujo de reset de contraseña
+
+- **Descripción:** Implementar `POST /api/v1/auth/reset-password` (recibe email, envía email con token de un solo uso, 30 min) y `POST /api/v1/auth/reset-password/confirm` (recibe token + newPassword, marca `used_at`, actualiza `usuario.password_hash`). Materializa RN-AU-6 y S-Reset.
+- **Criterios de aceptación:**
+  - [ ] `POST /api/v1/auth/reset-password` con body `{ email }`. Genera UUID v4, hashea con SHA-256, guarda en `password_reset_token` con `expires_at = now() + 30 min`. Envía email con plantilla `reset-password.html` y link `https://{plaza.slug}.plazapp.com/reset-password/{token}`.
+  - [ ] Si el email no existe, retorna `200 OK` igualmente (no revela si existe).
+  - [ ] `POST /api/v1/auth/reset-password/confirm` con body `{ token, newPassword }`. Hashea token, busca en BD, verifica `expires_at > now()` y `used_at IS NULL`. Si OK: marca `used_at = now()`, hashea newPassword con bcrypt cost 12 y actualiza `usuario.password_hash`, revoca todos los `refresh_token` del usuario.
+  - [ ] Validación Zod de la nueva contraseña.
+  - [ ] Token usado o expirado → `400 RESET_TOKEN_INVALID`.
+  - [ ] El email de reset es crítico (no se desactiva con unsubscribe).
+- **Dependencias:** T-020, T-022, T-118 (en `09-notificaciones-email.md`, plantilla).
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-030 — Implementar PATCH /api/v1/auth/change-password
+
+- **Descripción:** Implementar cambio de contraseña con sesión activa: el usuario autenticado envía `currentPassword` y `newPassword`. Verifica el actual con bcrypt, hashea el nuevo, actualiza, y revoca todos los `refresh_token` del usuario para forzar re-login en otros dispositivos.
+- **Criterios de aceptación:**
+  - [ ] `PATCH /api/v1/auth/change-password` con body `{ currentPassword, newPassword }`. Protegido por JwtAuthGuard.
+  - [ ] Verifica `currentPassword` con `bcrypt.compare`. Si no coincide → `400 INVALID_CURRENT_PASSWORD`.
+  - [ ] Valida `newPassword` con la política (Zod regex, 10+ chars, etc.).
+  - [ ] Hashea `newPassword` con bcrypt cost 12.
+  - [ ] Actualiza `usuario.password_hash`.
+  - [ ] Marca todos los `refresh_token` del usuario con `revoked_at = now()`.
+  - [ ] Retorna `204 No Content`.
+- **Dependencias:** T-018, T-022, T-023.
+- **Prioridad:** Media.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-031 — Implementar GET /api/v1/auth/me
+
+- **Descripción:** Endpoint que retorna el perfil del usuario autenticado. Útil para que el frontend hidrate el estado de Auth.js.
+- **Criterios de aceptación:**
+  - [ ] `GET /api/v1/auth/me` retorna el usuario del JWT actual.
+  - [ ] Protegido por JwtAuthGuard.
+  - [ ] Nunca expone `password_hash` ni tokens.
+  - [ ] Response: `{ id, email, nombre, telefono, rol, rolStaffId, inquilinoId, plazaId, lastLoginAt, createdAt }`.
+  - [ ] `404` si el usuario fue soft-deleted entre tanto.
+- **Dependencias:** T-018, T-023.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-032 — Configurar Auth.js (NextAuth v5) en frontend con Credentials Provider
+
+- **Descripción:** Configurar NextAuth v5 (Auth.js) con Credentials Provider que consume el endpoint `POST /api/v1/auth/login` del backend. La sesión se persiste en cookie httpOnly (S-ARQ-F). El JWT nunca llega a JavaScript del cliente. Materializa D3, S-ARQ-F.
+- **Criterios de aceptación:**
+  - [ ] `frontend/auth.ts` (raíz de Next.js) con `NextAuth({ providers: [Credentials({...})], session: { strategy: 'jwt' }, callbacks: { jwt, session } })`.
+  - [ ] Credentials Provider hace `fetch` a `${NEXT_PUBLIC_API_URL}/api/v1/auth/login` con `{ email, password }`.
+  - [ ] El callback `jwt` guarda `accessToken` y `refreshToken` en el token de NextAuth (no en la sesión).
+  - [ ] El callback `session` solo expone `user` (sin tokens).
+  - [ ] Cookie httpOnly con `secure: process.env.NODE_ENV === 'production'`, `sameSite: 'lax'`.
+  - [ ] `auth()` (server-side helper) retorna la sesión.
+  - [ ] `signIn` y `signOut` server actions disponibles.
+  - [ ] La sesión se refresca automáticamente cuando el access está a punto de expirar.
+- **Dependencias:** T-026, T-027.
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-033 — Configurar middleware Next.js para inyectar token JWT en requests a NestJS
+
+- **Descripción:** Configurar el middleware de Next.js que añade el `accessToken` y el header `x-plaza-slug` (resolución de tenant) a cada Server Action/Server Component que llama al backend. Materializa S-ARQ-E, S-ARQ-F.
+- **Criterios de aceptación:**
+  - [ ] `frontend/middleware.ts` con `auth` middleware de NextAuth.
+  - [ ] Función helper `apiFetch(path, options)` que toma el `accessToken` de la sesión y lo pasa como `Authorization: Bearer <token>`.
+  - [ ] Resolución de tenant: extrae el slug del subdominio (`acme.plazapp.com` → `acme`) o del path (`/p/acme/...`) y lo añade como header `x-plaza-slug`.
+  - [ ] Si el access token está expirado, llama a `POST /api/v1/auth/refresh` y reintenta una vez.
+  - [ ] Si el refresh falla, redirige a `/login`.
+  - [ ] El helper está disponible tanto en Server Components como en Server Actions.
+- **Dependencias:** T-032, T-038 (en `03-plazas-multitenant.md`, RLS).
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-034 — Implementar pantalla /login
+
+- **Descripción:** Implementar la pantalla de login con React Hook Form + Zod, fondo con branding de la plaza (logo + color primario), mensaje de error de credenciales inválidas, manejo de cuenta bloqueada, y link a `/reset-password`.
+- **Criterios de aceptación:**
+  - [ ] Ruta `frontend/app/(public)/login/page.tsx` (Server Component) con un Client Component interno para el formulario.
+  - [ ] Formulario con React Hook Form + `LoginSchema` de `@app/contracts`.
+  - [ ] Campos: email, password.
+  - [ ] Al submit: server action llama a `signIn` de Auth.js (Credentials Provider → backend login).
+  - [ ] Si las credenciales son inválidas: muestra toast "Email o contraseña incorrectos" (no revela cuál).
+  - [ ] Si la cuenta está bloqueada: muestra toast con tiempo restante.
+  - [ ] Si OK: redirige a `/dashboard` (o `/admin/dashboard` si es admin_plaza, o `/superadmin/plazas` si es superadmin).
+  - [ ] Link "¿Olvidaste tu contraseña?" apunta a `/reset-password`.
+  - [ ] Si ya hay sesión, redirige a la home.
+  - [ ] Logo y color de la plaza visibles (resueltos desde la URL o desde una config pública).
+- **Dependencias:** T-032, T-033, T-042 (en `03-plazas-multitenant.md`, branding).
+- **Prioridad:** Alta.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*
+
+### T-035 — Implementar pantallas /reset-password y /reset-password/[token]
+
+- **Descripción:** Implementar la pantalla de solicitud de reset y la pantalla de confirmación con el token. Materializa el flujo end-to-end con T-029.
+- **Criterios de aceptación:**
+  - [ ] `frontend/app/(public)/reset-password/page.tsx` con formulario de email. Submit → server action llama a `POST /api/v1/auth/reset-password` → muestra mensaje "Si el email existe, recibirás un enlace".
+  - [ ] `frontend/app/(public)/reset-password/[token]/page.tsx` con formulario de nueva contraseña (con confirmación). Valida con `ResetPasswordConfirmSchema`. Submit → `POST /api/v1/auth/reset-password/confirm` → redirige a `/login` con toast "Contraseña actualizada".
+  - [ ] Si el token es inválido o expirado: muestra mensaje "El enlace es inválido o ha expirado" con link para solicitar uno nuevo.
+  - [ ] Branding aplicado (logo + color).
+- **Dependencias:** T-029, T-032, T-033, T-034.
+- **Prioridad:** Media.
+- **Estado:** Pendiente.
+- **Bitácora de cambios:** *(vacía)*

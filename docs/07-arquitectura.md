@@ -26,14 +26,16 @@ flowchart LR
         M1[auth]
         M2[plazas]
         M3[usuarios]
-        M4[locales + contratos]
-        M5[solicitudes]
-        M6[aprobaciones]
-        M7[notificaciones]
-        M8[calendario]
-        M9[adjuntos]
-        M10[reportes]
-        M11[admin]
+        M4[roles-staff]
+        M5[locales + contratos]
+        M6[categorias + subcategorias]
+        M7[solicitudes]
+        M8[aprobaciones]
+        M9[notificaciones]
+        M10[calendario]
+        M11[adjuntos]
+        M12[reportes]
+        M13[admin]
     end
 
     subgraph Persist["Persistencia y servicios"]
@@ -41,6 +43,7 @@ flowchart LR
         MinIO[(MinIO)]
         SMTP[SMTP]
         Cache[(Redis opcional)]
+        JSR[jsreport 4.13 :5488]
     end
 
     Browser -- HTTPS --> SC
@@ -57,15 +60,17 @@ flowchart LR
     M4 --> G1 --> G2 --> G3
     M5 --> G1 --> G2 --> G3
     M6 --> G1 --> G2 --> G3
-    M7 --> SMTP
-    M8 --> G1 --> G2 --> G3
-    M9 --> MinIO
+    M7 --> G1 --> G2 --> G3
+    M9 --> SMTP
     M10 --> G1 --> G2 --> G3
-    M11 --> G1
+    M11 --> MinIO
+    M12 --> G1 --> G2 --> G3
+    M13 --> G1
 
-    M2 & M3 & M4 & M5 & M6 & M8 & M10 --> PG
+    M2 & M3 & M4 & M5 & M6 & M7 & M10 & M12 --> PG
+    M11 --> PG
     M9 --> PG
-    M7 --> PG
+    M12 --> JSR
     PG -. RLS .-> G2
 ```
 
@@ -237,8 +242,10 @@ backend/
 │   │   ├── auth/                  # /api/v1/auth/*
 │   │   ├── plazas/                # /api/v1/plazas/*
 │   │   ├── usuarios/              # /api/v1/usuarios/*
+│   │   ├── roles-staff/           # /api/v1/roles-staff  ← NUEVO: CRUD roles operativos
 │   │   ├── locales/               # /api/v1/locales/*
 │   │   ├── contratos/             # /api/v1/contratos/*
+│   │   ├── categorias/            # /api/v1/categorias  ← NUEVO: con sub-recurso subcategorias
 │   │   ├── solicitudes/           # /api/v1/solicitudes/*
 │   │   ├── aprobaciones/          # /api/v1/solicitudes/:id/aprobacion
 │   │   ├── notificaciones/        # worker + endpoint /api/v1/notificaciones
@@ -253,9 +260,6 @@ backend/
 │       ├── solicitud-recibida.html
 │       ├── solicitud-aprobada.html
 │       └── ... (todas las plantillas)
-├── test/
-│   ├── unit/
-│   └── e2e/
 ├── nest-cli.json
 ├── tsconfig.json
 ├── .env.example
@@ -270,7 +274,7 @@ sys-solicitudes/
 ├── backend/
 ├── packages/
 │   └── contracts/                 # Zod schemas compartidos
-├── docker-compose.yml             # Postgres, MinIO, MailHog, Redis
+├── docker-compose.yml             # Postgres, MinIO, MailHog, jsreport, Redis (opcional)
 ├── docker-compose.prod.yml
 ├── .github/workflows/
 │   ├── ci.yml                     # lint + test + build
@@ -318,9 +322,6 @@ modules/solicitudes/
 │   └── filter-solicitud.dto.ts
 ├── entities/                          # tipos Prisma generados
 │   └── solicitud.entity.ts
-├── tests/
-│   ├── solicitudes.service.spec.ts
-│   └── solicitudes.e2e-spec.ts
 └── schemas/                           # Zod
     └── solicitud.schema.ts
 ```
@@ -378,14 +379,17 @@ GET    /api/v1/contratos/:id
 PATCH  /api/v1/contratos/:id
 POST   /api/v1/contratos/:id/cerrar
 
-GET    /api/v1/solicitudes?estado=&tipo=&localId=&from=&to=&page=
+GET    /api/v1/solicitudes?estado=&tipo=&localId=&from=&to=&prioridad=&categoriaId=&subcategoriaId=&page=
 POST   /api/v1/solicitudes
 GET    /api/v1/solicitudes/:id
 PATCH  /api/v1/solicitudes/:id
 DELETE /api/v1/solicitudes/:id        (solo en borrador, soft)
-POST   /api/v1/solicitudes/:id/enviar
+POST   /api/v1/solicitudes/:id/enviar           # T2: auto-asignada al responsable
 POST   /api/v1/solicitudes/:id/cancelar
-POST   /api/v1/solicitudes/:id/tomar
+POST   /api/v1/solicitudes/:id/tomar            # legacy: solo si quedó en `enviada` por lock expirado
+POST   /api/v1/solicitudes/:id/liberar          # legacy
+POST   /api/v1/solicitudes/:id/reasignar        # T12: body { nuevo_responsable_id, comentario? }
+PATCH  /api/v1/solicitudes/:id/prioridad        # body { prioridad }
 POST   /api/v1/solicitudes/:id/aprobar
 POST   /api/v1/solicitudes/:id/rechazar
 POST   /api/v1/solicitudes/:id/subsanar
@@ -396,6 +400,24 @@ POST   /api/v1/solicitudes/:id/adjuntos
 GET    /api/v1/solicitudes/:id/adjuntos
 DELETE /api/v1/solicitudes/:id/adjuntos/:adjuntoId
 
+# Roles de staff (nuevo)
+GET    /api/v1/roles-staff
+POST   /api/v1/roles-staff
+PATCH  /api/v1/roles-staff/:id
+DELETE /api/v1/roles-staff/:id                # soft delete
+
+# Categorías y subcategorías (nuevo)
+GET    /api/v1/categorias
+POST   /api/v1/categorias
+PATCH  /api/v1/categorias/:id
+DELETE /api/v1/categorias/:id                 # soft delete
+GET    /api/v1/categorias/:id/subcategorias
+POST   /api/v1/categorias/:id/subcategorias   # body: { nombre, descripcion, prioridad, responsable_id, supervisor_ids[] }
+PATCH  /api/v1/categorias/:id/subcategorias/:subId
+DELETE /api/v1/categorias/:id/subcategorias/:subId  # soft delete
+POST   /api/v1/categorias/:id/subcategorias/:subId/supervisores           # body: { usuario_id }
+DELETE /api/v1/categorias/:id/subcategorias/:subId/supervisores/:usuarioId
+
 GET    /api/v1/calendario/eventos?from=&to=
 GET    /api/v1/calendario/eventos.ics
 
@@ -404,8 +426,13 @@ GET    /api/v1/notificaciones/log
 GET    /api/v1/reportes/solicitudes?...filtros
 GET    /api/v1/reportes/solicitudes/export.csv
 GET    /api/v1/reportes/solicitudes/export.xlsx
+GET    /api/v1/reportes/solicitudes/export.pdf
 GET    /api/v1/reportes/locales/:id
+GET    /api/v1/reportes/locales/:id/export.xlsx
+GET    /api/v1/reportes/locales/:id/export.pdf
 GET    /api/v1/reportes/inquilinos/:id
+GET    /api/v1/reportes/inquilinos/:id/export.xlsx
+GET    /api/v1/reportes/inquilinos/:id/export.pdf
 
 GET    /api/v1/admin/plazas           (superadmin)
 GET    /api/v1/admin/metricas         (superadmin)
@@ -440,6 +467,12 @@ MINIO_USE_SSL=false
 MINIO_ACCESS_KEY=minio
 MINIO_SECRET_KEY=minio123
 MINIO_BUCKET_PREFIX=solicitudes
+
+# jsreport (generación de reportes PDF/XLSX, contenedor separado)
+JSREPORT_URL=http://jsreport:5488
+JSREPORT_ADMIN_USER=admin
+JSREPORT_ADMIN_PASSWORD=replace-me-with-a-strong-password
+JSREPORT_TIMEOUT_MS=30000
 
 # SMTP
 SMTP_HOST=mailhog
@@ -496,13 +529,13 @@ NEXTAUTH_URL=http://localhost:3000
 
 ## 7.9. CI/CD (referencia)
 
-**SUPUESTO S-CI.** Pipeline mínimo con GitHub Actions:
+**SUPUESTO S-CI.** Pipeline mínimo con GitHub Actions. Como no se escriben tests unitarios ni e2e automatizados, el pipeline se reduce a lint + build:
 
 ```yaml
 name: CI
 on: [push, pull_request]
 jobs:
-  test-backend:
+  build-backend:
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -513,23 +546,29 @@ jobs:
       minio:
         image: minio/minio
         ports: ['9000:9000']
+      jsreport:
+        image: jsreport/jsreport:4.13.0
+        ports: ['5488:5488']
+        env:
+          chrome_launchOptions_args: --no-sandbox,--disable-dev-shm-usage,--disable-gpu
+          extensions_authentication_admin_username: admin
+          extensions_authentication_admin_password: test
+          extensions_authentication_cookieSession_secret: testtesttesttesttesttesttesttest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with: { node-version: '24' }
       - run: cd backend && npm ci
       - run: cd backend && npm run lint
-      - run: cd backend && npm run test
-      - run: cd backend && npm run test:e2e
-  test-frontend:
+      - run: cd backend && npm run build
+  build-frontend:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: '20' }
+        with: { node-version: '24' }
       - run: cd frontend && npm ci
       - run: cd frontend && npm run lint
-      - run: cd frontend && npm run test
       - run: cd frontend && npm run build
 ```
 
@@ -542,6 +581,7 @@ jobs:
 ### 7.10.1. `docker-compose.yml` (desarrollo)
 
 ```yaml
+# Servicios: postgres, minio, mailhog, jsreport, backend, frontend
 services:
   postgres:
     image: postgres:16
@@ -565,9 +605,36 @@ services:
     image: mailhog/mailhog
     ports: ['1025:1025', '8025:8025']
 
+  jsreport:
+    image: jsreport/jsreport:4.13.0
+    container_name: jsreport
+    restart: unless-stopped
+    ports:
+      - '5488:5488'
+    environment:
+      - chrome_launchOptions_args=--no-sandbox,--disable-dev-shm-usage,--disable-gpu
+      - extensions_authentication_admin_username=${JSREPORT_ADMIN_USER}
+      - extensions_authentication_admin_password=${JSREPORT_ADMIN_PASSWORD}
+      - extensions_authentication_cookieSession_secret=${JSREPORT_COOKIE_SECRET}
+    volumes:
+      - jsreport_data:/app/data
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:5488/api/ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./backend
-    depends_on: [postgres, minio, mailhog]
+    depends_on:
+      postgres:
+        condition: service_started
+      minio:
+        condition: service_started
+      mailhog:
+        condition: service_started
+      jsreport:
+        condition: service_healthy
     env_file: ./backend/.env
     ports: ['4000:4000']
 
@@ -580,12 +647,14 @@ services:
 volumes:
   pgdata: {}
   miniodata: {}
+  jsreport_data: {}
 ```
 
 ### 7.10.2. Producción (referencia, no contractual)
 
 - **Frontend:** contenedor Docker, expuesto tras CDN/Cloudflare.
 - **Backend:** contenedor Docker detrás de ALB / nginx.
+- **jsreport:** contenedor Docker (`jsreport/jsreport:4.13.0`) en la misma red privada que el backend, sin exposición pública. Las plantillas se sirven desde `backend/src/modules/reportes/templates/` (no se persisten dentro del contenedor).
 - **PostgreSQL:** RDS o equivalente administrado.
 - **MinIO:** migrable a S3 cambiando variables de entorno.
 - **SMTP:** proveedor transaccional (SendGrid, SES, Mailgun).
@@ -608,3 +677,4 @@ volumes:
 | S-ARQ-E | Frontend NO expone la API de NestJS al cliente; pasa por Server Components / Server Actions. |
 | S-ARQ-F | Cookies httpOnly + secure; nunca se expone el JWT a JavaScript del cliente. |
 | S-ARQ-G | CSRF no aplica por usar Bearer; el frontend nunca usa cookies de sesión del backend. |
+| S-ARQ-H | Los nuevos módulos `roles-staff` y `categorias` siguen el mismo patrón que los demás (controladores, services, dto, entities, schemas Zod). El trigger PL/pgSQL `tg_subcategoria_max_5_supervisores` se crea en una migración dedicada. |

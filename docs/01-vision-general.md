@@ -58,7 +58,10 @@ Proveer a las administradoras de plazas comerciales una plataforma web que centr
 
 ### 1.4.1. Dentro del alcance (incluye)
 
-- Registro, autenticación y recuperación de contraseña de usuarios con tres roles: `superadmin`, `administrador_plaza`, `inquilino`.
+- Registro, autenticación y recuperación de contraseña de usuarios con tres roles globales (`superadmin`, `administrador_plaza`, `inquilino`) y **N roles de staff configurables por plaza** (técnico, ingeniero, supervisor, etc.) asignados a usuarios con rol global `admin_plaza`.
+- **CRUD de roles de staff** por plaza (configurable libremente por cada `admin_plaza`).
+- **CRUD de categorías y subcategorías** de solicitudes por plaza, con asignación de persona responsable y hasta 5 supervisores por subcategoría.
+- **Auto-asignación** de solicitudes a la persona responsable definida en la subcategoría, con notificación automática a responsables y supervisores.
 - Aprovisionamiento y configuración básica de plazas (alta, edición, baja lógica, branding mínimo).
 - Registro de locales por plaza, con su información de planta, estado y disponibilidad.
 - Registro del contrato de alquiler que vincula un local con un inquilino por un período.
@@ -93,11 +96,17 @@ Proveer a las administradoras de plazas comerciales una plataforma web que centr
 | **Inquilino** | Persona jurídica o física que alquila uno o varios locales. Tiene usuarios que la representan en el sistema. |
 | **Contrato** | Registro del acuerdo de alquiler que vincula a un local con un inquilino durante un período (fecha inicio, fecha fin, monto, condiciones). |
 | **Solicitud / Permiso** | Petición formal que un inquilino eleva a la administración para realizar una actividad (mantenimiento, evento, remodelación, otro). |
-| **Tipo de solicitud** | Categoría de la solicitud: `mantenimiento`, `evento`, `remodelacion`, `otro`. |
+| **Tipo de solicitud** | Categoría macro de la solicitud: `mantenimiento`, `evento`, `remodelacion`, `otro`. (A nivel de enrutamiento se usan las *categorías* y *subcategorías* configurables; ver abajo.) |
 | **Estado de solicitud** | Etapa del ciclo de vida: `borrador`, `enviada`, `en_revision`, `aprobada`, `rechazada`, `cancelada`, `requerida_subsanacion`. |
 | **Aprobación** | Transición y registro por el cual un administrador de plaza acepta o rechaza una solicitud, con un comentario. |
 | **Adjunto** | Archivo (plano, permiso, foto, PDF) asociado a una solicitud. |
-| **Administrador de plaza** | Usuario de la administración que opera una plaza concreta: aprueba solicitudes, gestiona usuarios, ve reportes. |
+| **Administrador de plaza** | Usuario de la administración que opera una plaza concreta: aprueba solicitudes, gestiona usuarios, ve reportes. **No es un rol monolítico**: cada usuario de staff tiene además un `rol_staff` (técnico, ingeniero, etc.) que define sus capacidades operativas. |
+| **Rol de staff** | Rol operativo dentro de una plaza (p. ej. `técnico HVAC`, `ingeniero eléctrico`); configurable por el `admin_plaza` mediante CRUD. Asignado a usuarios con rol global `admin_plaza`. |
+| **Categoría** | Agrupador de primer nivel de subcategorías, configurable por plaza (p. ej. "Aire acondicionado"). Reemplaza al enum embebido `campos_extra.categoria` de la versión anterior. |
+| **Subcategoría** | Configuración de enrutamiento: combina categoría padre, prioridad, persona responsable (1) y supervisores (hasta 5). Determina a quién se asigna y a quién se notifica al crear una solicitud. |
+| **Prioridad** | Etiqueta `A \| B \| C \| D \| F` heredada de la subcategoría, modificable por el `admin_plaza`. `A` = crítica, `F` = informativa. |
+| **Responsable de subcategoría** | Usuario (rol de staff) que recibe automáticamente la solicitud al crearla con esa subcategoría. |
+| **Supervisor de subcategoría** | Usuario (rol de staff) que recibe notificación de nuevas solicitudes de la subcategoría; no las resuelve directamente (puede reasignar/visualizar). |
 | **Superadministrador** | Usuario a nivel plataforma que crea y configura plazas. No es cliente final, es operador del SaaS. |
 | **Tenant** | Sinónimo de "plaza" en el contexto multi-tenant. Cada tenant tiene un `plaza_id` que aísla sus datos. |
 | **SMTP** | Servicio de envío de correo electrónico saliente. |
@@ -113,7 +122,7 @@ Proveer a las administradoras de plazas comerciales una plataforma web que centr
 | Rol | Quién es | Qué hace en el sistema |
 |---|---|---|
 | **Superadministrador (superadmin)** | Equipo de Helixsys / operador de la plataforma | Da de alta plazas, asigna el primer administrador de cada plaza, ve métricas globales. |
-| **Administrador de plaza (admin_plaza)** | Personal de la empresa administradora de la plaza | Configura su plaza, gestiona usuarios, aprueba/rechaza solicitudes, ve reportes y calendario. |
+| **Administrador de plaza (admin_plaza)** | Personal de la empresa administradora de la plaza | Configura su plaza, gestiona usuarios, aprueba/rechaza solicitudes, ve reportes y calendario. Internamente se distingue por un `rol_staff` configurable (técnico, ingeniero, supervisor, etc.). |
 | **Inquilino (inquilino)** | Comercio o negocio arrendatario | Crea, envía y da seguimiento a sus solicitudes. Ve su calendario y adjuntos. |
 
 Detalle de la matriz de permisos por módulo y acción: ver [`06-roles-y-permisos.md`](./06-roles-y-permisos.md).
@@ -135,6 +144,8 @@ Detalle de la matriz de permisos por módulo y acción: ver [`06-roles-y-permiso
 - **R9 — Datos de contacto:** el sistema almacena nombre, email y teléfono de los usuarios; no almacena datos sensibles de pago.
 - **R10 — Auditoría:** toda acción de aprobación/rechazo, edición de estado y cambio de rol queda registrada en una tabla de auditoría con timestamp y usuario. (SUPUESTO — alineado con buenas prácticas, no explícito en PDF.)
 - **R11 — Datos no especificados en la cotización:** se asumen defaults sensatos y se marcan como `SUPUESTO` en cada documento correspondiente. Cualquier inconsistencia con la realidad del cliente se resolverá antes del kickoff.
+- **R12 — Roles de staff configurables:** cada plaza define sus propios roles operativos (técnico, ingeniero, etc.) mediante un CRUD (`rol_staff`). Un usuario con rol global `admin_plaza` debe tener un `rol_staff` asignado para poder ser responsable o supervisor de una subcategoría.
+- **R13 — Enrutamiento por subcategoría:** cada solicitud se crea con una `categoria` y `subcategoria` configurables. La subcategoría define quién la resuelve (responsable) y quién la supervisa (hasta 5 usuarios); al enviar la solicitud, el sistema la asigna automáticamente al responsable con un lock de 30 minutos.
 
 ---
 

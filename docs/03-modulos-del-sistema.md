@@ -94,7 +94,8 @@ Administrar las identidades digitales de los usuarios del sistema y controlar el
 ### 1.3 Entidades
 
 - `usuario`
-- `rol` (catálogo: `superadmin`, `admin_plaza`, `inquilino`)
+- `rol` (catálogo global fijo: `superadmin`, `admin_plaza`, `inquilino`)
+- `rol_staff` (catálogo configurable por plaza: `tecnico`, `ingeniero-hvac`, etc.)
 - `usuario_rol` (tabla pivote — un usuario puede tener varios roles en el futuro; en v1 se restringe a uno)
 - `refresh_token`
 - `password_reset_token`
@@ -119,14 +120,16 @@ Administrar las identidades digitales de los usuarios del sistema y controlar el
 - **RN-AU-3:** la cuenta se bloquea temporalmente tras 5 intentos fallidos en 15 min. (SUPUESTO S-Lockout.)
 - **RN-AU-4:** el token de reset de contraseña es de un solo uso, expira en 30 min y se invalida al usarse.
 - **RN-AU-5:** un usuario no puede desactivarse a sí mismo si es el único `admin_plaza` activo de la plaza.
-- **RN-AU-6:** toda sesión emite `iat`, `exp`, `sub`, `plaza_id`, `rol`, `usuario_id`. Ver `JWT` en §2.6.
+- **RN-AU-6:** toda sesión emite `iat`, `exp`, `sub`, `plaza_id`, `rol`, `rol_staff_id` (si aplica), `usuario_id`. Ver `JWT` en §2.6.
 - **RN-AU-7:** un `inquilino` solo puede iniciar sesión si su `inquilino` asociado está activo y pertenece a la misma plaza.
 - **RN-AU-8:** el email de bienvenida se envía siempre (SUPUESTO).
 - **RN-AU-9:** el `superadmin` **no** puede crear solicitudes, locales ni contratos. Es un usuario de plataforma, no cliente final.
+- **RN-AU-10:** todo usuario con rol global `admin_plaza` debe tener un `rol_staff_id` asignado (NOT NULL) para poder operar; usuarios `superadmin` e `inquilino` lo tienen NULL. (SUPUESTO S-ResponsabilidadStaff.)
 
 ### 1.6 Dependencias
 
 - Depende de **`plazas`** (todo usuario pertenece a una plaza excepto `superadmin`).
+- Depende de **`roles-staff`** (todo `admin_plaza` debe tener un `rol_staff`).
 - Es consumido por **todos los módulos** (cada operación requiere `request.user`).
 
 ### 1.7 SUPUESTOS del módulo
@@ -136,6 +139,54 @@ Administrar las identidades digitales de los usuarios del sistema y controlar el
 - **S-AU-C:** no hay 2FA/MFA en v1.
 - **S-AU-D:** las sesiones son `JWT` en cookie httpOnly. No se almacenan sesiones en servidor.
 - **S-AU-E:** un usuario solo puede pertenecer a **una** plaza. Multi-plaza para staff no se contempla.
+- **S-AU-F:** un usuario con rol global `admin_plaza` debe tener un `rol_staff` configurado para ser dado de alta; sin él no puede operar (RN-AU-10).
+
+---
+
+## 1A. Módulo: Roles de Staff (CRUD)
+
+> **Módulo nuevo.** Habilita que cada `admin_plaza` defina sus propios roles operativos (técnico, ingeniero, supervisor, etc.) y los asigne a los usuarios de su plaza.
+
+### 1A.1. Propósito
+
+Proveer un catálogo **configurable por plaza** de roles operativos del personal de la administración. Cada plaza crea los roles que necesite mediante un CRUD simple (`GET/POST/PATCH/DELETE /api/v1/roles-staff`). El rol de staff se asigna luego a cada usuario `admin_plaza` y define sus capacidades operativas (p. ej. "puede ser responsable de subcategorías de tipo mantenimiento").
+
+### 1A.2. Casos de uso
+
+- **CU-RS-1 · Listar roles de staff de la plaza:** filtrado por `activo=true/false`. Disponible para `admin_plaza` (CRUD) e `inquilino` (solo lectura, para usar en selección).
+- **CU-RS-2 · Crear rol de staff:** alta con código (slug), nombre, descripción opcional.
+- **CU-RS-3 · Editar rol de staff:** modificar nombre, descripción, activo. El `codigo` es inmutable.
+- **CU-RS-4 · Desactivar rol de staff:** soft delete (`activo=false`). Los usuarios que ya lo tienen asignado lo conservan pero la UI los marca "rol inactivo".
+- **CU-RS-5 · Asignar rol de staff a un usuario `admin_plaza`:** desde el CRUD de usuarios (§1, CU-AU-1/CU-AU-2) se selecciona un `rol_staff` de la lista activa de la plaza.
+
+### 1A.3. Entidades
+
+- `rol_staff` (per-plaza, configurable).
+
+### 1A.4. Roles
+
+| Acción | superadmin | admin_plaza | inquilino |
+|---|---|---|---|
+| Listar roles activos de su plaza | ✅ | ✅ | ✅ (read-only, para formularios) |
+| Crear / editar / desactivar `rol_staff` | ✅ (multi-plaza) | ✅ (de su plaza) | ❌ |
+| Asignar `rol_staff` a un usuario | ✅ | ✅ (de su plaza) | ❌ |
+
+### 1A.5. Reglas de negocio
+
+- **RN-RS-1:** cada `rol_staff` es único por `(plaza_id, codigo)`. El `codigo` es slug inmutable.
+- **RN-RS-2:** solo `admin_plaza` puede gestionar `rol_staff`; `inquilino` solo ve el catálogo activo en modo lectura.
+- **RN-RS-3:** un `admin_plaza` que desactive un `rol_staff` con usuarios asignados debe resignarlos antes (o el sistema advierte, pero no bloquea; los usuarios quedan con el FK en estado "inactivo" visible en UI).
+- **RN-RS-4:** los roles de staff son a nivel **plaza**: dos plazas distintas pueden tener roles con el mismo `codigo` y distinto `nombre`/`descripcion`.
+
+### 1A.6. Dependencias
+
+- `plazas` (todo `rol_staff` pertenece a una plaza).
+- `usuarios` (el `rol_staff` se asigna a un usuario `admin_plaza`).
+
+### 1A.7. SUPUESTOS del módulo
+
+- **S-RS-A:** los roles de staff son configurables libremente por cada plaza. No hay catálogo de plataforma fijo en v1.
+- **S-RS-B:** no hay jerarquía entre roles de staff (ningún rol "supervisa" a otro automáticamente); las relaciones de supervisión se modelan en subcategorías (módulo §3A).
 
 ---
 
@@ -245,17 +296,19 @@ Permitir a los inquilinos registrar formalmente cualquier petición que requiera
 
 ### 3.2 Casos de uso
 
-- **CU-SO-1 · Crear solicitud (borrador):** el inquilino completa un formulario con tipo, local, título, descripción, fechas (si aplica), horario, adjuntos. Queda en estado `borrador`.
-- **CU-SO-2 · Editar borrador:** mientras esté en `borrador`, el inquilino puede modificar cualquier campo.
+- **CU-SO-1 · Crear solicitud (borrador):** el inquilino completa un formulario con tipo, local, **categoría**, **subcategoría** (obligatorios salvo `tipo=otro`), título, descripción, fechas (si aplica), horario, adjuntos. Queda en estado `borrador`.
+- **CU-SO-2 · Editar borrador:** mientras esté en `borrador`, el inquilino puede modificar cualquier campo (incluida la categoría/subcategoría).
 - **CU-SO-3 · Adjuntar archivos a la solicitud:** PDFs, imágenes, planos.
-- **CU-SO-4 · Enviar solicitud:** pasa de `borrador` a `enviada`. Se notifica al `admin_plaza` por email.
-- **CU-SO-5 · Ver listado de mis solicitudes:** con filtros por tipo, local, estado y rango de fechas.
-- **CU-SO-6 · Ver detalle de solicitud:** incluye historial de cambios, comentarios, adjuntos, transiciones de estado.
-- **CU-SO-7 · Cancelar solicitud:** solo si está en `borrador` o `enviada` (no después de `en_revision`).
-- **CU-SO-8 · Subsanar solicitud:** cuando el admin pide cambios, el inquilino edita y vuelve a enviar.
+- **CU-SO-4 · Enviar solicitud:** pasa de `borrador` a `en_revision` **directamente**, con auto-asignación al responsable de la subcategoría (T2, ver §5.4). Se notifica al responsable y a los supervisores por email.
+- **CU-SO-5 · Ver listado de mis solicitudes:** con filtros por tipo, categoría, subcategoría, local, estado, prioridad y rango de fechas.
+- **CU-SO-6 · Ver detalle de solicitud:** incluye historial de cambios, comentarios, adjuntos, transiciones de estado, **responsable y supervisores asignados**.
+- **CU-SO-7 · Cancelar solicitud:** solo si está en `borrador` o `en_revision` (no después de aprobada/rechazada).
+- **CU-SO-8 · Subsanar solicitud:** cuando el admin pide cambios, el inquilino edita y vuelve a enviar (`requerida_subsanacion → en_revision` con auto-asignación al responsable que pidió la subsanación, ver T9 en §5.4).
 - **CU-SO-9 · Duplicar solicitud:** clona los datos de una solicitud anterior en un nuevo borrador. (SUPUESTO S-Duplicar.)
-- **CU-SO-10 · Tipos soportados:** `mantenimiento`, `evento`, `remodelacion`, `otro`. Cada tipo puede tener campos extra. (SUPUESTO S-CamposTipo — ver §3.5.)
+- **CU-SO-10 · Tipos soportados:** `mantenimiento`, `evento`, `remodelacion`, `otro`. Cada tipo puede tener campos extra. (SUPUESTO S-CamposTipo — ver §3.5.) El enrutamiento se hace por **categoría + subcategoría** (§3A).
 - **CU-SO-11 · Solicitudes recurrentes (eventos):** si el tipo es `evento`, se puede definir un patrón de repetición. (SUPUESTO S-Recurrencia; ver §3.5.)
+- **CU-SO-12 · Selección de categoría + subcategoría:** al crear una solicitud (excepto `tipo=otro`), el inquilino debe elegir una categoría activa y luego una subcategoría activa de esa categoría. La prioridad se hereda de la subcategoría.
+- **CU-SO-13 · Cambio de prioridad:** el `admin_plaza` puede modificar la prioridad de una solicitud existente con `PATCH /solicitudes/:id` (campo `prioridad`). Queda registrado en `solicitud_historial`.
 
 ### 3.3 Entidades
 
@@ -265,6 +318,7 @@ Permitir a los inquilinos registrar formalmente cualquier petición que requiera
 - `solicitud_evento_recurrente` (hijos de un evento padre)
 - `adjunto` (vinculado a solicitud)
 - `comentario` (vinculado a solicitud)
+- `categoria`, `subcategoria`, `subcategoria_supervisor` (ver §3A): enrutamiento y auto-asignación.
 
 ### 3.4 Roles
 
@@ -272,34 +326,37 @@ Permitir a los inquilinos registrar formalmente cualquier petición que requiera
 |---|---|---|---|
 | Crear borrador | ❌ (SUPUESTO) | ❌ (SUPUESTO) | ✅ |
 | Editar borrador propio | — | — | ✅ |
-| Enviar solicitud | — | — | ✅ |
+| Enviar solicitud (auto-asignada) | — | — | ✅ |
 | Ver todas las solicitudes de su plaza | ✅ | ✅ | ❌ (solo las propias) |
 | Ver detalle de solicitud | ✅ | ✅ | ✅ (si es de su inquilino) |
-| Cancelar solicitud | — | ✅ (con motivo) | ✅ (solo propias, en `borrador`/`enviada`) |
+| Cancelar solicitud | — | ✅ (con motivo) | ✅ (solo propias, en `borrador`/`en_revision`) |
 | Subsanar | — | — | ✅ (cuando se requiere) |
 | Comentar en una solicitud | — | ✅ | ✅ (en sus solicitudes) |
+| Cambiar prioridad de solicitud | ❌ | ✅ | ❌ |
 
 ### 3.5 Reglas de negocio
 
 - **RN-SO-1:** toda solicitud debe estar asociada a un **local** y, por lo tanto, a un **inquilino**. Un inquilino solo crea solicitudes para sus locales.
 - **RN-SO-2:** al crear la solicitud, el `estado` inicial es siempre `borrador`.
-- **RN-SO-3:** el paso `borrador → enviada` dispara email al `admin_plaza` y entrada en `solicitud_historial`.
+- **RN-SO-3:** el envío (`borrador → en_revision`) dispara **auto-asignación al responsable de la subcategoría** (T2 en §5.4), email al responsable, emails a los supervisores de la subcategoría, y entrada en `solicitud_historial`. Ver módulo §3A.
 - **RN-SO-4:** el `tipo` de la solicitud no se puede cambiar después de crearla. Si se requiere, se cancela y se crea una nueva.
 - **RN-SO-5:** **campos extra por tipo** (SUPUESTO S-CamposTipo):
-  - `mantenimiento`: `categoria` (electricidad, plomería, pintura, otro), `area_afectada`, `requiere_ingreso_a_local` (bool).
-  - `evento`: `fecha_evento`, `hora_inicio`, `hora_fin`, `asistentes_estimados`, `requiere_corte_calle` (bool), `requiere_amplificacion` (bool).
-  - `remodelacion`: `fecha_inicio_estimada`, `duracion_dias`, `empresa_constructora`, `monto_presupuesto` (referencial).
-  - `otro`: `categoria_libre`, `descripcion_larga`.
+  - `mantenimiento`, `evento`, `remodelacion`: requieren **`categoria_id` y `subcategoria_id` no NULL** (elegidos de los catálogos activos de la plaza).
+  - `otro`: `categoria_libre` (texto libre, opcional) y `descripcion_larga`; `categoria_id` y `subcategoria_id` pueden ser NULL.
+  - Campos extra adicionales: `mantenimiento` → `area_afectada`, `requiere_ingreso_a_local` (bool); `evento` → `asistentes_estimados`, `requiere_corte_calle` (bool), `requiere_amplificacion` (bool); `remodelacion` → `fecha_inicio_estimada`, `duracion_dias`, `empresa_constructora`, `monto_presupuesto` (referencial).
 - **RN-SO-6:** un `evento` con `asistentes_estimados > X` puede requerir aprobación especial (SUPUESTO: `X = 200`, configurable por plaza).
 - **RN-SO-7:** el título es obligatorio y máximo 120 caracteres; la descripción máximo 4000.
 - **RN-SO-8:** al menos 1 adjunto es opcional. (SUPUESTO — el cliente puede requerir obligatoriedad por tipo; configurable.)
 - **RN-SO-9:** el histórico es inmutable: una vez escrito un evento, no se borra.
+- **RN-SO-10:** la `prioridad` se hereda de `subcategoria.prioridad` al enviar (T2), y puede ser modificada después por el `admin_plaza` con `PATCH /solicitudes/:id` (campo `prioridad`). El cambio queda registrado en `solicitud_historial`. Ver SUPUESTO S-Prioridad.
+- **RN-SO-11:** la `subcategoria` seleccionada al crear la solicitud debe estar `activo=true`; de lo contrario el backend rechaza con `404 SUBCATEGORIA_INACTIVA` o `400 SUBCATEGORIA_REQUERIDA`.
 
 ### 3.6 Dependencias
 
 - `locales` y `contratos` (la solicitud referencia un local vigente).
 - `usuarios` (solicitante = usuario inquilino).
-- `aprobaciones` (es el módulo que consume las solicitudes en estado `enviada`).
+- **`categorias` (§3A)** — la solicitud requiere `categoria_id` y `subcategoria_id`; la subcategoría define el responsable y los supervisores.
+- `aprobaciones` (es el módulo que consume las solicitudes en estado `en_revision`).
 - `notificaciones` (dispara emails en cada transición).
 - `calendario` (los eventos aprobados alimentan el calendario).
 - `adjuntos` (archivos de la solicitud).
@@ -310,6 +367,79 @@ Permitir a los inquilinos registrar formalmente cualquier petición que requiera
 - **S-SO-A:** los campos extra por tipo se almacenan como JSONB en PostgreSQL, validados con Zod por tipo.
 - **S-SO-B:** la recurrencia de eventos no es obligatoria; se puede desactivar en la primera versión si el alcance se ajusta.
 - **S-SO-C:** el `superadmin` **no** crea solicitudes en nombre de inquilinos.
+- **S-SO-Prioridad-1:** la prioridad se hereda de la subcategoría al crear la solicitud y es modificable por el `admin_plaza` con `PATCH /solicitudes/:id`. Valores permitidos: `A | B | C | D | F`.
+- **S-SO-Prioridad-2:** el `inquilino` no puede modificar la prioridad al crear (siempre se hereda).
+
+---
+
+## 3A. Módulo: Categorías y Subcategorías (CRUD)
+
+> **Módulo nuevo.** Configura el enrutamiento de las solicitudes: qué categorías existen en la plaza, qué subcategorías dependen de cada una, quién las resuelve (responsable) y quién las supervisa (hasta 5 usuarios). Reemplaza al enum embebido `campos_extra.categoria` de la versión anterior y habilita la **auto-asignación** de solicitudes (§3.5 RN-SO-3, §5.4 T2).
+
+### 3A.1. Propósito
+
+Permitir que cada `admin_plaza` configure su propio catálogo de categorías y subcategorías de solicitudes, y para cada subcategoría defina:
+- Una **persona responsable** (un usuario con rol de staff) que recibirá automáticamente la solicitud al crearse.
+- Hasta **5 supervisores** (también usuarios con rol de staff) que serán notificados de cada nueva solicitud.
+- Una **prioridad** por defecto (`A | B | C | D | F`) que se heredará a las solicitudes creadas con esta subcategoría.
+
+### 3A.2. Casos de uso
+
+#### Categorías
+
+- **CU-CA-1 · Listar categorías de la plaza:** filtrado por `activo=true/false`. Visible para `admin_plaza` (CRUD) e `inquilino` (read-only, para usar en el formulario de crear solicitud).
+- **CU-CA-2 · Crear categoría:** alta con nombre único, descripción opcional.
+- **CU-CA-3 · Editar categoría:** nombre, descripción, activo.
+- **CU-CA-4 · Desactivar categoría:** soft delete (`activo=false`); no se puede desactivar si tiene subcategorías activas con solicitudes en curso (RN-CA-2).
+- **CU-CA-5 · Listar subcategorías de una categoría:** para drill-down en el formulario del inquilino y para gestión interna del admin.
+
+#### Subcategorías
+
+- **CU-SC-1 · Crear subcategoría:** con `categoria_id`, nombre único dentro de la categoría, descripción, `prioridad` (default `B`), `responsable_id` (usuario `admin_plaza` con `rol_staff` activo), y opcionalmente hasta 5 supervisores.
+- **CU-SC-2 · Editar subcategoría:** cualquier campo excepto que cambiar `responsable_id` reasigna las solicitudes futuras (no las ya en curso).
+- **CU-SC-3 · Desactivar subcategoría:** soft delete. Las solicitudes nuevas no pueden usar esta subcategoría; las ya existentes siguen referenciándola (RN-SC-4).
+- **CU-SC-4 · Asignar responsable a subcategoría:** el `admin_plaza` elige un usuario con rol global `admin_plaza` y `rol_staff` activo en la misma plaza.
+- **CU-SC-5 · Asignar supervisores a subcategoría:** hasta 5 usuarios con los mismos requisitos. La API rechaza el 6º con `409 SUBCATEGORIA_MAX_5_SUPERVISORES`.
+- **CU-SC-6 · Quitar supervisor:** `DELETE /api/v1/categorias/:id/subcategorias/:subId/supervisores/:usuarioId`.
+- **CU-SC-7 · Ver responsables y supervisores de una subcategoría:** desde la UI de gestión y desde el detalle de la solicitud (para inquilino y admin).
+
+### 3A.3. Entidades
+
+- `categoria` (per-plaza, configurable).
+- `subcategoria` (per-plaza, con `responsable_id` FK a `usuario`).
+- `subcategoria_supervisor` (tabla N:M, max 5 enforced por trigger PG).
+
+### 3A.4. Roles
+
+| Acción | superadmin | admin_plaza | inquilino |
+|---|---|---|---|
+| Listar categorías/subcategorías activas | ✅ | ✅ | ✅ (read-only, para formularios) |
+| Crear / editar / desactivar categoría | ✅ (multi-plaza) | ✅ (de su plaza) | ❌ |
+| Crear / editar / desactivar subcategoría | ✅ (multi-plaza) | ✅ (de su plaza) | ❌ |
+| Asignar responsable a subcategoría | ✅ | ✅ | ❌ |
+| Asignar / quitar supervisores | ✅ | ✅ | ❌ |
+
+### 3A.5. Reglas de negocio
+
+- **RN-CA-1:** `UNIQUE(plaza_id, nombre)` en `categoria`.
+- **RN-CA-2:** no se puede desactivar una categoría que tenga subcategorías activas. Se desactivan primero las subcategorías.
+- **RN-SC-1:** `UNIQUE(categoria_id, nombre)` en `subcategoria`.
+- **RN-SC-2:** el `responsable_id` debe ser un usuario con rol global `admin_plaza`, con `rol_staff_id` activo y con el mismo `plaza_id` que la subcategoría. Validado en app y en SC-6 de §6.3.
+- **RN-SC-3:** los supervisores cumplen los mismos requisitos que el responsable. Máximo 5 por subcategoría (enforced por `RI-7` y `tg_subcategoria_max_5_supervisores` en BD).
+- **RN-SC-4:** al desactivar una subcategoría, las solicitudes nuevas no pueden usarla; las solicitudes ya creadas siguen referenciándola (la FK no se borra).
+- **RN-SC-5:** al cambiar el `responsable_id` de una subcategoría, las solicitudes **en curso** (`en_revision`, `requerida_subsanacion`) no se reasignan automáticamente; el responsable actual sigue siendo el dueño hasta que termine el lock o se reasigne manualmente (T12, §5.4).
+
+### 3A.6. Dependencias
+
+- `plazas` (toda categoría/subcategoría pertenece a una plaza).
+- `usuarios` (responsable y supervisores son usuarios con `admin_plaza` + `rol_staff`).
+- `solicitudes` (la solicitud referencia `categoria_id` y `subcategoria_id`; el enrutamiento se resuelve aquí).
+
+### 3A.7. SUPUESTOS del módulo
+
+- **S-CA-A:** `categoria` y `subcategoria` son configurables por cada plaza; no hay catálogo global.
+- **S-SC-A:** una subcategoría tiene exactamente 1 responsable y entre 0 y 5 supervisores.
+- **S-SC-B:** el `admin_plaza` no puede asignar como responsable/supervisor a un usuario que pertenezca a otra plaza, a un `inquilino`, a un `superadmin` o a un usuario con `rol_staff` inactivo.
 
 ---
 
@@ -323,15 +453,15 @@ Concentrar el flujo de revisión por el cual el `admin_plaza` toma una decisión
 
 ### 4.2 Casos de uso
 
-- **CU-AP-1 · Bandeja de entrada de solicitudes:** el `admin_plaza` ve una cola priorizada por antigüedad y tipo.
-- **CU-AP-2 · Tomar una solicitud para revisión:** transición `enviada → en_revision` (revierte a `enviada` si la libera).
+- **CU-AP-1 · Bandeja de entrada de solicitudes:** el `admin_plaza` ve una cola priorizada por **antigüedad**, **tipo** y **prioridad** (A→F como criterio secundario).
+- **CU-AP-2 · Tomar una solicitud para revisión:** la solicitud nueva entra **directamente** a `en_revision` con auto-asignación al responsable de la subcategoría (T2, §5.4). El "tomar manual" se reduce a la reasignación (CU-AP-7) cuando el responsable libera o el lock expira.
 - **CU-AP-3 · Aprobar solicitud:** transición `en_revision → aprobada`. Se registra `comentario` opcional, fecha y admin que aprobó.
 - **CU-AP-4 · Rechazar solicitud:** transición `en_revision → rechazada`. **Comentario obligatorio** con el motivo.
 - **CU-AP-5 · Pedir subsanación:** transición `en_revision → requerida_subsanacion`. **Comentario obligatorio** con lo que se requiere.
 - **CU-AP-6 · Comentar sin cambiar estado:** el admin puede dejar comentarios en cualquier momento.
-- **CU-AP-7 · Asignar a otro admin_plaza:** la solicitud queda "en revisión por X". (SUPUESTO S-AsignacionAdmin.)
-- **CU-AP-8 · Ver historial completo:** transiciones, comentarios, adjuntos.
-- **CU-AP-9 · SLA visual:** cada solicitud muestra tiempo transcurrido y semáforo (verde/amarillo/rojo) según SLA configurable por plaza. (SUPUESTO S-SLA.)
+- **CU-AP-7 · Asignar / reasignar a otro admin_plaza:** `POST /api/v1/solicitudes/:id/reasignar { nuevo_responsable_id, comentario? }`. Libera el lock actual, asigna el nuevo responsable con lock 30 min, envía email `solicitud-reasignada.html`. Cualquier `admin_plaza` (no solo supervisores) puede hacerlo (SUPUESTO S-Reasignacion).
+- **CU-AP-8 · Ver historial completo:** transiciones, comentarios, adjuntos, asignaciones.
+- **CU-AP-9 · SLA visual:** cada solicitud muestra tiempo transcurrido y semáforo (verde/amarillo/rojo) según SLA configurable por plaza **multiplicado por la prioridad** (SUPUESTO S-SLA-Prioridad).
 
 ### 4.3 Entidades
 
@@ -359,7 +489,7 @@ Concentrar el flujo de revisión por el cual el `admin_plaza` toma una decisión
 - **RN-AP-3:** todo rechazo y toda subsanación requiere `comentario` no vacío.
 - **RN-AP-4:** al aprobar una solicitud de tipo `evento`, se crea automáticamente el evento en el calendario (ver módulo Calendario).
 - **RN-AP-5:** al aprobar una solicitud de tipo `remodelacion`, se actualiza el estado del local a `en_mantenimiento` durante el rango de fechas (SUPUESTO S-RemodelEstado).
-- **RN-AP-6:** la "toma para revisión" (locking) evita que dos admins trabajen la misma solicitud a la vez. Lock expira a los 30 min sin actividad. (SUPUESTO S-LockTimeout.)
+- **RN-AP-6:** la "toma para revisión" (locking) evita que dos admins trabajen la misma solicitud a la vez. Lock expira a los 30 min sin actividad. (SUPUESTO S-LockTimeout.) **En el flujo nuevo**, el lock se setea **automáticamente** en T2 al enviar la solicitud, con `admin_asignado_id = subcategoria.responsable_id`. Reasignar (T12) reinicia el lock con el nuevo responsable.
 - **RN-AP-7:** si una solicitud lleva más de X días sin acción, aparece resaltada en la bandeja (SLA visual, SUPUESTO S-SLA).
 - **RN-AP-8:** cada transición registra: `usuario_id`, `fecha`, `estado_anterior`, `estado_nuevo`, `comentario` (opcional salvo en rechazo/subsanación).
 
@@ -391,12 +521,13 @@ Centralizar el envío de correos electrónicos transaccionales del sistema, mant
 ### 5.2 Casos de uso
 
 - **CU-NE-1 · Disparo automático de emails** ante eventos del sistema (ver tabla en §2.8.2 del stack).
-- **CU-NE-2 · Plantillas HTML por evento:** mantenidas en `src/modules/notificaciones/templates/`.
-- **CU-NE-3 · Log de envíos:** cada intento queda registrado con estado, timestamp, error, plantilla usada.
-- **CU-NE-4 · Reintento automático:** 3 intentos con backoff exponencial (1 min, 5 min, 30 min).
-- **CU-NE-5 · Reintento manual desde panel admin:** el admin puede reintentar un email `fallido` desde el log.
-- **CU-NE-6 · Variables dinámicas:** cada plantilla recibe `{plaza, usuario, solicitud, etc.}`.
-- **CU-NE-7 · Branding por plaza:** logo, color primario, nombre comercial aplicados al template.
+- **CU-NE-2 · Plantillas HTML por evento:** mantenidas en `src/modules/notificaciones/templates/`. Plantillas nuevas: `solicitud-asignada-responsable.html`, `solicitud-nueva-supervisor.html`, `solicitud-reasignada.html`.
+- **CU-NE-3 · Notificación multi-destinatario:** un mismo evento (p. ej. "nueva solicitud") puede generar N emails — uno al responsable y otro a cada supervisor. Cada email se enqueua por separado en `email_log` y se deduplica si el mismo usuario aparece como responsable **y** supervisor.
+- **CU-NE-4 · Log de envíos:** cada intento queda registrado con estado, timestamp, error, plantilla usada.
+- **CU-NE-5 · Reintento automático:** 3 intentos con backoff exponencial (1 min, 5 min, 30 min).
+- **CU-NE-6 · Reintento manual desde panel admin:** el admin puede reintentar un email `fallido` desde el log.
+- **CU-NE-7 · Variables dinámicas:** cada plantilla recibe `{plaza, usuario, solicitud, responsable, supervisores, etc.}`.
+- **CU-NE-8 · Branding por plaza:** logo, color primario, nombre comercial aplicados al template.
 
 ### 5.3 Entidades
 
@@ -417,6 +548,7 @@ Centralizar el envío de correos electrónicos transaccionales del sistema, mant
 - **RN-NE-3:** los emails críticos (reset de contraseña, aprobación/rechazo) **no** se desactivan por configuración.
 - **RN-NE-4:** el contenido siempre incluye un enlace para desuscribirse de notificaciones **no críticas** (SUPUESTO S-Unsubscribe).
 - **RN-NE-5:** los emails se ponen en cola; un worker los procesa cada 1 minuto. Esto desacopla la respuesta HTTP del envío.
+- **RN-NE-6:** para eventos multi-destinatario (CU-NE-3), se enqueua un email por destinatario. Si un destinatario es a la vez responsable y supervisor de la misma solicitud, se envía **una sola vez** (deduplicación por `(solicitud_id, destinatario, evento)`).
 
 ### 5.6 Dependencias
 
@@ -581,7 +713,8 @@ Brindar a la administración de la plaza visibilidad histórica y operativa sobr
 - **RN-RE-1:** todos los reportes respetan el `plaza_id` del token.
 - **RN-RE-2:** el rango máximo de fechas es 12 meses para vistas rápidas; reportes históricos requieren carga explícita. (SUPUESTO.)
 - **RN-RE-3:** la exportación a CSV usa coma como separador y UTF-8 con BOM para Excel. (SUPUESTO.)
-- **RN-RE-4:** la exportación a XLSX usa una librería que respete formatos y ancho de columnas. (SUPUESTO: `exceljs`.)
+- **RN-RE-4:** los archivos XLSX se generan delegando a jsreport (`recipe: 'xlsx'`); las plantillas HTML con tablas se mantienen en `backend/src/modules/reportes/templates/` y se envían inline en el `template.content` del POST a jsreport.
+- **RN-RE-4b:** los archivos PDF se generan delegando a jsreport (`recipe: 'chrome-pdf'`); el backend no instala librerías de generación (sin pdfkit, puppeteer, etc.).
 - **RN-RE-5:** los reportes pesados (más de 10 000 filas) se procesan de forma asíncrona y se notifican al usuario. (SUPUESTO S-AsyncReport.)
 - **RN-RE-6:** los inquilinos **no** ven reportes en v1 (SUPUESTO). Si el cliente lo requiere, se define un subconjunto mínimo.
 
@@ -589,12 +722,14 @@ Brindar a la administración de la plaza visibilidad histórica y operativa sobr
 
 - `solicitudes`, `solicitud_historial`, `locales`, `inquilinos`, `contratos`, `usuarios`.
 - `notificaciones` (envío de reportes programados, si se activa).
+- **jsreport** (contenedor Docker, [`jsreport/jsreport:4.13.0`](https://jsreport.net/learn/docker)): recibe `{ template.content, data }` y devuelve el binario PDF/XLSX. No accede a la BD directamente.
 
 ### 8.7 SUPUESTOS del módulo
 
 - **S-RE-A:** los inquilinos no ven reportes. (Confirmar con cliente.)
 - **S-RE-B:** los reportes programados son opcionales y se pueden diferir a v1.1.
-- **S-RE-C:** la biblioteca de gráficos es `recharts` (SUPUESTO).
+- **S-RE-C:** la biblioteca de gráficos es `recharts` (SUPUESTO, gráficos del panel admin en el frontend, no afecta a la generación de reportes).
+- **S-RE-D:** las plantillas de reportes viven en `backend/src/modules/reportes/templates/` como archivos HTML/Handlebars y se envían inline a jsreport en cada request (`template.content`). No se persisten dentro del contenedor de jsreport.
 
 ---
 
@@ -623,23 +758,29 @@ Concentrar la vista de operación del `admin_plaza` con los indicadores clave (K
 #### Configuración de la plaza
 
 - **CU-PA-7 · Datos básicos de la plaza:** nombre comercial, slug, datos de contacto, logo, color primario, zona horaria.
-- **CU-PA-8 · Tipos de solicitud personalizados:** activar/desactivar tipos. (SUPUESTO S-TiposCustom — v1 tiene tipos fijos.)
-- **CU-PA-9 · SLA por tipo de solicitud:** días máximos por tipo. (SUPUESTO S-SLA.)
+- **CU-PA-8 · Gestión de categorías y subcategorías:** CRUD de `categoria` y `subcategoria`, con asignación de responsable y supervisores (delega al módulo §3A).
+- **CU-PA-9 · SLA por tipo de solicitud:** días máximos por tipo, **multiplicador de SLA por prioridad** (`configuracion.sla_multiplicador_por_prioridad`). (SUPUESTO S-SLA y S-SLA-Prioridad.)
 - **CU-PA-10 · Tamaño máximo de adjuntos y MIME permitidos.**
 - **CU-PA-11 · Plantillas de email activas:** ver qué plantillas están en uso.
 - **CU-PA-12 · Zona horaria y formato de fecha.**
 
+#### Gestión de personal
+
+- **CU-PA-13 · Gestión de roles de staff:** CRUD de `rol_staff` (delega al módulo §1A). Asignación de `rol_staff` a usuarios `admin_plaza`.
+
 #### Plataforma (solo superadmin)
 
-- **CU-PA-13 · Listado de plazas:** ver, crear, editar, desactivar.
-- **CU-PA-14 · Métricas globales de la plataforma:** número de plazas activas, total de usuarios, MRR si aplica. (SUPUESTO.)
-- **CU-PA-15 · Auditoría global:** últimos eventos de plataforma.
+- **CU-PA-14 · Listado de plazas:** ver, crear, editar, desactivar.
+- **CU-PA-15 · Métricas globales de la plataforma:** número de plazas activas, total de usuarios, MRR si aplica. (SUPUESTO.)
+- **CU-PA-16 · Auditoría global:** últimos eventos de plataforma.
 
 ### 9.3 Entidades
 
 - `plaza` (configuración).
+- `configuracion` (incluye `sla_multiplicador_por_prioridad`).
 - `kpi_snapshot` (tabla con métricas precalculadas — SUPUESTO S-KPI).
 - `auditoria` (eventos transversales).
+- `rol_staff`, `categoria`, `subcategoria` (delegados a módulos §1A y §3A; la UI los expone aquí).
 
 ### 9.4 Roles
 
@@ -663,7 +804,7 @@ Concentrar la vista de operación del `admin_plaza` con los indicadores clave (K
 
 ### 9.7 SUPUESTOS del módulo
 
-- **S-PA-A:** los tipos de solicitud son fijos en v1; no hay editor visual de tipos.
+- **S-PA-A:** las "categorías" y "subcategorías" son configurables por plaza (CU-PA-8). Los "tipos" macro (`mantenimiento`, `evento`, `remodelacion`, `otro`) siguen siendo fijos en v1.
 - **S-PA-B:** los KPIs precalculados se refrescan con un cron cada 15 minutos. (SUPUESTO.)
 - **S-PA-C:** no hay sistema de facturación/MRR en v1; las "métricas globales" se limitan a conteos.
 
@@ -718,6 +859,15 @@ Concentrar la vista de operación del `admin_plaza` con los indicadores clave (K
 | S-AU-C | Autenticación | Sin 2FA |
 | S-AU-D | Autenticación | Sesiones JWT en cookie httpOnly |
 | S-AU-E | Autenticación | Usuario pertenece a una sola plaza |
+| S-AU-F | Autenticación | `admin_plaza` debe tener `rol_staff` configurado |
+| S-RS-A | Roles de Staff | Roles configurables libremente por plaza, sin catálogo de plataforma |
+| S-RS-B | Roles de Staff | No hay jerarquía entre roles de staff |
+| S-CA-A | Categorías | `categoria` y `subcategoria` configurables por plaza |
+| S-SC-A | Subcategorías | 1 responsable y 0–5 supervisores por subcategoría |
+| S-SC-B | Subcategorías | Responsable/supervisor debe ser `admin_plaza` con `rol_staff` activo, misma plaza |
+| S-SO-Prioridad-1 | Solicitudes | Prioridad heredada de subcategoría, modificable por admin |
+| S-SO-Prioridad-2 | Solicitudes | Inquilino no puede modificar la prioridad al crear |
+| S-AutoAsignacion | Solicitudes | Envío asigna automáticamente al responsable de la subcategoría |
 | S-PwdPolicy | Autenticación | Política de contraseñas fuerte (10 chars, mixto) |
 | S-Lockout | Autenticación | Bloqueo tras 5 intentos fallidos / 15 min |
 | S-Reset | Autenticación | Token de reset de 30 min, un solo uso |
@@ -730,7 +880,9 @@ Concentrar la vista de operación del `admin_plaza` con los indicadores clave (K
 | S-Recurrencia | Solicitudes | Eventos recurrentes |
 | S-AsignacionAdmin | Aprobaciones | Asignar solicitud a otro admin |
 | S-SLA | Aprobaciones | SLA visual por tipo |
+| S-SLA-Prioridad | Aprobaciones | Multiplicador de SLA por prioridad |
 | S-LockTimeout | Aprobaciones | Lock expira a 30 min |
+| S-Reasignacion | Aprobaciones | Cualquier `admin_plaza` puede reasignar una solicitud |
 | S-RemodelEstado | Aprobaciones | Aprobar remodelación cambia estado del local |
 | S-Bounce | Notificaciones | Manejo de hard bounce |
 | S-Unsubscribe | Notificaciones | Link de desuscripción en emails no críticos |
@@ -743,8 +895,9 @@ Concentrar la vista de operación del `admin_plaza` con los indicadores clave (K
 | S-MimeTypes | Adjuntos | Lista cerrada de MIME types |
 | S-Preview | Adjuntos | Visor inline para PDF e imágenes |
 | S-Quarantine | Adjuntos | Cuarentena de 30 días para borrados |
-| S-Exportación | Reportes | CSV + XLSX |
+| S-Exportación | Reportes | CSV inline (backend) + XLSX/PDF via jsreport |
 | S-AsyncReport | Reportes | Reportes grandes se procesan asíncronos |
 | S-ScheduledReports | Reportes | Envío automático mensual |
+| S-JSReport | Reportes | jsreport 4.13 como contenedor separado; backend sin libs de generación |
 | S-TiposCustom | Panel | Tipos de solicitud fijos en v1 |
 | S-KPI | Panel | KPIs precalculados con cron de 15 min |
