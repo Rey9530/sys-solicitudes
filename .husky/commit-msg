@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Hook: commit-msg
+# Valida que el mensaje de commit cumpla con Conventional Commits.
+# Detalles: PLANIFICACION/01-setup-base.md (T-012).
+
+npx --no-install commitlint --edit "$1"

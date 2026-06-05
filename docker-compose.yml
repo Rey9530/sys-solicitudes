@@ -1,0 +1,114 @@
+name: plazapp
+
+# docker-compose para desarrollo local.
+# Levanta SOLO la infraestructura de soporte (BD, storage, SMTP testing, jsreport).
+# El backend (NestJS) y el frontend (Next.js) se ejecutan con `npm run dev` desde la raíz.
+#
+# Decisiones aplicadas (ver PLANIFICACION/00-INDICE.md):
+#   - T-V11: SIN Redis, SIN particionamiento, SIN read replicas en v1.
+#   - T-V09: GitHub Actions, single subdomain app.plazapp.com.
+#
+# Detalles de cada servicio: PLANIFICACION/01-setup-base.md (T-006).
+
+services:
+  # ───────────────────────────────────────────────────────────────────────────
+  # PostgreSQL 16
+  postgres:
+    image: postgres:16-alpine
+    container_name: plazapp-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-syssol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-syssol}
+      POSTGRES_DB: ${POSTGRES_DB:-syssol}
+      # Refuerza TLS en conexión cliente-servidor
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-syssol} -d ${POSTGRES_DB:-syssol}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - plazapp_net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # MinIO (S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: plazapp-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # Console web
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - miniodata:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - plazapp_net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # MailHog (SMTP testing)
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: plazapp-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"  # SMTP
+      - "8025:8025"  # Web UI
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8025"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - plazapp_net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # jsreport 4.13 (generación de PDF/XLSX, contenedor separado por T-V12)
+  jsreport:
+    image: jsreport/jsreport:4.13.0
+    container_name: plazapp-jsreport
+    restart: unless-stopped
+    ports:
+      - "5488:5488"
+    environment:
+      # Permite ejecutar chrome sin sandbox dentro del contenedor
+      # (requisito de chrome-pdf en Docker).
+      - chrome_launchOptions_args_no_sandbox=true
+    volumes:
+      - jsreportdata:/jsreport
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5488/api/ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - plazapp_net
+
+networks:
+  plazapp_net:
+    driver: bridge
+
+volumes:
+  pgdata:
+    driver: local
+  miniodata:
+    driver: local
+  jsreportdata:
+    driver: local

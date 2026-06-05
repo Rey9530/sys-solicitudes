@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# Hook: pre-commit
+# Ejecuta lint en los workspaces que tengan archivos modificados.
+# Detalles: PLANIFICACION/01-setup-base.md (T-012).
+
+# Detectar qué workspaces tienen cambios
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+
+run_lint() {
+  workspace="$1"
+  if echo "$STAGED" | grep -q "^$workspace/"; then
+    echo "🧹 Linting $workspace..."
+    npm run lint --workspace="$workspace" || exit 1
+  fi
+}
+
+run_lint "frontend"
+run_lint "backend"
+run_lint "@app/contracts"

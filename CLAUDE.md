@@ -142,6 +142,34 @@ Lista completa en `README.md` §6. Los de mayor impacto:
 2. Resolver la lista de SUPUESTOS críticos.
 3. Confirmar proveedor de hosting y SMTP transaccional.
 4. Generar `schema.prisma` definitivo desde el DDL de `docs/04-modelo-de-datos.md` §4.10.
+
+---
+
+## Reglas operativas para implementación
+
+### Investigación de versiones antes de instalar
+
+> **Regla obligatoria:** Antes de agregar o actualizar cualquier dependencia (`npm install`, `npm add`, `pip install`, `cargo add`, etc.), **investigar la versión más reciente estable** del paquete. La documentación de `docs/` fue escrita en mayo 2026 y puede estar desactualizada. Usar siempre la última versión estable publicada en el registry oficial (npm, PyPI, crates.io, etc.) salvo que exista un motivo justificado para usar una anterior.
+
+**Procedimiento:**
+1. Antes de añadir una dependencia, consultar el registry oficial (p. ej. `https://registry.npmjs.org/<paquete>/latest`) para confirmar la última versión estable.
+2. Verificar breaking changes entre la versión del plan y la latest (revisar CHANGELOG, migration guides, release notes).
+3. Si la versión del plan difiere de la latest, **preguntar al usuario** qué versión usar (latest vs. la del plan) si el cambio es mayor (major version).
+4. Documentar en la **bitácora de la tarea** cualquier desviación entre la versión planeada y la instalada.
+5. Para Node.js, preferir LTS (24.x o superior) sobre Current.
+6. Para TypeScript, evitar versiones recién salidas (`.0`) en proyectos largos; preferir la última `.X` de la major anterior LTS.
+
+### Documentación de tareas
+
+> **Regla obligatoria:** Al finalizar una tarea técnica de `PLANIFICACION/*.md`, se debe:
+> 1. Rellenar la **bitácora de cambios** con desviaciones, criterios modificados, decisiones técnicas y tareas dependientes afectadas.
+> 2. Si hay desviaciones en versiones o comportamiento, marcarlas con `⚠️`.
+> 3. Si se modifica o elimina código de una tarea ya completada, abrir un commit con prefijo `fix:` o `chore:` que lo documente.
+> 4. Las bitácoras son **inmutables** una vez escritas (no se borran entradas; se añade `actualización: ...` si hay correcciones).
+
+### Comunicación con el usuario
+
+> **Regla obligatoria:** Si una tarea del plan tiene ambigüedad, conflicto con decisiones previas (T-Vxx), o múltiples interpretaciones razonables, **preguntar al usuario antes de codificar**. No asumir. Las decisiones tomadas en las T-Vxx son vinculantes; si una tarea las contradice, marcar la tarea para revisión.
 5. Crear el monorepo con `frontend/`, `backend/`, `packages/contracts/`.
 6. Levantar entorno de desarrollo con `docker-compose.yml` de `docs/07-arquitectura.md` §7.10.1.
 7. Iniciar implementación por la fase 2 de la cotización: autenticación, locales, solicitudes, aprobaciones.

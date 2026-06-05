@@ -1,0 +1,14 @@
+name: plazapp
+
+# Override opcional para `docker compose up` con ajustes locales.
+# Copia este archivo a `docker-compose.override.yml` (gitignored) si quieres
+# personalizar puertos, credenciales o agregar servicios extra en dev.
+#
+# Ejemplo de uso:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   docker compose up -d
+
+services:
+  # postgres:
+  #   ports:
+  #     - "5433:5432"  # cambiar host port para no chocar con otra instancia local

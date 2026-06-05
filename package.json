@@ -1,0 +1,43 @@
+{
+  "name": "sys-solicitudes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plazapp · SaaS multi-plaza para gestión de solicitudes en centros comerciales",
+  "workspaces": [
+    "frontend",
+    "backend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm-run-all --parallel dev:*",
+    "dev:backend": "npm run start:dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspaces --if-present",
+    "build:contracts": "npm run build --workspace=@app/contracts",
+    "build:backend": "npm run build --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "echo \"No hay tests automatizados en v1 (ver docs/02-stack-tecnologico.md §2.11)\" && exit 0",
+    "prepare": "husky || true",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f",
+    "prisma:generate": "npm run prisma:generate --workspace=backend",
+    "prisma:migrate": "npm run prisma:migrate --workspace=backend",
+    "prisma:studio": "npm run prisma:studio --workspace=backend"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.2",
+    "@commitlint/config-conventional": "^21.0.2",
+    "husky": "^9.1.7",
+    "npm-run-all": "^4.1.5"
+  },
+  "engines": {
+    "node": ">=24.0.0",
+    "npm": ">=10.0.0"
+  },
+  "packageManager": "npm@11.11.1",
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}

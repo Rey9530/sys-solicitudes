@@ -1,0 +1,158 @@
+name: CI
+
+# Detalles: PLANIFICACION/01-setup-base.md (T-011) y PLANIFICACION/13-observabilidad-despliegue.md.
+# Filosofía: v1 NO tiene tests automatizados (ver docs/02-stack-tecnologico.md §2.11).
+# El pipeline ejecuta lint + build para validar la integridad del código en cada PR.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+# Cancelar runs previos en la misma rama/PR
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '24'
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Lint · frontend
+  lint-frontend:
+    name: Lint · frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install root deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint frontend
+        run: npm run lint --workspace=frontend
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Lint · backend
+  lint-backend:
+    name: Lint · backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install root deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint backend
+        run: npm run lint --workspace=backend
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Build · @app/contracts (debe ir antes de FE y BE)
+  build-contracts:
+    name: Build · @app/contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Build @app/contracts
+        run: npm run build:contracts
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Build · frontend
+  build-frontend:
+    name: Build · frontend
+    runs-on: ubuntu-latest
+    needs: [lint-frontend, build-contracts]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Build @app/contracts
+        run: npm run build:contracts
+
+      - name: Build frontend
+        run: npm run build:frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:4000
+          NEXTAUTH_URL: http://localhost:3000
+          AUTH_SECRET: ci-dummy-secret-not-used-in-build-64-chars-aaaaaaaaaaaa
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Build · backend (incluye prisma generate y migrate deploy contra el service)
+  build-backend:
+    name: Build · backend
+    runs-on: ubuntu-latest
+    needs: [lint-backend, build-contracts]
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: syssol
+          POSTGRES_PASSWORD: syssol
+          POSTGRES_DB: syssol
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://syssol:syssol@localhost:5432/syssol?schema=public
+      DATABASE_DIRECT_URL: postgresql://syssol:syssol@localhost:5432/syssol?schema=public
+      JWT_SECRET: ci-dummy-secret-not-used-in-build-64-chars-aaaaaaaaaaaa
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install
+        run: npm ci --no-audit --no-fund
+
+      - name: Build @app/contracts
+        run: npm run build:contracts
+
+      - name: Prisma generate
+        run: npm run prisma:generate --workspace=backend
+
+      - name: Prisma migrate deploy
+        run: npm run prisma:deploy --workspace=backend
+
+      - name: Build backend
+        run: npm run build:backend
