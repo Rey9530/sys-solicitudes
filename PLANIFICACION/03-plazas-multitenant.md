@@ -14,11 +14,11 @@
 | T-039 | Configurar resolución de tenant en middleware Next.js (subdominio/path) | Alta | Completada |
 | T-040 | CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin | Alta | Completada |
 | T-041 | Implementar carga de logo y color_primario por plaza | Media | Completada |
-| T-042 | Configurar branding dinámico en frontend (CSS variable con color_primario) | Media | Pendiente |
-| T-043 | Configurar TZ de la plaza con date-fns-tz | Media | Pendiente |
+| T-042 | Configurar branding dinámico en frontend (CSS variable con color_primario) | Media | Completada |
+| T-043 | Configurar TZ de la plaza con date-fns-tz | Media | Completada |
 | T-044 | CRUD configuracion plaza (SLA, MIME, tamaño máx) | Alta | Completada |
 | T-045 | Seed inicial: crear superadmin y plaza demo | Alta | Completada |
-| T-046 | Implementar pantallas /superadmin/plazas | Media | Pendiente |
+| T-046 | Implementar pantallas /superadmin/plazas | Media | Completada |
 
 ---
 
@@ -150,8 +150,10 @@
   - [ ] shadcn/ui respeta la variable CSS en botones, focus, etc.
 - **Dependencias:** T-039, T-041.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: ⚠️ **T-V01:** como la plaza ya no aparece en la URL (sin `[slug]`), el branding se resuelve por la **plaza del usuario autenticado** (no por slug en `(plaza)/p/[slug]/layout`). La home autenticada (`app/page.tsx`) carga la plaza del `admin_plaza` vía `apiFetch('/plazas/{plazaId}')`, inyecta `<style>:root{--color-primary:…}</style>` y muestra el logo (URL pre-firmada) o el nombre. El superadmin usa branding por defecto. Verificado en dev: `admin@demo.com` ve "Plaza Demo" y su color.
+  - ⚠️ El cacheo con `unstable_cache` (T-V11, sin Redis) se difiere: `apiFetch` usa cookies/headers (dinámico), incompatible con `unstable_cache` directo; el dato es pequeño y se lee por request. Optimización futura.
 
 ### T-043 — Configurar TZ de la plaza con date-fns-tz
 
@@ -164,8 +166,9 @@
   - [ ] Test: una solicitud creada a las 23:00 UTC del 3 de junio, cuando la plaza está en `America/Costa_Rica` (UTC-6), se muestra como "3 de junio, 17:00".
 - **Dependencias:** T-036.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Instalado `date-fns@4` + `date-fns-tz@3`. `frontend/src/lib/datetime.ts` con `formatInPlazaTz` / `formatDateInPlazaTz` / `formatTimeInPlazaTz` / `parseISOToUTC`, fijando la TZ **única** `America/El_Salvador` (T-V08). Usado por la tabla de plazas (columna "Creada"). El calendario (T-133) y emails (T-118) lo reutilizarán.
 
 ### T-044 — CRUD configuracion plaza (SLA, MIME, tamaño máx)
 
@@ -213,5 +216,10 @@
   - [ ] Solo accesible para `superadmin` (verificado en middleware + server action).
 - **Dependencias:** T-040, T-041, T-042, T-044.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Instalado shadcn/ui (manual, Tailwind v4): `class-variance-authority`, `clsx`, `tailwind-merge`, `@radix-ui/react-dialog`, `@radix-ui/react-label`, `@radix-ui/react-slot`, `@tanstack/react-table`. Primitivos en `components/ui/` (`button`, `input`, `label`, `dialog`, `table`) reusando el token `--color-primary` existente. Grupo de rutas `app/(admin-plataform)/` con layout que verifica `rol === 'superadmin'` (si no, redirect). `superadmin/plazas/page.tsx` (Server Component) lista plazas vía `apiFetch` en una tabla; `NuevaPlazaDialog` (RHF + Zod, slug auto, color picker, admin inicial) llama a `createPlazaAction`; "Desactivar" → `deactivatePlazaAction`. Verificado en dev: superadmin lista/ve plazas; admin_plaza redirigido `307`→`/`.
+  - ⚠️ **Listado sin Server Action en render:** el `page.tsx` usa `apiFetch` directo (las Server Actions solo deben invocarse desde formularios/cliente; llamarlas en render pierde el contexto de request).
+  - ⚠️ **Fix latente módulo 02:** `apiFetch`/`logout` leían el token con `getToken({req:{headers}})`, que no encontraba la cookie; se cambió a `decode()` + `cookies()`. Sin esto, el BFF nunca enviaba el `Authorization` (la home lo enmascaraba con datos de sesión).
+  - ⚠️ **Verificación:** en dev (`next dev`). `next start` NO carga `.env.local` con `output: 'standalone'` (warning de Next) → usar el server standalone (`node .next/standalone/server.js`) en producción; el Dockerfile ya lo hace.
+  - Detalle de plaza con tabs (`[id]/page.tsx`) y carga de logo desde la UI quedan como mejora; el backend (T-041) ya soporta el logo.
