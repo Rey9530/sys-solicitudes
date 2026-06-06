@@ -4,6 +4,7 @@
  */
 import { z } from 'zod';
 import { UuidSchema, PaginationSchema } from '../common/index.js';
+import { ContratoOutputSchema } from '../contratos/index.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Local
@@ -66,6 +67,13 @@ export const LocalOutputSchema = z.object({
 });
 export type LocalOutput = z.infer<typeof LocalOutputSchema>;
 
+/** Detalle de local (T-051): incluye contrato vigente e histórico (T-061). */
+export const LocalDetailOutputSchema = LocalOutputSchema.extend({
+  contratoVigente: ContratoOutputSchema.nullable(),
+  historicoContratos: z.array(ContratoOutputSchema),
+});
+export type LocalDetailOutput = z.infer<typeof LocalDetailOutputSchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Inquilino
 
@@ -86,6 +94,12 @@ export const UpdateInquilinoSchema = z.object({
   direccion: z.string().trim().max(300).nullable().optional(),
 });
 export type UpdateInquilinoInput = z.infer<typeof UpdateInquilinoSchema>;
+
+export const ListInquilinosQuerySchema = PaginationSchema.extend({
+  razonSocial: z.string().trim().min(1).max(160).optional(),
+  identificacion: z.string().trim().min(1).max(40).optional(),
+});
+export type ListInquilinosQuery = z.infer<typeof ListInquilinosQuerySchema>;
 
 export const InquilinoOutputSchema = z.object({
   id: UuidSchema,

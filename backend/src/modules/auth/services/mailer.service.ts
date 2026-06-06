@@ -82,6 +82,56 @@ export class MailerService {
     }
   }
 
+  /**
+   * Alerta de contratos por vencer T-30/T-7 (T-056, S-AlertaVencimiento).
+   * ⚠️ Plantilla inline provisional; T-118 la migra a `contrato-por-vencer.html`.
+   * Lanza en caso de error (el cron decide si registrar el fallo en email_log).
+   */
+  async sendContratoPorVencer(
+    to: string,
+    plazaNombre: string,
+    ventana: 'T-30' | 'T-7',
+    contratos: Array<{
+      localCodigo: string;
+      inquilinoRazonSocial: string;
+      fechaFin: string;
+    }>,
+  ): Promise<void> {
+    const dias = ventana === 'T-30' ? 30 : 7;
+    const filas = contratos
+      .map(
+        (c) => `
+        <tr>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${this.escape(c.localCodigo)}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${this.escape(c.inquilinoRazonSocial)}</td>
+          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${this.escape(c.fechaFin)}</td>
+        </tr>`,
+      )
+      .join('');
+    const html = `
+      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
+        <h2>Contratos por vencer en ${dias} días · ${this.escape(plazaNombre)}</h2>
+        <p>Los siguientes contratos vencen en ${dias} días (alerta ${ventana}):</p>
+        <table style="border-collapse:collapse;width:100%;font-size:14px;">
+          <thead>
+            <tr style="text-align:left;background:#f5f5f5;">
+              <th style="padding:6px 10px;">Local</th>
+              <th style="padding:6px 10px;">Inquilino</th>
+              <th style="padding:6px 10px;">Vence</th>
+            </tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+        <p style="color:#666;font-size:13px;">Revisa el módulo de contratos para renovar o cerrar.</p>
+      </div>`;
+    await this.transporter.sendMail({
+      from: this.from,
+      to,
+      subject: `⚠️ Contratos por vencer (${ventana}) · ${plazaNombre}`,
+      html,
+    });
+  }
+
   private escape(value: string): string {
     return value.replace(/[<>&"]/g, (c) =>
       ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c] ?? c,

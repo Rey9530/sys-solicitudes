@@ -77,6 +77,24 @@ export default async function HomePage() {
           </Link>
         )}
 
+        {session.user.rol === 'admin_plaza' && (
+          <Link
+            href="/admin/locales"
+            className="mt-6 inline-block rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
+          >
+            Administrar la plaza
+          </Link>
+        )}
+
+        {session.user.rol === 'inquilino' && (
+          <Link
+            href="/inquilino/contratos"
+            className="mt-6 inline-block rounded-md bg-primary px-5 py-2 text-sm font-semibold text-white hover:opacity-90"
+          >
+            Mis contratos
+          </Link>
+        )}
+
         <form action={logoutAction} className="mt-6">
           <button
             type="submit"

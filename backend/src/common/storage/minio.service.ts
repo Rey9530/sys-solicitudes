@@ -39,6 +39,11 @@ export class MinioService implements OnModuleInit {
     return `plaza-assets-${plazaId}`;
   }
 
+  /** Bucket de contratos firmados por plaza (T-062). */
+  bucketForContratos(plazaId: string): string {
+    return `contratos-${plazaId}`;
+  }
+
   async ensureBucket(bucket: string): Promise<void> {
     const exists = await this.client.bucketExists(bucket).catch(() => false);
     if (!exists) {

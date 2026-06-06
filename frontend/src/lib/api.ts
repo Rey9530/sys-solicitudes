@@ -50,11 +50,14 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   const { accessToken, refreshToken } = await readTokens();
   const url = `${API_URL}/api/v1${path.startsWith('/') ? path : `/${path}`}`;
 
+  // T-062: con FormData NO se fija Content-Type — fetch agrega el boundary
+  // multipart correcto; forzar application/json rompería la subida.
+  const isFormData = init.body instanceof FormData;
   const doFetch = (bearer: string | undefined): Promise<Response> =>
     fetch(url, {
       ...init,
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
         ...init.headers,
       },
