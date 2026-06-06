@@ -56,6 +56,32 @@ export class MailerService {
     }
   }
 
+  /** Email de bienvenida al crear un usuario admin_plaza (RN-AU-8, T-040). */
+  async sendBienvenida(to: string, nombre: string, plazaNombre: string): Promise<void> {
+    const loginUrl = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:3000').replace(/\/$/, '')}/login`;
+    const html = `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
+        <h2>Bienvenido a Plazapp</h2>
+        <p>Hola ${this.escape(nombre)},</p>
+        <p>Tu cuenta de administrador para <strong>${this.escape(plazaNombre)}</strong>
+        ya está activa. Ingresa con el email <strong>${this.escape(to)}</strong> y la
+        contraseña que te compartieron.</p>
+        <p><a href="${loginUrl}"
+          style="display:inline-block;padding:10px 18px;background:#2563eb;color:#fff;
+          text-decoration:none;border-radius:6px;">Ir a Plazapp</a></p>
+      </div>`;
+    try {
+      await this.transporter.sendMail({
+        from: this.from,
+        to,
+        subject: `Bienvenido a Plazapp · ${plazaNombre}`,
+        html,
+      });
+    } catch (err) {
+      this.logger.error(`No se pudo enviar el email de bienvenida a ${to}: ${String(err)}`);
+    }
+  }
+
   private escape(value: string): string {
     return value.replace(/[<>&"]/g, (c) =>
       ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c] ?? c,

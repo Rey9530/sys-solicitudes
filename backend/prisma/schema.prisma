@@ -210,3 +210,28 @@ model auditoria_login {
   @@index([plaza_id, created_at])
   @@map("auditoria_login")
 }
+
+/// Auditoría transversal append-only de mutaciones (POST/PATCH/DELETE).
+/// Versión MÍNIMA (T-040/T-044): inserción simple. El trigger no-update/delete,
+/// el interceptor automático y la retención son T-146/T-150 (módulo 12).
+/// `plaza_id`/`usuario_id` son columnas planas (sin FK) porque el log puede
+/// sobrevivir a las entidades. `entidad_id` es polimórfico (por entidad_tipo).
+/// Detalles: PLANIFICACION/03-plazas-multitenant.md (T-040).
+model auditoria {
+  id           String   @id @default(uuid()) @db.Uuid
+  plaza_id     String?  @db.Uuid
+  usuario_id   String?  @db.Uuid
+  accion       String
+  entidad_tipo String
+  entidad_id   String?  @db.Uuid
+  antes        Json?
+  despues      Json?
+  ip           String?
+  user_agent   String?
+  request_id   String?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([plaza_id, created_at])
+  @@index([entidad_tipo, entidad_id])
+  @@map("auditoria")
+}

@@ -63,3 +63,17 @@ temp/
 *.seed
 *.pid.lock
 .pgpass
+
+# Claude Code (project scope)
+# Todo lo de Claude Code vive en .claude/ Y .mcp.json DEL PROYECTO, no en home.
+# Settings locales y estado de memoria son personales, no se commitean.
+.claude/settings.local.json
+.claude/settings.local.json.example
+!.claude/settings.local.json.example
+.claude/memory/*.jsonl
+!.claude/memory/seed.jsonl
+
+
+# Artefactos de compilacion del seed (ts-node)
+backend/prisma/seed.js
+backend/prisma/seed.js.map

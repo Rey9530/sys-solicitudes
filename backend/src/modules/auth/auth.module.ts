@@ -33,6 +33,8 @@ import { durationToSeconds } from '../../common/utils/duration';
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, PasswordService, TokenService, MailerService],
-  exports: [AuthService, JwtModule, PassportModule],
+  // PasswordService y MailerService se reutilizan en plazas (T-040: crear
+  // admin_plaza inicial con hash + email de bienvenida).
+  exports: [AuthService, JwtModule, PassportModule, PasswordService, MailerService],
 })
 export class AuthModule {}

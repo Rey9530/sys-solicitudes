@@ -1,6 +1,6 @@
 import 'server-only';
-import { getToken } from 'next-auth/jwt';
-import { headers } from 'next/headers';
+import { decode } from 'next-auth/jwt';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 
 /**
@@ -25,15 +25,25 @@ interface AuthTokens {
 }
 
 async function readTokens(): Promise<AuthTokens> {
-  const token = await getToken({
-    req: { headers: await headers() },
-    secret: process.env.AUTH_SECRET ?? '',
-    secureCookie: process.env.NODE_ENV === 'production',
-  });
-  return {
-    accessToken: token?.accessToken,
-    refreshToken: token?.refreshToken,
-  };
+  // Lee y descifra directamente la cookie de sesión de Auth.js (JWE) server-side.
+  // El JWT del backend (access/refresh) vive dentro; nunca se expone al cliente.
+  const secure = process.env.NODE_ENV === 'production';
+  const cookieName = secure ? '__Secure-authjs.session-token' : 'authjs.session-token';
+  const raw = (await cookies()).get(cookieName)?.value;
+  if (!raw) return {};
+  try {
+    const token = await decode({
+      token: raw,
+      secret: process.env.AUTH_SECRET ?? '',
+      salt: cookieName,
+    });
+    return {
+      accessToken: token?.accessToken,
+      refreshToken: token?.refreshToken,
+    };
+  } catch {
+    return {};
+  }
 }
 
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {

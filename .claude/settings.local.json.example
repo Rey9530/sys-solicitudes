@@ -1,0 +1,11 @@
+{
+  "_comment": "EJEMPLO de settings locales (no commitear). Copialo a .claude/settings.local.json y personalizalo. Este archivo DEBE estar en .gitignore.",
+  "_doc_purpose": "Overrides personales sobre .claude/settings.json. Lo que pongas acá NO se commitea, NO se comparte con el equipo, y se aplica con mayor prioridad que los settings del proyecto.",
+
+  "permissions": {
+    "allow": [
+      "Bash(code:*)",
+      "Bash(cursor:*)"
+    ]
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "_comment": "Settings de Claude Code a NIVEL DE PROYECTO. NO modifica nada en ~/.claude/. Se commitea para que todo el equipo tenga la misma config. Para overrides personales, usar .claude/settings.local.json (gitignored).",
+  "_doc_scope": "Project-only. Ver .claude/README.md §Scope y política. El usuario trabaja en múltiples proyectos; este archivo es específico de sys-solicitudes.",
+
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(docker compose:*)",
+      "Bash(docker-compose:*)",
+      "Read(./**)",
+      "Edit(./**)",
+      "Write(./**)",
+      "Glob(./**)",
+      "Grep(./**)"
+    ],
+    "deny": [
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~/*)",
+      "Bash(rm -rf ${HOME}/*)",
+      "Bash(dd if=* of=*)",
+      "Bash(mkfs*)",
+      "Bash(git push --force origin main)",
+      "Bash(git push --force origin master)",
+      "Bash(git push --force origin develop)"
+    ]
+  },
+
+  "enableAllProjectMcpServers": true
+}

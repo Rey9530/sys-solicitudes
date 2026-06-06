@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PlazasModule } from './modules/plazas/plazas.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { RolesStaffModule } from './modules/roles-staff/roles-staff.module';
+import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
 import { LocalesModule } from './modules/locales/locales.module';
 import { ContratosModule } from './modules/contratos/contratos.module';
 import { CategoriasModule } from './modules/categorias/categorias.module';
@@ -22,6 +23,7 @@ import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { HealthModule } from './modules/health/health.module';
 
 import { PrismaModule } from './prisma/prisma.module';
+import { StorageModule } from './common/storage/storage.module';
 import { buildPinoOptions } from './common/logger/pino.config';
 import { ThrottlerBehindProxyGuard } from './common/guards/throttler-behind-proxy.guard';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
@@ -52,9 +54,13 @@ import { RolesGuard } from './common/guards/roles.guard';
     // BD
     PrismaModule,
 
+    // Storage S3-compatible (MinIO)
+    StorageModule,
+
     // Módulos funcionales
     AuthModule,
     PlazasModule,
+    ConfiguracionModule,
     UsuariosModule,
     RolesStaffModule,
     LocalesModule,

@@ -1,7 +1,7 @@
 'use server';
 
-import { getToken } from 'next-auth/jwt';
-import { headers } from 'next/headers';
+import { decode } from 'next-auth/jwt';
+import { cookies } from 'next/headers';
 import { signOut } from '@/auth';
 
 /**
@@ -12,11 +12,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 export async function logoutAction(): Promise<void> {
   try {
-    const token = await getToken({
-      req: { headers: await headers() },
-      secret: process.env.AUTH_SECRET ?? '',
-      secureCookie: process.env.NODE_ENV === 'production',
-    });
+    const secure = process.env.NODE_ENV === 'production';
+    const cookieName = secure ? '__Secure-authjs.session-token' : 'authjs.session-token';
+    const raw = (await cookies()).get(cookieName)?.value;
+    const token = raw
+      ? await decode({ token: raw, secret: process.env.AUTH_SECRET ?? '', salt: cookieName })
+      : null;
     if (token?.refreshToken && token.accessToken) {
       await fetch(`${API_URL}/api/v1/auth/logout`, {
         method: 'POST',

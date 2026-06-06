@@ -8,17 +8,17 @@
 
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
-| T-036 | Crear migración Prisma con `plaza` | Alta | Pendiente |
-| T-037 | Crear migración Prisma con `configuracion` (1:1 con plaza) | Alta | Pendiente |
-| T-038 | Implementar RLS en PostgreSQL con `SET LOCAL app.plaza_id` | Alta | Pendiente |
-| T-039 | Configurar resolución de tenant en middleware Next.js (subdominio/path) | Alta | Pendiente |
-| T-040 | CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin | Alta | Pendiente |
-| T-041 | Implementar carga de logo y color_primario por plaza | Media | Pendiente |
-| T-042 | Configurar branding dinámico en frontend (CSS variable con color_primario) | Media | Pendiente |
-| T-043 | Configurar TZ de la plaza con date-fns-tz | Media | Pendiente |
-| T-044 | CRUD configuracion plaza (SLA, MIME, tamaño máx) | Alta | Pendiente |
-| T-045 | Seed inicial: crear superadmin y plaza demo | Alta | Pendiente |
-| T-046 | Implementar pantallas /superadmin/plazas | Media | Pendiente |
+| T-036 | Crear migración Prisma con `plaza` | Alta | Completada |
+| T-037 | Crear migración Prisma con `configuracion` (1:1 con plaza) | Alta | Completada |
+| T-038 | Implementar RLS en PostgreSQL con `SET LOCAL app.plaza_id` | Alta | Completada |
+| T-039 | Configurar resolución de tenant en middleware Next.js (subdominio/path) | Alta | Completada |
+| T-040 | CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin | Alta | Completada |
+| T-041 | Implementar carga de logo y color_primario por plaza | Media | Completada |
+| T-042 | Configurar branding dinámico en frontend (CSS variable con color_primario) | Media | Completada |
+| T-043 | Configurar TZ de la plaza con date-fns-tz | Media | Completada |
+| T-044 | CRUD configuracion plaza (SLA, MIME, tamaño máx) | Alta | Completada |
+| T-045 | Seed inicial: crear superadmin y plaza demo | Alta | Completada |
+| T-046 | Implementar pantallas /superadmin/plazas | Media | Completada |
 
 ---
 
@@ -35,8 +35,10 @@
   - [ ] Test: dos plazas con el mismo slug → error `UNIQUE constraint violation`.
 - **Dependencias:** T-010 (en `01-setup-base.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: El modelo `plaza` ya existía y fue migrado en el baseline `auth_usuarios` (módulo 02): `id`, `slug` UNIQUE, `nombre_comercial`, `email_contacto?`, `telefono_contacto?`, `logo_url?`, `color_primario` default `#2563eb`, `timezone`, soft delete, `@@index([deleted_at])`. Validaciones Zod (slug `^[a-z0-9-]+$`, HEX color) ya están en `packages/contracts/src/plazas`.
+  - ⚠️ **T-V08:** `timezone` es **fija** `America/El_Salvador` (no `America/Costa_Rica` del enunciado) y **no editable**; `TimezoneSchema` es un literal, sin dropdown IANA.
 
 ### T-037 — Crear migración Prisma con `configuracion` (1:1 con plaza)
 
@@ -49,8 +51,10 @@
   - [ ] Función helper que crea la `configuracion` automáticamente al crear una `plaza` (hook Prisma `@default` o servicio de aplicación).
 - **Dependencias:** T-036.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: El modelo `configuracion` ya existía y fue migrado en el baseline. `plaza_id` UNIQUE (1:1), defaults: `tamanio_max_archivo_mb=50` (⚠️ **T-V06**, no 25), `mime_types_permitidos`, `sla_dias_por_tipo`, `sla_multiplicador_por_prioridad`, `calendar_mostrar_hitos_contrato=true`, `aprobacion_especial_asistentes_min=200` (T-V05). `onDelete: Cascade` desde plaza.
+  - El helper que crea la `configuracion` automáticamente al crear una plaza se implementa en **T-040** (transacción del CRUD), no como trigger Prisma.
 
 ### T-038 — Implementar RLS en PostgreSQL con `SET LOCAL app.plaza_id`
 
@@ -66,8 +70,13 @@
   - [ ] `prisma db push` o `prisma migrate dev` aplica la migración correctamente.
 - **Dependencias:** T-018, T-036, T-037, y modelos de las tablas que se protegen.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Migración `enable_rls` aplicada. Crea el rol **`syssol_app`** (LOGIN, NOSUPERUSER, **NOBYPASSRLS**) con sus grants (+ `ALTER DEFAULT PRIVILEGES` para tablas futuras). Activa `ENABLE`+`FORCE ROW LEVEL SECURITY` y políticas `USING/WITH CHECK` en `plaza` (por `id`), `configuracion`, `usuario`, `rol_staff`, `auditoria_login` (por `plaza_id`).
+  - **Dos clientes Prisma:** `PrismaService` (rol `syssol_app`, `DATABASE_URL`, RLS activa) con helper `withTenant(plazaId, fn)` que hace `SELECT set_config('app.plaza_id', $1, true)` (SET LOCAL parametrizado) dentro de una transacción; y `PrismaAdminService` (superusuario `syssol`, `DATABASE_ADMIN_URL`, bypassa RLS) para superadmin y auth pre-sesión.
+  - ⚠️ **Refactor módulo 02:** `AuthService` ahora usa `PrismaAdminService` (login busca usuario por email sin contexto de plaza; con RLS activa devolvería 0 filas). `TokenService` sigue en `PrismaService` (la tabla `refresh_token` no tiene `plaza_id`/RLS). El seed usa la conexión admin.
+  - ⚠️ **Env:** `DATABASE_URL`→`syssol_app`; nuevo `DATABASE_ADMIN_URL`→`syssol`. `prisma.config.ts` migra con la URL admin (las migraciones crean roles/políticas). `.env.example` y `.env` locales actualizados (puerto 5433).
+  - **Verificado:** psql como `syssol_app` sin contexto → 0 filas (fail-closed); `syssol` ve todo; login/`/me`/readiness siguen `200`. Las tablas de módulos futuros añadirán su RLS en sus propias migraciones.
 
 ### T-039 — Configurar resolución de tenant en middleware Next.js (subdominio/path)
 
@@ -84,8 +93,9 @@
   - [ ] Las rutas de admin-plataform NO propagan slug al backend (NestJS no recibe `x-plaza-slug`).
 - **Dependencias:** T-033 (en `02-autenticacion-usuarios.md`, auth middleware).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: ⚠️ **SUPERADO por T-V01.** No hay resolución de tenant por subdominio/path ni header `x-plaza-slug`: el `plaza_id` viaja en el JWT. El `frontend/src/middleware.ts` (módulo 02, T-033) ya protege rutas privadas por sesión y redirige a `/login`; las rutas `/superadmin/*` exigen sesión y el rol `superadmin` se valida en el layout/Server Actions (T-046). No se requiere código adicional de resolución de tenant. El criterio original de subdominio/slug queda anulado.
 
 ### T-040 — CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin
 
@@ -102,8 +112,13 @@
   - [ ] Errores con códigos de dominio RFC 7807.
 - **Dependencias:** T-036, T-037, T-038, T-022 (en `02-autenticacion-usuarios.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `PlazasModule` implementado. `POST /plazas` (superadmin) crea en una transacción del admin client: `plaza` + `configuracion` (defaults, **cierra T-037**) + 3 `rol_staff` por defecto (`tecnico/ingeniero/supervisor`) + opcional `admin_plaza` inicial (bcrypt, `rol_staff` por `rolStaffCodigo`) + email de bienvenida (`MailerService.sendBienvenida`). `GET /plazas` paginado (superadmin), `GET /plazas/:id` (superadmin: admin client; admin_plaza: su plaza vía `withTenant`), `PATCH /plazas/:id` (no slug/timezone), `DELETE` soft delete (superadmin). Cada mutación → `AuditoriaService.record`.
+  - Verificado: crear plaza `201`, listar, slug duplicado `409`, bienvenida en MailHog; **RLS cross-tenant**: admin de Acme → su plaza `200`, plaza ajena `403 PLAZA_SCOPE_VIOLATION`, listar todas `403 ROLE_FORBIDDEN`.
+  - ⚠️ **Hardening (multi-tenant-auditor):** `update` lee `before` y escribe con el mismo cliente acotado (admin_plaza vía `withTenant`, RLS como backstop); `PrismaAdminService` exige `DATABASE_ADMIN_URL` (sin fallback); `TokenService` pasó al admin client y se añadió RLS `USING(false)` a `refresh_token`/`password_reset_token` (solo admin client las toca).
+  - ⚠️ **Auditoría mínima:** modelo `auditoria` + `AuditoriaService.record` (insert append-only vía admin client). El trigger no-update/delete, el interceptor automático y la retención son **T-146/T-150** (módulo 12).
+  - ⚠️ Crear plaza siembra roles de staff por defecto para que el admin inicial tenga `rol_staff` (S-ResponsabilidadStaff); si `rolStaffCodigo` no existe → `400 ROL_STAFF_NO_EXISTE`.
 
 ### T-041 — Implementar carga de logo y color_primario por plaza
 
@@ -119,10 +134,11 @@
   - [ ] Si el logo se reemplaza, el anterior se mueve a `quarantine-{plaza_id}`.
 - **Dependencias:** T-040, T-110 (en `08-adjuntos.md`, MinIO client).
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
-
-### T-042 — Configurar branding dinámico en frontend (CSS variable con color_primario)
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `MinioService` mínimo (`common/storage`, instalado `minio@8.0.7`): `ensureBucket`, `putObject`, `presignedGetUrl` (15 min), `moveToQuarantine`. `POST /plazas/:id/logo` (multipart, `FileInterceptor`, `@Roles('superadmin','admin_plaza')`) valida PNG/SVG y ≤2 MB (`400 ADJUNTO_MIME_INVALIDO` / `413 ADJUNTO_DEMASIADO_GRANDE`), sube a `plaza-assets-{plazaId}` key `logo/{uuid}.{ext}`, mueve el anterior a `quarantine-{plazaId}`, actualiza `plaza.logo_url` (la key). Las respuestas de plaza resuelven `logoUrl` a URL pre-firmada; la auditoría guarda la key cruda (snapshot, no expira). Verificado: PNG `200` con presigned URL, PDF `400`.
+  - El cambio de `color_primario` se hace por el `PATCH /plazas/:id` existente (no se añadió endpoint aparte). El color/logo se reflejan en el frontend en T-042.
+  - ⚠️ Cliente MinIO **mínimo** (decisión de sesión): el cliente completo (cuarentena con retención, escaneo, adjuntos de solicitudes) es **T-110** (módulo 08).
 
 - **Descripción:** Inyectar el `color_primario` y el logo de la plaza como variables CSS al renderizar el layout raíz. El logo se sirve desde MinIO vía URL pre-firmada. Materializa S-Branding.
 - **Criterios de aceptación:**
@@ -134,8 +150,10 @@
   - [ ] shadcn/ui respeta la variable CSS en botones, focus, etc.
 - **Dependencias:** T-039, T-041.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: ⚠️ **T-V01:** como la plaza ya no aparece en la URL (sin `[slug]`), el branding se resuelve por la **plaza del usuario autenticado** (no por slug en `(plaza)/p/[slug]/layout`). La home autenticada (`app/page.tsx`) carga la plaza del `admin_plaza` vía `apiFetch('/plazas/{plazaId}')`, inyecta `<style>:root{--color-primary:…}</style>` y muestra el logo (URL pre-firmada) o el nombre. El superadmin usa branding por defecto. Verificado en dev: `admin@demo.com` ve "Plaza Demo" y su color.
+  - ⚠️ El cacheo con `unstable_cache` (T-V11, sin Redis) se difiere: `apiFetch` usa cookies/headers (dinámico), incompatible con `unstable_cache` directo; el dato es pequeño y se lee por request. Optimización futura.
 
 ### T-043 — Configurar TZ de la plaza con date-fns-tz
 
@@ -148,8 +166,9 @@
   - [ ] Test: una solicitud creada a las 23:00 UTC del 3 de junio, cuando la plaza está en `America/Costa_Rica` (UTC-6), se muestra como "3 de junio, 17:00".
 - **Dependencias:** T-036.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Instalado `date-fns@4` + `date-fns-tz@3`. `frontend/src/lib/datetime.ts` con `formatInPlazaTz` / `formatDateInPlazaTz` / `formatTimeInPlazaTz` / `parseISOToUTC`, fijando la TZ **única** `America/El_Salvador` (T-V08). Usado por la tabla de plazas (columna "Creada"). El calendario (T-133) y emails (T-118) lo reutilizarán.
 
 ### T-044 — CRUD configuracion plaza (SLA, MIME, tamaño máx)
 
@@ -163,8 +182,10 @@
   - [ ] El `GET` se cachea 5 min en Redis (opcional) o `unstable_cache` de Next.js para no pegar a la BD.
 - **Dependencias:** T-037, T-038.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `ConfiguracionModule` con `GET /configuracion` y `PATCH /configuracion` (`@Roles('admin_plaza')`, vía `withTenant` de la plaza del JWT). El PATCH valida MIME contra lista cerrada (`400 MIME_NO_PERMITIDO`) y SLA≥0 (Zod); registra antes/después en `auditoria`. Verificado: GET `200`, PATCH SLA `200`, MIME inválido `400`.
+  - El cacheo de `GET` con `unstable_cache` (T-V11, sin Redis) se aplica en el frontend que lo consume (T-042/T-044 FE); el backend expone el endpoint directo.
 
 ### T-045 — Seed inicial: crear superadmin y plaza demo
 
@@ -178,8 +199,9 @@
   - [ ] Documentado en `README.md` cómo correr el seed.
 - **Dependencias:** T-017, T-018, T-019, T-036, T-037, T-040 (parcialmente).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `backend/prisma/seed.ts` extendido (idempotente, vía admin client/bypass RLS): 3 roles globales + superadmin + **plaza demo** (`slug: demo`) + su `configuracion` + 3 `rol_staff` + **admin demo** `admin@demo.com` / `Plazapp2026!` (admin_plaza, `rol_staff=supervisor`). Verificado: seed corre, login `admin@demo.com` `200`, 2ª corrida idempotente. Documentado en `CONTRIBUTING.md`.
 
 ### T-046 — Implementar pantallas /superadmin/plazas
 
@@ -194,5 +216,10 @@
   - [ ] Solo accesible para `superadmin` (verificado en middleware + server action).
 - **Dependencias:** T-040, T-041, T-042, T-044.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Instalado shadcn/ui (manual, Tailwind v4): `class-variance-authority`, `clsx`, `tailwind-merge`, `@radix-ui/react-dialog`, `@radix-ui/react-label`, `@radix-ui/react-slot`, `@tanstack/react-table`. Primitivos en `components/ui/` (`button`, `input`, `label`, `dialog`, `table`) reusando el token `--color-primary` existente. Grupo de rutas `app/(admin-plataform)/` con layout que verifica `rol === 'superadmin'` (si no, redirect). `superadmin/plazas/page.tsx` (Server Component) lista plazas vía `apiFetch` en una tabla; `NuevaPlazaDialog` (RHF + Zod, slug auto, color picker, admin inicial) llama a `createPlazaAction`; "Desactivar" → `deactivatePlazaAction`. Verificado en dev: superadmin lista/ve plazas; admin_plaza redirigido `307`→`/`.
+  - ⚠️ **Listado sin Server Action en render:** el `page.tsx` usa `apiFetch` directo (las Server Actions solo deben invocarse desde formularios/cliente; llamarlas en render pierde el contexto de request).
+  - ⚠️ **Fix latente módulo 02:** `apiFetch`/`logout` leían el token con `getToken({req:{headers}})`, que no encontraba la cookie; se cambió a `decode()` + `cookies()`. Sin esto, el BFF nunca enviaba el `Authorization` (la home lo enmascaraba con datos de sesión).
+  - ⚠️ **Verificación:** en dev (`next dev`). `next start` NO carga `.env.local` con `output: 'standalone'` (warning de Next) → usar el server standalone (`node .next/standalone/server.js`) en producción; el Dockerfile ya lo hace.
+  - Detalle de plaza con tabs (`[id]/page.tsx`) y carga de logo desde la UI quedan como mejora; el backend (T-041) ya soporta el logo.

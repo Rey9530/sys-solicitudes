@@ -127,14 +127,17 @@ Definición canónica en `docs/05-flujo-de-solicitudes.md`.
 
 Lista completa en `README.md` §6. Los de mayor impacto:
 
-- **S-EstrategiaMT** — DB compartida + `plaza_id` (define el modelo de datos entero).
-- **S-MT-A** — Resolución de tenant por subdominio en producción (afecta DNS, TLS, despliegue).
-- **S-MT-C** — Un usuario pertenece a una sola plaza y un solo rol.
+- **S-EstrategiaMT** — DB compartida + `plaza_id` (define el modelo de datos entero). ✅ **Resuelto en T-V01.**
+- **S-MT-A** — ⚠️ **REVISADO en T-V01 (2026-06-05):** single subdomain `app.plazapp.com` en producción, **la plaza NO aparece en la URL**. Se eliminó DNS wildcard, TLS wildcard, middleware de resolución por host y header `x-plaza-slug`. La resolución de tenant se hace únicamente por `plaza_id` en el JWT.
+- **S-MT-B** — `slug` inmutable en BD para emails/branding interno; ya no afecta URLs. ✅ Resuelto en T-V01.
+- **S-MT-C** — Un usuario pertenece a una sola plaza y un solo rol. ✅ **Resuelto en T-V01.**
 - **S-LockTimeout** — Lock de revisión expira a 30 min.
 - **S-TamañoMax / S-MimeTypes** — 25 MB/archivo y lista cerrada de MIME permitidos.
 - **S-CI / S-Deploy / S-Obs** — Pipeline, hosting (NO incluido en cotización) y observabilidad (Pino + Prometheus + Sentry) — todos son supuestos.
 - **S-CamposTipo** — Campos extra por tipo de solicitud (`mantenimiento`, `evento`, `remodelacion`, `otro`) impactan formularios y esquema.
 - **S-JSReport** — jsreport 4.13 como contenedor Docker; backend no instala librerías de generación de PDFs/Excels (detalle en `docs/02-stack-tecnologico.md` §2.12).
+
+> **Nota:** el estado completo de los SUPUESTOS (15 T-Vxx) está en `PLANIFICACION/00-INDICE.md` §4. Esta lista es solo un resumen ejecutivo.
 
 ## Próximos pasos sugeridos (de `README.md` §7)
 
@@ -142,10 +145,49 @@ Lista completa en `README.md` §6. Los de mayor impacto:
 2. Resolver la lista de SUPUESTOS críticos.
 3. Confirmar proveedor de hosting y SMTP transaccional.
 4. Generar `schema.prisma` definitivo desde el DDL de `docs/04-modelo-de-datos.md` §4.10.
+5. Crear el monorepo con `frontend/`, `backend/`, `packages/contracts/`.
+6. Levantar entorno de desarrollo con `docker-compose.yml` de `docs/07-arquitectura.md` §7.10.1.
+7. Iniciar implementación por la fase 2 de la cotización: autenticación, locales, solicitudes, aprobaciones.
+
+> **Las tareas técnicas detalladas están en `PLANIFICACION/00-INDICE.md` (175 tareas, T-V01 a T-160).**
+
+---
+
+## Configuración de Claude Code (`.claude/`)
+
+> El owner trabaja en **múltiples proyectos**, por lo que toda la configuración de Claude Code para `sys-solicitudes` está **estrictamente scoped a este proyecto**.
+
+| Recurso | Ubicación | Notas |
+|---|---|---|
+| Skills del proyecto | `.claude/skills/<name>/SKILL.md` | Commiteadas, compartidas con el equipo |
+| Sub-agentes del proyecto | `.claude/agents/<name>.md` | Idem |
+| MCP servers | `.mcp.json` (raíz) | Apuntan a paths relativos al proyecto |
+| Settings del proyecto | `.claude/settings.json` | Commiteado |
+| Settings personales | `.claude/settings.local.json` | Gitignored, overrides del dev |
+| Memoria persistente | `.claude/memory/project-graph.jsonl` | Gitignored, se regenera con `/load-memory` |
+| Memoria seed | `.claude/memory/seed.jsonl` | Commiteado, fuente de la memoria inicial |
+| Hooks | `.claude/hooks/<name>.sh` | Cuando se agreguen |
+| Documentación | `.claude/README.md` | Convenciones y política de scope |
+
+**Regla absoluta:** nada de esto debe crearse ni modificarse en `~/.claude/` ni en `~/.claude.json` desde el trabajo de este repo. Ver `.claude/README.md` §Scope y política para el detalle y justificación.
 
 ---
 
 ## Reglas operativas para implementación
+
+### Scope de Claude Code: project-only (nuevo)
+
+> **Regla obligatoria:** Toda configuración, skill, hook, agente o MCP server específico de `sys-solicitudes` debe vivir en `.claude/` o `.mcp.json` de la raíz del proyecto. **Nunca** en el home del usuario (`~/.claude/`, `~/.claude.json`).
+
+**Por qué:** el owner trabaja en múltiples proyectos. El estado/configuración de un proyecto no debe filtrarse a otros.
+
+**Procedimiento:**
+1. Antes de crear un skill, hook, agente o MCP server: ¿es específico de este proyecto? → va en `.claude/`. ¿es genérico y útil para todos los proyectos? → **preguntar al owner** antes de hacerlo global.
+2. Verificar con `/project-status` que no haya "violaciones de scope" reportadas.
+3. Si una tool o acción toca `~/.claude/` por accidente, revertir inmediatamente y reportar.
+4. La skill `/project-status` valida esto en cada invocación.
+
+
 
 ### Investigación de versiones antes de instalar
 
