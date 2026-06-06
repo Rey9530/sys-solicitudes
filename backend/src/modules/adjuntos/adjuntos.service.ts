@@ -26,6 +26,12 @@ export interface UploadedPdf {
   originalname: string;
 }
 
+/** Alias genérico (T-112): los adjuntos de solicitud no se limitan a PDF. */
+export type UploadedFile = UploadedPdf;
+
+/** Límite duro de adjuntos por solicitud (S-FS-G, T-090). */
+const MAX_ADJUNTOS_POR_SOLICITUD = 10;
+
 /**
  * Adjuntos de contrato (T-062) — subconjunto del módulo completo (T-110+).
  *
@@ -134,6 +140,158 @@ export class AdjuntosService {
     return result.adjuntos.map((a) => this.toOutput(a));
   }
 
+  // ── Subir adjunto a una solicitud (T-112) ─────────────────────────────────────
+  /**
+   * Permisos (T-112): inquilino dueño en `borrador`/`requerida_subsanacion`;
+   * admin_plaza en cualquier estado NO terminal. MIME contra
+   * `configuracion.mime_types_permitidos`, tamaño contra
+   * `tamanio_max_archivo_mb`, máx 10 adjuntos vivos (T-090).
+   * Inserta `solicitud_historial` con evento `adjunto_agregado`.
+   */
+  async uploadSolicitudAdjunto(
+    solicitudId: string,
+    file: UploadedFile,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<UploadAdjuntoResponse> {
+    const plazaId = this.requirePlaza(actor);
+    const esAdmin = actor.rol === 'admin_plaza' || actor.rol === 'superadmin';
+
+    const pre = await this.prisma.withTenant(plazaId, async (tx) => {
+      const solicitud = await tx.solicitud.findFirst({ where: { id: solicitudId } });
+      if (!solicitud) return null;
+      const config = await tx.configuracion.findUnique({ where: { plaza_id: plazaId } });
+      const vivos = await tx.adjunto.count({
+        where: { entidad_tipo: 'solicitud', entidad_id: solicitudId, deleted_at: null },
+      });
+      return { solicitud, config, vivos };
+    });
+    if (!pre) this.throwNotFound('SOLICITUD_NOT_FOUND', 'La solicitud no existe.');
+    const { solicitud, config, vivos } = pre;
+
+    // Scope + estado según rol.
+    const terminal = ['aprobada', 'rechazada', 'cancelada'].includes(solicitud.estado);
+    if (actor.rol === 'inquilino') {
+      if (!actor.inquilinoId || solicitud.inquilino_id !== actor.inquilinoId) {
+        this.throwNotFound('SOLICITUD_NOT_FOUND', 'La solicitud no existe.');
+      }
+      if (solicitud.estado !== 'borrador' && solicitud.estado !== 'requerida_subsanacion') {
+        throw new ForbiddenException({
+          code: 'UPLOAD_FORBIDDEN',
+          title: 'Acceso denegado',
+          message: 'Solo puedes adjuntar en borrador o requerida_subsanacion.',
+        });
+      }
+    } else if (esAdmin && terminal) {
+      throw new ForbiddenException({
+        code: 'UPLOAD_FORBIDDEN',
+        title: 'Acceso denegado',
+        message: 'No se puede adjuntar a una solicitud en estado terminal.',
+      });
+    }
+
+    if (vivos >= MAX_ADJUNTOS_POR_SOLICITUD) {
+      throw new BadRequestException({
+        code: 'MAX_ADJUNTOS_EXCEDIDO',
+        title: 'Solicitud inválida',
+        message: `La solicitud ya tiene el máximo de ${MAX_ADJUNTOS_POR_SOLICITUD} adjuntos.`,
+      });
+    }
+
+    // MIME permitidos por plaza (T-V06) y tamaño máximo.
+    const mimesPermitidos = Array.isArray(config?.mime_types_permitidos)
+      ? (config.mime_types_permitidos as string[])
+      : [];
+    if (!mimesPermitidos.includes(file.mimetype)) {
+      throw new BadRequestException({
+        code: 'ADJUNTO_MIME_INVALIDO',
+        title: 'Solicitud inválida',
+        message: `Tipo de archivo no permitido (${file.mimetype}).`,
+      });
+    }
+    const maxBytes = (config?.tamanio_max_archivo_mb ?? 50) * 1024 * 1024;
+    if (file.size > maxBytes) {
+      throw new PayloadTooLargeException({
+        code: 'ADJUNTO_DEMASIADO_GRANDE',
+        title: 'Carga demasiado grande',
+        message: `El archivo supera el máximo de ${Math.floor(maxBytes / 1024 / 1024)} MB de la plaza.`,
+      });
+    }
+
+    const ext = (file.originalname.split('.').pop() ?? 'bin').toLowerCase().slice(0, 10);
+    const bucket = this.minio.bucketForSolicitudes(plazaId);
+    const key = `${plazaId}/solicitud/${solicitudId}/${randomUUID()}.${ext}`;
+    await this.minio.putObject(bucket, key, file.buffer, file.mimetype);
+
+    const adjunto = await this.prisma.withTenant(plazaId, async (tx) => {
+      const adjunto = await tx.adjunto.create({
+        data: {
+          plaza_id: plazaId,
+          entidad_tipo: 'solicitud',
+          entidad_id: solicitudId,
+          nombre_original: file.originalname,
+          mime_type: file.mimetype,
+          tamano_bytes: file.size,
+          storage_key: key,
+          usuario_subio_id: actor.sub,
+        },
+      });
+      await tx.solicitud_historial.create({
+        data: {
+          plaza_id: plazaId,
+          solicitud_id: solicitudId,
+          usuario_id: actor.sub,
+          evento: 'adjunto_agregado',
+          comentario: file.originalname,
+        },
+      });
+      return adjunto;
+    });
+
+    await this.auditoria.record({
+      accion: 'adjunto.create',
+      entidadTipo: 'adjunto',
+      entidadId: adjunto.id,
+      plazaId,
+      usuarioId: actor.sub,
+      despues: { ...this.toOutput(adjunto), storageKey: key },
+      ...meta,
+    });
+
+    let url: string | undefined;
+    try {
+      url = await this.minio.presignedGetUrl(bucket, key);
+    } catch {
+      url = undefined;
+    }
+    return { adjunto: this.toOutput(adjunto), url };
+  }
+
+  // ── Listar adjuntos de una solicitud (T-112) ──────────────────────────────────
+  async listSolicitudAdjuntos(
+    solicitudId: string,
+    actor: AuthenticatedUser,
+  ): Promise<AdjuntoOutput[]> {
+    const plazaId = this.requirePlaza(actor);
+    const result = await this.prisma.withTenant(plazaId, async (tx) => {
+      const solicitud = await tx.solicitud.findFirst({ where: { id: solicitudId } });
+      if (!solicitud) return null;
+      const adjuntos = await tx.adjunto.findMany({
+        where: { entidad_tipo: 'solicitud', entidad_id: solicitudId, deleted_at: null },
+        orderBy: { created_at: 'desc' },
+      });
+      return { solicitud, adjuntos };
+    });
+    if (!result) this.throwNotFound('SOLICITUD_NOT_FOUND', 'La solicitud no existe.');
+    if (
+      actor.rol === 'inquilino' &&
+      (!actor.inquilinoId || result.solicitud.inquilino_id !== actor.inquilinoId)
+    ) {
+      this.throwNotFound('SOLICITUD_NOT_FOUND', 'La solicitud no existe.');
+    }
+    return result.adjuntos.map((a) => this.toOutput(a));
+  }
+
   // ── Descargar (URL pre-firmada 15 min) ────────────────────────────────────────
   async download(adjuntoId: string, actor: AuthenticatedUser): Promise<{ url: string }> {
     const plazaId = this.requirePlaza(actor);
@@ -192,6 +350,9 @@ export class AdjuntosService {
       if (adjunto.entidad_tipo === 'contrato') {
         const contrato = await tx.contrato.findFirst({ where: { id: adjunto.entidad_id } });
         inquilinoId = contrato?.inquilino_id ?? null;
+      } else if (adjunto.entidad_tipo === 'solicitud') {
+        const solicitud = await tx.solicitud.findFirst({ where: { id: adjunto.entidad_id } });
+        inquilinoId = solicitud?.inquilino_id ?? null;
       }
       return { adjunto, inquilinoId };
     });
@@ -214,8 +375,10 @@ export class AdjuntosService {
   }
 
   private bucketFor(adjunto: AdjuntoModel): string {
-    // v1: solo adjuntos de contrato (T-062). Solicitudes/locales llegan en T-110+.
-    return this.minio.bucketForContratos(adjunto.plaza_id);
+    // contrato (T-062) y solicitud (T-112); locales llegan en T-110+.
+    return adjunto.entidad_tipo === 'solicitud'
+      ? this.minio.bucketForSolicitudes(adjunto.plaza_id)
+      : this.minio.bucketForContratos(adjunto.plaza_id);
   }
 
   private requirePlaza(actor: AuthenticatedUser): string {

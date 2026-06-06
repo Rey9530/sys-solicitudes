@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { UuidSchema, PaginationSchema } from '../common/index.js';
 import { SolicitudPrioridadSchema } from '../categorias/index.js';
+import { AdjuntoOutputSchema } from '../adjuntos/index.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Enums (T-078)
@@ -27,6 +28,35 @@ export const SolicitudEstadoSchema = z.enum([
   'requerida_subsanacion',
 ]);
 export type SolicitudEstado = z.infer<typeof SolicitudEstadoSchema>;
+
+/** Estados desde los que aún se puede transicionar. */
+export const SOLICITUD_ESTADOS_ACTIVOS = [
+  'borrador',
+  'enviada',
+  'asignado',
+  'en_revision',
+  'requerida_subsanacion',
+] as const satisfies readonly SolicitudEstado[];
+
+export const SolicitudHistorialEventoSchema = z.enum([
+  'creada',
+  'enviada',
+  'asignada',
+  'tomada',
+  'aprobada',
+  'rechazada',
+  'subsanada',
+  'reasignada',
+  'cancelada',
+  'comentario',
+  'adjunto_agregado',
+  'prioridad_cambiada',
+]);
+export type SolicitudHistorialEvento = z.infer<typeof SolicitudHistorialEventoSchema>;
+
+/** Semáforo SLA (S-SLA): null para estados terminales o sin enviar. */
+export const SlaStatusSchema = z.enum(['verde', 'amarillo', 'rojo']).nullable();
+export type SlaStatus = z.infer<typeof SlaStatusSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Campos extra por tipo (T-079, S-CamposTipo)
@@ -158,8 +188,23 @@ export const ListSolicitudesQuerySchema = PaginationSchema.extend({
 });
 export type ListSolicitudesQuery = z.infer<typeof ListSolicitudesQuerySchema>;
 
+/** Heurística de duplicados (T-090): mismo local + tipo, últimos 30 días. */
+export const DuplicadosQuerySchema = z.object({
+  localId: UuidSchema,
+  tipo: SolicitudTipoSchema,
+});
+export type DuplicadosQuery = z.infer<typeof DuplicadosQuerySchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Output
+
+/** Referencia mínima a un usuario (creador/asignado/comentarista). */
+export const UsuarioRefSchema = z.object({
+  id: UuidSchema,
+  nombre: z.string(),
+  email: z.string(),
+});
+export type UsuarioRef = z.infer<typeof UsuarioRefSchema>;
 
 export const SolicitudOutputSchema = z.object({
   id: UuidSchema,
@@ -188,3 +233,45 @@ export const SolicitudOutputSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 export type SolicitudOutput = z.infer<typeof SolicitudOutputSchema>;
+
+/** Item de listado con relaciones aplanadas (T-087/T-106). */
+export const SolicitudListItemSchema = SolicitudOutputSchema.extend({
+  localCodigo: z.string().nullable(),
+  categoriaNombre: z.string().nullable(),
+  subcategoriaNombre: z.string().nullable(),
+  adminAsignado: UsuarioRefSchema.nullable(),
+  slaStatus: SlaStatusSchema,
+});
+export type SolicitudListItem = z.infer<typeof SolicitudListItemSchema>;
+
+export const ComentarioOutputSchema = z.object({
+  id: UuidSchema,
+  solicitudId: UuidSchema,
+  usuario: UsuarioRefSchema.nullable(),
+  tipo: ComentarioTipoSchema,
+  cuerpo: z.string(),
+  createdAt: z.iso.datetime(),
+});
+export type ComentarioOutput = z.infer<typeof ComentarioOutputSchema>;
+
+export const SolicitudHistorialOutputSchema = z.object({
+  id: UuidSchema,
+  solicitudId: UuidSchema,
+  usuario: UsuarioRefSchema.nullable(),
+  evento: SolicitudHistorialEventoSchema,
+  estadoAnterior: SolicitudEstadoSchema.nullable(),
+  estadoNuevo: SolicitudEstadoSchema.nullable(),
+  comentario: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+});
+export type SolicitudHistorialOutput = z.infer<typeof SolicitudHistorialOutputSchema>;
+
+/** Detalle completo (T-080/T-089): incluye adjuntos, comentarios e historial. */
+export const SolicitudDetailOutputSchema = SolicitudListItemSchema.extend({
+  inquilinoRazonSocial: z.string().nullable(),
+  usuarioCreador: UsuarioRefSchema.nullable(),
+  adjuntos: z.array(AdjuntoOutputSchema),
+  comentarios: z.array(ComentarioOutputSchema),
+  historial: z.array(SolicitudHistorialOutputSchema),
+});
+export type SolicitudDetailOutput = z.infer<typeof SolicitudDetailOutputSchema>;
