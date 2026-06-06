@@ -69,8 +69,11 @@ npm run infra:up
 # 4. Aplicar migraciones Prisma
 npm run prisma:migrate
 
-# 5. (Opcional) Poblar con datos de seed
-npm run prisma:seed    # pendiente de T-045
+# 5. Poblar con datos de seed (idempotente)
+npm run prisma:seed
+# Crea: 3 roles globales, superadmin@plazapp.com / Plazapp2026!,
+# plaza demo (slug "demo") con su config + roles de staff, y
+# admin@demo.com / Plazapp2026! (admin_plaza, rol_staff supervisor). Solo dev.
 
 # 6. Levantar backend + frontend
 npm run dev

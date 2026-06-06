@@ -90,25 +90,55 @@ async function main(): Promise<void> {
       console.log(`✓ Superadmin creado: ${SUPERADMIN_EMAIL} / ${SUPERADMIN_PASSWORD} (solo dev).`);
     }
 
-    // ── Roles de staff demo (T-019) ──────────────────────────────────────────
-    // Solo si existe alguna plaza (las plazas se crean en el módulo 03). Defensivo.
-    const plazaDemo = await prisma.plaza.findFirst({ where: { deleted_at: null } });
-    if (plazaDemo) {
-      const ROLES_STAFF_DEMO = [
-        { codigo: 'tecnico', nombre: 'Técnico' },
-        { codigo: 'ingeniero', nombre: 'Ingeniero' },
-        { codigo: 'supervisor', nombre: 'Supervisor' },
-      ];
-      for (const rs of ROLES_STAFF_DEMO) {
-        await prisma.rol_staff.upsert({
-          where: { plaza_id_codigo: { plaza_id: plazaDemo.id, codigo: rs.codigo } },
-          update: { nombre: rs.nombre },
-          create: { plaza_id: plazaDemo.id, codigo: rs.codigo, nombre: rs.nombre },
-        });
-      }
-      console.log(`✓ Roles de staff demo sembrados para la plaza "${plazaDemo.slug}".`);
+    // ── Plaza demo + configuración + staff + admin (T-045) ────────────────────
+    const plazaDemo = await prisma.plaza.upsert({
+      where: { slug: 'demo' },
+      update: {},
+      create: { slug: 'demo', nombre_comercial: 'Plaza Demo', color_primario: '#2563eb' },
+    });
+    await prisma.configuracion.upsert({
+      where: { plaza_id: plazaDemo.id },
+      update: {},
+      create: { plaza_id: plazaDemo.id },
+    });
+
+    const ROLES_STAFF_DEMO = [
+      { codigo: 'tecnico', nombre: 'Técnico' },
+      { codigo: 'ingeniero', nombre: 'Ingeniero' },
+      { codigo: 'supervisor', nombre: 'Supervisor' },
+    ];
+    for (const rs of ROLES_STAFF_DEMO) {
+      await prisma.rol_staff.upsert({
+        where: { plaza_id_codigo: { plaza_id: plazaDemo.id, codigo: rs.codigo } },
+        update: { nombre: rs.nombre },
+        create: { plaza_id: plazaDemo.id, codigo: rs.codigo, nombre: rs.nombre },
+      });
+    }
+    console.log(`✓ Plaza demo "${plazaDemo.slug}" + configuración + roles de staff.`);
+
+    const rolAdminPlaza = await prisma.rol.findUniqueOrThrow({ where: { codigo: 'admin_plaza' } });
+    const supervisor = await prisma.rol_staff.findFirstOrThrow({
+      where: { plaza_id: plazaDemo.id, codigo: 'supervisor' },
+    });
+    const ADMIN_DEMO_EMAIL = 'admin@demo.com';
+    const adminDemo = await prisma.usuario.findFirst({
+      where: { email: ADMIN_DEMO_EMAIL, plaza_id: plazaDemo.id },
+    });
+    if (adminDemo) {
+      console.log(`✓ Admin demo ya existe (${ADMIN_DEMO_EMAIL}), no se modifica.`);
     } else {
-      console.log('• Sin plazas aún: se omiten roles de staff demo (se crean en el módulo 03).');
+      const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, BCRYPT_COST); // misma clave dev
+      await prisma.usuario.create({
+        data: {
+          plaza_id: plazaDemo.id,
+          rol_id: rolAdminPlaza.id,
+          rol_staff_id: supervisor.id,
+          email: ADMIN_DEMO_EMAIL,
+          password_hash: passwordHash,
+          nombre: 'Admin Demo',
+        },
+      });
+      console.log(`✓ Admin demo creado: ${ADMIN_DEMO_EMAIL} / ${SUPERADMIN_PASSWORD} (solo dev).`);
     }
 
     console.log('Seed completado.');

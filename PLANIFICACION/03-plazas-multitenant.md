@@ -11,13 +11,13 @@
 | T-036 | Crear migración Prisma con `plaza` | Alta | Completada |
 | T-037 | Crear migración Prisma con `configuracion` (1:1 con plaza) | Alta | Completada |
 | T-038 | Implementar RLS en PostgreSQL con `SET LOCAL app.plaza_id` | Alta | Completada |
-| T-039 | Configurar resolución de tenant en middleware Next.js (subdominio/path) | Alta | Pendiente |
+| T-039 | Configurar resolución de tenant en middleware Next.js (subdominio/path) | Alta | Completada |
 | T-040 | CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin | Alta | Completada |
 | T-041 | Implementar carga de logo y color_primario por plaza | Media | Completada |
 | T-042 | Configurar branding dinámico en frontend (CSS variable con color_primario) | Media | Pendiente |
 | T-043 | Configurar TZ de la plaza con date-fns-tz | Media | Pendiente |
 | T-044 | CRUD configuracion plaza (SLA, MIME, tamaño máx) | Alta | Completada |
-| T-045 | Seed inicial: crear superadmin y plaza demo | Alta | Pendiente |
+| T-045 | Seed inicial: crear superadmin y plaza demo | Alta | Completada |
 | T-046 | Implementar pantallas /superadmin/plazas | Media | Pendiente |
 
 ---
@@ -93,8 +93,9 @@
   - [ ] Las rutas de admin-plataform NO propagan slug al backend (NestJS no recibe `x-plaza-slug`).
 - **Dependencias:** T-033 (en `02-autenticacion-usuarios.md`, auth middleware).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: ⚠️ **SUPERADO por T-V01.** No hay resolución de tenant por subdominio/path ni header `x-plaza-slug`: el `plaza_id` viaja en el JWT. El `frontend/src/middleware.ts` (módulo 02, T-033) ya protege rutas privadas por sesión y redirige a `/login`; las rutas `/superadmin/*` exigen sesión y el rol `superadmin` se valida en el layout/Server Actions (T-046). No se requiere código adicional de resolución de tenant. El criterio original de subdominio/slug queda anulado.
 
 ### T-040 — CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin
 
@@ -195,8 +196,9 @@
   - [ ] Documentado en `README.md` cómo correr el seed.
 - **Dependencias:** T-017, T-018, T-019, T-036, T-037, T-040 (parcialmente).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `backend/prisma/seed.ts` extendido (idempotente, vía admin client/bypass RLS): 3 roles globales + superadmin + **plaza demo** (`slug: demo`) + su `configuracion` + 3 `rol_staff` + **admin demo** `admin@demo.com` / `Plazapp2026!` (admin_plaza, `rol_staff=supervisor`). Verificado: seed corre, login `admin@demo.com` `200`, 2ª corrida idempotente. Documentado en `CONTRIBUTING.md`.
 
 ### T-046 — Implementar pantallas /superadmin/plazas
 
