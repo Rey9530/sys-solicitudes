@@ -4,8 +4,13 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import type { usuario as UsuarioModel } from '@prisma/client';
-import type { CreateUsuarioInput, UsuarioOutput, RolGlobal } from '@app/contracts';
+import type { Prisma, usuario as UsuarioModel } from '@prisma/client';
+import type {
+  CreateUsuarioInput,
+  ListUsuariosQuery,
+  UsuarioOutput,
+  RolGlobal,
+} from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PasswordService } from '../auth/services/password.service';
 import { MailerService } from '../auth/services/mailer.service';
@@ -138,6 +143,58 @@ export class UsuariosService {
       ...meta,
     });
     return this.toOutput(usuario, dto.rol);
+  }
+
+  /**
+   * Listado mínimo (subconjunto de T-034, adelantado por T-073): los selectores
+   * de responsable/supervisores de subcategorías necesitan los admin_plaza de
+   * la plaza. Solo usuarios activos (deleted_at IS NULL).
+   */
+  async findAll(query: ListUsuariosQuery, actor: AuthenticatedUser) {
+    const plazaId = this.requirePlaza(actor);
+    const { page, pageSize, rol, search } = query;
+
+    const where: Prisma.usuarioWhereInput = {
+      deleted_at: null,
+      ...(rol ? { rol: { codigo: rol } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { nombre: { contains: search, mode: 'insensitive' } },
+              { email: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const { items, total } = await this.prisma.withTenant(plazaId, async (tx) => {
+      const [items, total] = await Promise.all([
+        tx.usuario.findMany({
+          where,
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+          orderBy: { nombre: 'asc' },
+          include: {
+            rol: { select: { codigo: true } },
+            rol_staff: { select: { activo: true, nombre: true } },
+          },
+        }),
+        tx.usuario.count({ where }),
+      ]);
+      return { items, total };
+    });
+
+    return {
+      items: items.map((u) => ({
+        ...this.toOutput(u, u.rol.codigo as RolGlobal),
+        rolStaffActivo: u.rol_staff?.activo ?? null,
+        rolStaffNombre: u.rol_staff?.nombre ?? null,
+      })),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.ceil(total / pageSize),
+    };
   }
 
   private requirePlaza(actor: AuthenticatedUser): string {

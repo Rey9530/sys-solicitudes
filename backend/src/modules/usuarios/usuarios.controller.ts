@@ -1,6 +1,11 @@
-import { Body, Controller, Headers, Ip, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Ip, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CreateUsuarioSchema, type CreateUsuarioInput } from '@app/contracts';
+import {
+  CreateUsuarioSchema,
+  ListUsuariosQuerySchema,
+  type CreateUsuarioInput,
+  type ListUsuariosQuery,
+} from '@app/contracts';
 import { UsuariosService } from './usuarios.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -16,6 +21,16 @@ import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 @Controller('usuarios')
 export class UsuariosController {
   constructor(private readonly service: UsuariosService) {}
+
+  @Get()
+  @Roles('admin_plaza', 'superadmin')
+  @ApiOperation({ summary: 'Listar usuarios de la plaza (mínimo de T-034, para selectores).' })
+  findAll(
+    @Query(new ZodValidationPipe(ListUsuariosQuerySchema)) query: ListUsuariosQuery,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.service.findAll(query, user);
+  }
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
