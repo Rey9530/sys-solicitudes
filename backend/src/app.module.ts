@@ -23,6 +23,7 @@ import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { HealthModule } from './modules/health/health.module';
 
 import { PrismaModule } from './prisma/prisma.module';
+import { StorageModule } from './common/storage/storage.module';
 import { buildPinoOptions } from './common/logger/pino.config';
 import { ThrottlerBehindProxyGuard } from './common/guards/throttler-behind-proxy.guard';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
@@ -52,6 +53,9 @@ import { RolesGuard } from './common/guards/roles.guard';
 
     // BD
     PrismaModule,
+
+    // Storage S3-compatible (MinIO)
+    StorageModule,
 
     // Módulos funcionales
     AuthModule,

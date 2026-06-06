@@ -13,7 +13,7 @@
 | T-038 | Implementar RLS en PostgreSQL con `SET LOCAL app.plaza_id` | Alta | Completada |
 | T-039 | Configurar resolución de tenant en middleware Next.js (subdominio/path) | Alta | Pendiente |
 | T-040 | CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin | Alta | Completada |
-| T-041 | Implementar carga de logo y color_primario por plaza | Media | Pendiente |
+| T-041 | Implementar carga de logo y color_primario por plaza | Media | Completada |
 | T-042 | Configurar branding dinámico en frontend (CSS variable con color_primario) | Media | Pendiente |
 | T-043 | Configurar TZ de la plaza con date-fns-tz | Media | Pendiente |
 | T-044 | CRUD configuracion plaza (SLA, MIME, tamaño máx) | Alta | Completada |
@@ -133,10 +133,11 @@
   - [ ] Si el logo se reemplaza, el anterior se mueve a `quarantine-{plaza_id}`.
 - **Dependencias:** T-040, T-110 (en `08-adjuntos.md`, MinIO client).
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
-
-### T-042 — Configurar branding dinámico en frontend (CSS variable con color_primario)
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `MinioService` mínimo (`common/storage`, instalado `minio@8.0.7`): `ensureBucket`, `putObject`, `presignedGetUrl` (15 min), `moveToQuarantine`. `POST /plazas/:id/logo` (multipart, `FileInterceptor`, `@Roles('superadmin','admin_plaza')`) valida PNG/SVG y ≤2 MB (`400 ADJUNTO_MIME_INVALIDO` / `413 ADJUNTO_DEMASIADO_GRANDE`), sube a `plaza-assets-{plazaId}` key `logo/{uuid}.{ext}`, mueve el anterior a `quarantine-{plazaId}`, actualiza `plaza.logo_url` (la key). Las respuestas de plaza resuelven `logoUrl` a URL pre-firmada; la auditoría guarda la key cruda (snapshot, no expira). Verificado: PNG `200` con presigned URL, PDF `400`.
+  - El cambio de `color_primario` se hace por el `PATCH /plazas/:id` existente (no se añadió endpoint aparte). El color/logo se reflejan en el frontend en T-042.
+  - ⚠️ Cliente MinIO **mínimo** (decisión de sesión): el cliente completo (cuarentena con retención, escaneo, adjuntos de solicitudes) es **T-110** (módulo 08).
 
 - **Descripción:** Inyectar el `color_primario` y el logo de la plaza como variables CSS al renderizar el layout raíz. El logo se sirve desde MinIO vía URL pre-firmada. Materializa S-Branding.
 - **Criterios de aceptación:**

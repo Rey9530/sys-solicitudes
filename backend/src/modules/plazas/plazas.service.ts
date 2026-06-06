@@ -12,12 +12,18 @@ import type {
   ListPlazasQuery,
   PlazaOutput,
 } from '@app/contracts';
+import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PrismaAdminService } from '../../prisma/prisma-admin.service';
 import { PasswordService } from '../auth/services/password.service';
 import { MailerService } from '../auth/services/mailer.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { MinioService } from '../../common/storage/minio.service';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
+
+/** Logo: MIME permitidos y tamaño máximo (T-041). */
+export const LOGO_MIME_ALLOWLIST = ['image/png', 'image/svg+xml'];
+export const LOGO_MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 
 export interface RequestMeta {
   ip?: string | null;
@@ -40,6 +46,7 @@ export class PlazasService {
     private readonly passwords: PasswordService,
     private readonly mailer: MailerService,
     private readonly auditoria: AuditoriaService,
+    private readonly minio: MinioService,
   ) {}
 
   // ── Crear plaza (+ configuración + roles staff + admin inicial) — superadmin ──
@@ -109,7 +116,7 @@ export class PlazasService {
       entidadId: plaza.id,
       plazaId: plaza.id,
       usuarioId: actor.sub,
-      despues: this.toOutput(plaza),
+      despues: this.toSnapshot(plaza),
       ip: meta.ip,
       userAgent: meta.userAgent,
       requestId: meta.requestId,
@@ -148,7 +155,7 @@ export class PlazasService {
       this.prismaAdmin.plaza.count({ where }),
     ]);
     return {
-      items: items.map((p) => this.toOutput(p)),
+      items: await Promise.all(items.map((p) => this.toOutput(p))),
       total,
       page,
       pageSize,
@@ -209,8 +216,8 @@ export class PlazasService {
       entidadId: id,
       plazaId: id,
       usuarioId: actor.sub,
-      antes: this.toOutput(before),
-      despues: this.toOutput(updated),
+      antes: this.toSnapshot(before),
+      despues: this.toSnapshot(updated),
       ip: meta.ip,
       userAgent: meta.userAgent,
       requestId: meta.requestId,
@@ -230,11 +237,55 @@ export class PlazasService {
       entidadId: id,
       plazaId: id,
       usuarioId: actor.sub,
-      antes: this.toOutput(before),
+      antes: this.toSnapshot(before),
       ip: meta.ip,
       userAgent: meta.userAgent,
       requestId: meta.requestId,
     });
+  }
+
+  // ── Subir logo (T-041) — superadmin o admin_plaza propia ──────────────────────
+  async uploadLogo(
+    id: string,
+    file: { buffer: Buffer; mimetype: string },
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<PlazaOutput> {
+    const isSuper = actor.rol === 'superadmin';
+    if (!isSuper) this.assertOwnPlaza(id, actor);
+
+    const plaza = this.assertFound(
+      await this.prismaAdmin.plaza.findFirst({ where: { id, deleted_at: null } }),
+    );
+
+    const bucket = this.minio.bucketForPlaza(id);
+    const ext = file.mimetype === 'image/svg+xml' ? 'svg' : 'png';
+    const key = `logo/${randomUUID()}.${ext}`;
+    await this.minio.putObject(bucket, key, file.buffer, file.mimetype);
+
+    // Mover el logo anterior a cuarentena (best-effort).
+    if (plaza.logo_url) {
+      await this.minio.moveToQuarantine(id, bucket, plaza.logo_url);
+    }
+
+    const updated = isSuper
+      ? await this.prismaAdmin.plaza.update({ where: { id }, data: { logo_url: key } })
+      : await this.prisma.withTenant(actor.plazaId as string, (tx) =>
+          tx.plaza.update({ where: { id }, data: { logo_url: key } }),
+        );
+
+    await this.auditoria.record({
+      accion: 'plaza.logo',
+      entidadTipo: 'plaza',
+      entidadId: id,
+      plazaId: id,
+      usuarioId: actor.sub,
+      despues: { logoKey: key },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+      requestId: meta.requestId,
+    });
+    return this.toOutput(updated);
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -259,7 +310,8 @@ export class PlazasService {
     return plaza;
   }
 
-  private toOutput(p: PlazaModel): PlazaOutput {
+  /** Snapshot crudo (logo_url = key de MinIO). Para auditoría (no expira). */
+  private toSnapshot(p: PlazaModel): PlazaOutput {
     return {
       id: p.id,
       slug: p.slug,
@@ -273,5 +325,21 @@ export class PlazasService {
       updatedAt: p.updated_at.toISOString(),
       deletedAt: p.deleted_at?.toISOString() ?? null,
     };
+  }
+
+  /** Output para el cliente: `logoUrl` resuelto a URL pre-firmada (15 min). */
+  private async toOutput(p: PlazaModel): Promise<PlazaOutput> {
+    const snapshot = this.toSnapshot(p);
+    if (p.logo_url) {
+      try {
+        snapshot.logoUrl = await this.minio.presignedGetUrl(
+          this.minio.bucketForPlaza(p.id),
+          p.logo_url,
+        );
+      } catch {
+        snapshot.logoUrl = null;
+      }
+    }
+    return snapshot;
   }
 }

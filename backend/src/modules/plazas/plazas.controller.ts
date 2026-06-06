@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,10 +10,14 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  PayloadTooLargeException,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreatePlazaSchema,
   UpdatePlazaSchema,
@@ -21,7 +26,18 @@ import {
   type UpdatePlazaInput,
   type ListPlazasQuery,
 } from '@app/contracts';
-import { PlazasService, type RequestMeta } from './plazas.service';
+import {
+  PlazasService,
+  LOGO_MIME_ALLOWLIST,
+  LOGO_MAX_BYTES,
+  type RequestMeta,
+} from './plazas.service';
+
+interface UploadedLogo {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+}
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -75,6 +91,43 @@ export class PlazasController {
     @Headers('x-request-id') requestId: string | undefined,
   ) {
     return this.service.update(id, body, user, this.meta(ip, userAgent, requestId));
+  }
+
+  @Post(':id/logo')
+  @Roles('superadmin', 'admin_plaza')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: LOGO_MAX_BYTES + 1 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Subir logo de la plaza (PNG/SVG, máx 2 MB).' })
+  uploadLogo(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: UploadedLogo | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+  ) {
+    if (!file) {
+      throw new BadRequestException({
+        code: 'LOGO_REQUERIDO',
+        title: 'Solicitud inválida',
+        message: 'Falta el archivo de logo (campo "file").',
+      });
+    }
+    if (!LOGO_MIME_ALLOWLIST.includes(file.mimetype)) {
+      throw new BadRequestException({
+        code: 'ADJUNTO_MIME_INVALIDO',
+        title: 'Solicitud inválida',
+        message: `Tipo no permitido. Solo PNG o SVG (${LOGO_MIME_ALLOWLIST.join(', ')}).`,
+      });
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      throw new PayloadTooLargeException({
+        code: 'ADJUNTO_DEMASIADO_GRANDE',
+        title: 'Carga demasiado grande',
+        message: 'El logo no puede superar 2 MB.',
+      });
+    }
+    return this.service.uploadLogo(id, file, user, this.meta(ip, userAgent, requestId));
   }
 
   @Delete(':id')
