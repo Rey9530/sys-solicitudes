@@ -39,6 +39,8 @@ export type UpdateContratoInput = z.infer<typeof UpdateContratoSchema>;
 export const CerrarContratoSchema = z.object({
   motivoFin: z.string().trim().min(1).max(500),
   fechaFinEfectiva: z.iso.date().optional(),
+  // T-055: el cierre puede producir `finalizado` (default) o `cancelado`.
+  estado: z.enum(['finalizado', 'cancelado']).default('finalizado'),
 });
 export type CerrarContratoInput = z.infer<typeof CerrarContratoSchema>;
 
@@ -68,7 +70,7 @@ export const ContratoOutputSchema = z.object({
   inquilinoId: UuidSchema,
   fechaInicio: z.iso.date(),
   fechaFin: z.iso.date().nullable(),
-  montoMensual: z.number(),
+  montoMensual: z.number().nullable(),
   moneda: z.string(),
   condiciones: z.string().nullable(),
   estado: ContratoEstadoSchema,
@@ -78,3 +80,23 @@ export const ContratoOutputSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 export type ContratoOutput = z.infer<typeof ContratoOutputSchema>;
+
+/** Output enriquecido del listado: razón social y código de local para tablas. */
+export const ContratoListItemSchema = ContratoOutputSchema.extend({
+  localCodigo: z.string().nullable(),
+  inquilinoRazonSocial: z.string().nullable(),
+});
+export type ContratoListItem = z.infer<typeof ContratoListItemSchema>;
+
+/** Detalle de contrato (T-054): incluye flags de ventana de vencimiento (T-056). */
+export const ContratoDetailOutputSchema = ContratoListItemSchema.extend({
+  enVentanaT30: z.boolean(),
+  enVentanaT7: z.boolean(),
+});
+export type ContratoDetailOutput = z.infer<typeof ContratoDetailOutputSchema>;
+
+/** Query del historial de contratos por local/inquilino (T-061). */
+export const ListContratoHistorialQuerySchema = PaginationSchema.extend({
+  estado: ContratoEstadoSchema.optional(),
+});
+export type ListContratoHistorialQuery = z.infer<typeof ListContratoHistorialQuerySchema>;

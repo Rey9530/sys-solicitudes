@@ -10,6 +10,7 @@ import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { RolesStaffModule } from './modules/roles-staff/roles-staff.module';
 import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
 import { LocalesModule } from './modules/locales/locales.module';
+import { InquilinosModule } from './modules/inquilinos/inquilinos.module';
 import { ContratosModule } from './modules/contratos/contratos.module';
 import { CategoriasModule } from './modules/categorias/categorias.module';
 import { SolicitudesModule } from './modules/solicitudes/solicitudes.module';
@@ -64,6 +65,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     UsuariosModule,
     RolesStaffModule,
     LocalesModule,
+    InquilinosModule,
     ContratosModule,
     CategoriasModule,
     SolicitudesModule,

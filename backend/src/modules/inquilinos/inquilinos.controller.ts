@@ -14,32 +14,32 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
-  CreateLocalSchema,
-  UpdateLocalSchema,
-  ListLocalesQuerySchema,
+  CreateInquilinoSchema,
+  UpdateInquilinoSchema,
+  ListInquilinosQuerySchema,
   ListContratoHistorialQuerySchema,
-  type CreateLocalInput,
-  type UpdateLocalInput,
-  type ListLocalesQuery,
+  type CreateInquilinoInput,
+  type UpdateInquilinoInput,
+  type ListInquilinosQuery,
   type ListContratoHistorialQuery,
 } from '@app/contracts';
-import { LocalesService, type RequestMeta } from './locales.service';
+import { InquilinosService, type RequestMeta } from './inquilinos.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
-@ApiTags('locales')
+@ApiTags('inquilinos')
 @ApiBearerAuth()
-@Controller('locales')
-export class LocalesController {
-  constructor(private readonly service: LocalesService) {}
+@Controller('inquilinos')
+export class InquilinosController {
+  constructor(private readonly service: InquilinosService) {}
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
-  @ApiOperation({ summary: 'Crear local (estado inicial: disponible).' })
+  @ApiOperation({ summary: 'Crear inquilino.' })
   create(
-    @Body(new ZodValidationPipe(CreateLocalSchema)) body: CreateLocalInput,
+    @Body(new ZodValidationPipe(CreateInquilinoSchema)) body: CreateInquilinoInput,
     @CurrentUser() user: AuthenticatedUser,
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string | undefined,
@@ -50,9 +50,9 @@ export class LocalesController {
 
   @Get()
   @Roles('admin_plaza', 'superadmin', 'inquilino')
-  @ApiOperation({ summary: 'Listar locales (inquilino: solo los suyos con contrato vigente).' })
+  @ApiOperation({ summary: 'Listar inquilinos (inquilino: solo su propio registro).' })
   findAll(
-    @Query(new ZodValidationPipe(ListLocalesQuerySchema)) query: ListLocalesQuery,
+    @Query(new ZodValidationPipe(ListInquilinosQuerySchema)) query: ListInquilinosQuery,
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.service.findAll(query, user);
@@ -60,14 +60,14 @@ export class LocalesController {
 
   @Get(':id')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
-  @ApiOperation({ summary: 'Detalle de local + contrato vigente + histórico.' })
+  @ApiOperation({ summary: 'Detalle de inquilino + contratos activos + histórico.' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.findOne(id, user);
   }
 
   @Get(':id/contratos')
-  @Roles('admin_plaza', 'superadmin')
-  @ApiOperation({ summary: 'Historial de contratos del local (T-061).' })
+  @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @ApiOperation({ summary: 'Historial de contratos del inquilino (T-061).' })
   findContratos(
     @Param('id', ParseUUIDPipe) id: string,
     @Query(new ZodValidationPipe(ListContratoHistorialQuerySchema))
@@ -79,10 +79,10 @@ export class LocalesController {
 
   @Patch(':id')
   @Roles('admin_plaza', 'superadmin')
-  @ApiOperation({ summary: 'Editar local (estado con reglas RI-2).' })
+  @ApiOperation({ summary: 'Editar inquilino (solo contacto y dirección).' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(UpdateLocalSchema)) body: UpdateLocalInput,
+    @Body(new ZodValidationPipe(UpdateInquilinoSchema)) body: UpdateInquilinoInput,
     @CurrentUser() user: AuthenticatedUser,
     @Ip() ip: string,
     @Headers('user-agent') userAgent: string | undefined,
@@ -94,7 +94,7 @@ export class LocalesController {
   @Delete(':id')
   @Roles('admin_plaza', 'superadmin')
   @HttpCode(204)
-  @ApiOperation({ summary: 'Desactivar local (soft delete; 409 si tiene contrato vigente).' })
+  @ApiOperation({ summary: 'Desactivar inquilino (soft delete; 409 si tiene contrato vigente).' })
   async remove(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user: AuthenticatedUser,
