@@ -8,11 +8,11 @@
 
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
-| T-017 | Crear migración Prisma con `rol` (catálogo global) | Alta | Pendiente |
-| T-018 | Crear migración Prisma con `usuario` | Alta | Pendiente |
-| T-019 | Crear migración Prisma con `rol_staff` | Alta | Pendiente |
-| T-020 | Crear migración Prisma con `refresh_token` y `password_reset_token` | Alta | Pendiente |
-| T-021 | Crear migración Prisma con `auditoria_login` | Alta | Pendiente |
+| T-017 | Crear migración Prisma con `rol` (catálogo global) | Alta | Completada |
+| T-018 | Crear migración Prisma con `usuario` | Alta | Completada |
+| T-019 | Crear migración Prisma con `rol_staff` | Alta | Completada |
+| T-020 | Crear migración Prisma con `refresh_token` y `password_reset_token` | Alta | Completada |
+| T-021 | Crear migración Prisma con `auditoria_login` | Alta | Completada |
 | T-022 | Definir Zod schemas compartidos de auth y usuarios en @app/contracts | Alta | Pendiente |
 | T-023 | Configurar JwtAuthGuard en NestJS | Alta | Pendiente |
 | T-024 | Configurar PlazaScopeGuard | Alta | Pendiente |
@@ -43,8 +43,12 @@
   - [ ] `npx prisma studio` muestra 3 filas en `rol`.
 - **Dependencias:** T-010 (en `01-setup-base.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: El modelo `rol` ya existía en el schema base (módulo 01). Se completó el **seed** de los 3 roles globales en `backend/prisma/seed.ts` (`upsert` por `codigo`, idempotente). Verificado: `rol` tiene 3 filas.
+  - ⚠️ La relación inversa de `rol` cambió de `usuarios usuario_rol[]` a `usuarios usuario[]` (ver T-018).
+  - ⚠️ El script de seed se llama vía `prisma.config.ts` (`migrations.seed`), no vía el campo `prisma.seed` de `package.json` (Prisma 7). Se agregó además el script de conveniencia `prisma:seed`.
+  - ⚠️ La migración no se llama `0002_init_roles`: todo el módulo se materializó en una sola migración `20260606053858_auth_usuarios` (las tablas comparten FKs; dividirlas era artificial) + `20260606054011_superadmin_email_index`.
 
 ### T-018 — Crear migración Prisma con `usuario`
 
@@ -58,8 +62,14 @@
   - [ ] El seed es idempotente: no falla si ya existe.
 - **Dependencias:** T-017, T-019 (rol_staff y usuario se crean juntos), T-062 en `04-locales-inquilinos-contratos.md` (FK a inquilino, pero puede ser nullable).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelo `usuario` creado con todos los campos, índices (`@@unique([plaza_id, email])`, `@@index([rol_id])`, `@@index([deleted_at])`) y FKs (plaza, rol, rol_staff). Migración aplicada. Seed de superadmin (`superadmin@plazapp.com` / `Plazapp2026!`, solo dev) idempotente y verificado (hash con prefijo `$2b$`, RI-5).
+  - ⚠️ **Decisión de sesión (2026-06-06):** se modela `rol_id` como **FK directa** en `usuario` y se **eliminó la tabla pivote `usuario_rol`** que había creado el módulo 01. Coincide con docs/04 §1.1 y simplifica las queries.
+  - ⚠️ **Hashing bcrypt (no argon2):** el módulo 01 había instalado `argon2`; se reemplazó por `bcrypt@6` cost 12 para respetar RI-5/RN-AU-2 (hash `$2b$`). Decisión confirmada por el owner en sesión.
+  - `inquilino_id` se modela como columna `String? @db.Uuid` **sin** `@relation` (la tabla `inquilino` llega en módulo 04 / T-062; ahí se añadirá la FK).
+  - Refuerzo de unicidad para superadmin (`plaza_id IS NULL`): índice parcial único `usuario_email_superadmin_uniq` añadido en migración `superadmin_email_index` (un `UNIQUE(plaza_id,email)` no aplica con `plaza_id` NULL).
+  - Validaciones `rol_staff_id` obligatorio para `admin_plaza` y prefijo bcrypt se aplican en la capa de aplicación (servicios de usuarios/auth), no en BD.
 
 ### T-019 — Crear migración Prisma con `rol_staff`
 
@@ -71,8 +81,10 @@
   - [ ] Seed inicial crea 3 roles de staff por plaza demo: `tecnico`, `ingeniero`, `supervisor` (solo si la plaza existe).
 - **Dependencias:** T-036 (en `03-plazas-multitenant.md`, plaza debe existir). En práctica se implementa después; T-018 puede referenciar este modelo aunque aún no haya filas.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelo `rol_staff` creado con `@@unique([plaza_id, codigo])` e `@@index([plaza_id, activo])`, FK a plaza y relación inversa a `usuario`. Migración aplicada.
+  - El seed de roles de staff demo (`tecnico`/`ingeniero`/`supervisor`) es **defensivo**: solo inserta si ya existe una plaza (las plazas se crean en el módulo 03). Hoy no hay plazas → el seed lo omite con un log informativo. Quedará efectivo al sembrar la plaza demo en el módulo 03.
 
 ### T-020 — Crear migración Prisma con `refresh_token` y `password_reset_token`
 
@@ -85,8 +97,10 @@
   - [ ] Ningún campo expone el token original (solo el hash).
 - **Dependencias:** T-018.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelos `refresh_token` y `password_reset_token` creados; ambos guardan solo `token_hash` (SHA-256), nunca el token plano. Índices `@@index([usuario_id])`. Migración aplicada.
+  - Los TTL efectivos (refresh 14d, reset 30 min) se aplican en los servicios de auth leyendo `.env` (T-V13), no se fijan en el schema.
 
 ### T-021 — Crear migración Prisma con `auditoria_login`
 
@@ -99,8 +113,11 @@
   - [ ] Endpoint `GET /api/v1/usuarios/auditoria-login` (admin_plaza ve su plaza, superadmin ve todas) — implementado en T-035.
 - **Dependencias:** T-018.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelo `auditoria_login` creado con `@@index([email, created_at])` y `@@index([plaza_id, created_at])`. Migración aplicada.
+  - ⚠️ El campo se llama `motivo_fallo` (no `razon_fallo` como aparece en docs/04 §1.x); se conservó el nombre del plan T-021/T-026. Valores: `usuario_no_existe`, `password_invalido`, `cuenta_bloqueada`.
+  - El endpoint `GET /api/v1/usuarios/auditoria-login` (mencionado en el criterio) pertenece al CRUD de usuarios (módulo 02, parte de usuarios) — no incluido en el alcance T-017..T-035 de esta entrega; queda para la implementación del controlador de usuarios.
 
 ### T-022 — Definir Zod schemas compartidos de auth y usuarios en @app/contracts
 
