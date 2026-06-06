@@ -1,10 +1,16 @@
 # CI/CD · Plazapp
 
+> ⚠️ **CI DESHABILITADO TEMPORALMENTE (2026-06-06).** Aún no hay VPS/hosting de
+> destino, así que el repo solo recibe pushes (no corre CI ni deploy). El
+> `ci.yml` quedó con trigger `workflow_dispatch` (solo manual). Para re-habilitar:
+> descomentar los triggers `push`/`pull_request` en `ci.yml` y añadir el job de
+> deploy cuando exista el entorno (ver `PLANIFICACION/13-observabilidad-despliegue.md`).
+
 ## Workflows
 
 | Archivo | Trigger | Jobs |
 |---|---|---|
-| `ci.yml` | PRs a `main`/`develop`, push a `main`/`develop` | lint-fe, lint-be, build-contracts, build-fe, build-be |
+| `ci.yml` | **Manual (`workflow_dispatch`) — deshabilitado** | lint-fe, lint-be, build-contracts, build-fe, build-be |
 
 ## Decisiones aplicadas
 

@@ -3,12 +3,18 @@ name: CI
 # Detalles: PLANIFICACION/01-setup-base.md (T-011) y PLANIFICACION/13-observabilidad-despliegue.md.
 # Filosofía: v1 NO tiene tests automatizados (ver docs/02-stack-tecnologico.md §2.11).
 # El pipeline ejecuta lint + build para validar la integridad del código en cada PR.
+#
+# ⚠️ DESHABILITADO TEMPORALMENTE (2026-06-06): aún no hay VPS/hosting de destino.
+# Por ahora el repo solo recibe pushes (no se ejecuta CI ni deploy). Para
+# re-habilitarlo, descomentar los triggers `push`/`pull_request` de abajo (y
+# añadir el job de deploy cuando exista el entorno).
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+  workflow_dispatch: # solo manual mientras está deshabilitado
+  # push:
+  #   branches: [main, develop]
+  # pull_request:
+  #   branches: [main, develop]
 
 # Cancelar runs previos en la misma rama/PR
 concurrency:
