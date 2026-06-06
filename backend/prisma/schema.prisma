@@ -69,7 +69,12 @@ model plaza {
   usuarios        usuario[]
   roles_staff     rol_staff[]
   auditoria_login auditoria_login[]
-  // locales, solicitudes, etc.
+  locales         local[]
+  inquilinos      inquilino[]
+  contratos       contrato[]
+  adjuntos        adjunto[]
+  email_logs      email_log[]
+  // solicitudes, etc.
 
   @@index([deleted_at])
   @@map("plaza")
@@ -103,7 +108,7 @@ model configuracion {
 ///   - rol_id como FK directa (no pivote). Sesión 2026-06-05.
 ///   - plaza_id NULL solo para superadmin; NOT NULL para admin_plaza/inquilino (app).
 ///   - rol_staff_id NOT NULL cuando rol=admin_plaza (validado en app, S-ResponsabilidadStaff).
-///   - inquilino_id: columna sin @relation; la FK se añade en módulo 04 (T-062).
+///   - inquilino_id: FK real a inquilino (añadida en módulo 04, T-048).
 ///   - password_hash bcrypt cost 12, prefijo $2b$/$2a$ (RI-5, validado en app).
 /// Detalles: docs/04-modelo-de-datos.md §1.1, PLANIFICACION/02 T-018.
 model usuario {
@@ -123,6 +128,7 @@ model usuario {
   deleted_at     DateTime? @db.Timestamptz(6)
 
   plaza                 plaza?                @relation(fields: [plaza_id], references: [id])
+  inquilino             inquilino?            @relation(fields: [inquilino_id], references: [id])
   rol                   rol                   @relation(fields: [rol_id], references: [id])
   rol_staff             rol_staff?            @relation(fields: [rol_staff_id], references: [id])
   refresh_tokens        refresh_token[]
@@ -234,4 +240,153 @@ model auditoria {
   @@index([plaza_id, created_at])
   @@index([entidad_tipo, entidad_id])
   @@map("auditoria")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Locales, inquilinos y contratos (módulo 04 · T-047..T-049)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Estados de local (S-EstadosLocal, confirmado en T-V07).
+enum local_estado {
+  disponible
+  alquilado
+  en_mantenimiento
+  fuera_de_servicio
+}
+
+/// Estados de contrato (docs/04 §1.1).
+enum contrato_estado {
+  vigente
+  finalizado
+  cancelado
+}
+
+/// Entidades que admiten adjuntos (docs/04 §4.3.11).
+enum adjunto_entidad_tipo {
+  solicitud
+  local
+  contrato
+}
+
+/// Local/unidad de la plaza (T-047). Materializa RN-LO-1..RN-LO-6.
+/// `estado='alquilado'` solo se setea automáticamente al crear contrato vigente
+/// (T-054); `disponible` no se permite si hay contrato vigente (RI-2, app).
+model local {
+  id          String       @id @default(uuid()) @db.Uuid
+  plaza_id    String       @db.Uuid
+  codigo      String
+  nombre      String?
+  metraje_m2  Decimal?     @db.Decimal(10, 2)
+  piso        String?
+  sector      String?
+  descripcion String?
+  estado      local_estado @default(disponible)
+  created_at  DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime     @updatedAt @db.Timestamptz(6)
+  deleted_at  DateTime?    @db.Timestamptz(6)
+
+  plaza     plaza      @relation(fields: [plaza_id], references: [id])
+  contratos contrato[]
+
+  @@unique([plaza_id, codigo])
+  @@index([plaza_id, estado])
+  @@index([deleted_at])
+  @@map("local")
+}
+
+/// Inquilino (empresa/persona que alquila) (T-048). CU-LO-10..CU-LO-13.
+/// UNIQUE parcial (plaza_id, identificacion) WHERE identificacion IS NOT NULL
+/// se crea con SQL manual en la migración (Prisma no soporta índices parciales).
+model inquilino {
+  id                String    @id @default(uuid()) @db.Uuid
+  plaza_id          String    @db.Uuid
+  razon_social      String
+  identificacion    String?
+  direccion         String?
+  contacto_nombre   String?
+  contacto_email    String?
+  contacto_telefono String?
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at        DateTime? @db.Timestamptz(6)
+
+  plaza     plaza      @relation(fields: [plaza_id], references: [id])
+  contratos contrato[]
+  usuarios  usuario[]
+
+  @@index([plaza_id])
+  @@map("inquilino")
+}
+
+/// Contrato de alquiler (T-049). Materializa S-ContratoIndefinido
+/// (`fecha_fin` NULL = indefinido) y RN-CO-1..RN-CO-5.
+/// CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio) y el trigger
+/// anti-solapamiento (T-050) van en SQL manual en las migraciones.
+model contrato {
+  id                 String          @id @default(uuid()) @db.Uuid
+  plaza_id           String          @db.Uuid
+  local_id           String          @db.Uuid
+  inquilino_id       String          @db.Uuid
+  fecha_inicio       DateTime        @db.Date
+  fecha_fin          DateTime?       @db.Date
+  monto_mensual      Decimal?        @db.Decimal(12, 2)
+  moneda             String          @default("USD") @db.Char(3)
+  condiciones        String?
+  estado             contrato_estado @default(vigente)
+  fecha_fin_efectiva DateTime?       @db.Date
+  motivo_fin         String?
+  created_at         DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime        @updatedAt @db.Timestamptz(6)
+
+  plaza     plaza     @relation(fields: [plaza_id], references: [id])
+  local     local     @relation(fields: [local_id], references: [id])
+  inquilino inquilino @relation(fields: [inquilino_id], references: [id])
+
+  @@index([plaza_id, local_id, estado])
+  @@index([plaza_id, inquilino_id, estado])
+  @@index([fecha_fin])
+  @@map("contrato")
+}
+
+/// Adjunto polimórfico (T-062, se expande en módulo 08).
+/// `entidad_id` es FK lógica según `entidad_tipo` (sin FK física).
+model adjunto {
+  id               String               @id @default(uuid()) @db.Uuid
+  plaza_id         String               @db.Uuid
+  entidad_tipo     adjunto_entidad_tipo
+  entidad_id       String               @db.Uuid
+  nombre_original  String
+  mime_type        String
+  tamano_bytes     Int
+  storage_key      String
+  usuario_subio_id String               @db.Uuid
+  created_at       DateTime             @default(now()) @db.Timestamptz(6)
+  deleted_at       DateTime?            @db.Timestamptz(6)
+
+  plaza plaza @relation(fields: [plaza_id], references: [id])
+
+  @@index([plaza_id, entidad_tipo, entidad_id])
+  @@map("adjunto")
+}
+
+/// Log/cola de emails. Versión MÍNIMA (T-056): registro post-envío para
+/// deduplicación de alertas. La cola con reintentos 1m/5m/30m y el worker
+/// son T-115..T-118 (módulo 09). `plantilla` discrimina el evento.
+model email_log {
+  id           String    @id @default(uuid()) @db.Uuid
+  plaza_id     String    @db.Uuid
+  destinatario String
+  plantilla    String
+  variables    Json?
+  estado       String    @default("pendiente")
+  reintentos   Int       @default(0)
+  last_error   String?
+  sent_at      DateTime? @db.Timestamptz(6)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+
+  plaza plaza @relation(fields: [plaza_id], references: [id])
+
+  @@index([plaza_id, plantilla, created_at])
+  @@index([estado, reintentos])
+  @@map("email_log")
 }
