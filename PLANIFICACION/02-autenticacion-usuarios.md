@@ -8,25 +8,25 @@
 
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
-| T-017 | Crear migración Prisma con `rol` (catálogo global) | Alta | Pendiente |
-| T-018 | Crear migración Prisma con `usuario` | Alta | Pendiente |
-| T-019 | Crear migración Prisma con `rol_staff` | Alta | Pendiente |
-| T-020 | Crear migración Prisma con `refresh_token` y `password_reset_token` | Alta | Pendiente |
-| T-021 | Crear migración Prisma con `auditoria_login` | Alta | Pendiente |
-| T-022 | Definir Zod schemas compartidos de auth y usuarios en @app/contracts | Alta | Pendiente |
-| T-023 | Configurar JwtAuthGuard en NestJS | Alta | Pendiente |
-| T-024 | Configurar PlazaScopeGuard | Alta | Pendiente |
-| T-025 | Configurar RolesGuard + @Roles decorator | Alta | Pendiente |
-| T-026 | Implementar POST /api/v1/auth/login (con lockout 5/15) | Alta | Pendiente |
-| T-027 | Implementar POST /api/v1/auth/refresh | Alta | Pendiente |
-| T-028 | Implementar POST /api/v1/auth/logout | Alta | Pendiente |
-| T-029 | Implementar flujo de reset de contraseña (POST /reset-password, /reset-password/confirm) | Alta | Pendiente |
-| T-030 | Implementar PATCH /api/v1/auth/change-password | Media | Pendiente |
-| T-031 | Implementar GET /api/v1/auth/me | Alta | Pendiente |
-| T-032 | Configurar Auth.js (NextAuth v5) en frontend con Credentials Provider | Alta | Pendiente |
-| T-033 | Configurar middleware Next.js para inyectar token JWT en requests a NestJS | Alta | Pendiente |
-| T-034 | Implementar pantalla /login | Alta | Pendiente |
-| T-035 | Implementar pantallas /reset-password y /reset-password/[token] | Media | Pendiente |
+| T-017 | Crear migración Prisma con `rol` (catálogo global) | Alta | Completada |
+| T-018 | Crear migración Prisma con `usuario` | Alta | Completada |
+| T-019 | Crear migración Prisma con `rol_staff` | Alta | Completada |
+| T-020 | Crear migración Prisma con `refresh_token` y `password_reset_token` | Alta | Completada |
+| T-021 | Crear migración Prisma con `auditoria_login` | Alta | Completada |
+| T-022 | Definir Zod schemas compartidos de auth y usuarios en @app/contracts | Alta | Completada |
+| T-023 | Configurar JwtAuthGuard en NestJS | Alta | Completada |
+| T-024 | Configurar PlazaScopeGuard | Alta | Completada |
+| T-025 | Configurar RolesGuard + @Roles decorator | Alta | Completada |
+| T-026 | Implementar POST /api/v1/auth/login (con lockout 5/15) | Alta | Completada |
+| T-027 | Implementar POST /api/v1/auth/refresh | Alta | Completada |
+| T-028 | Implementar POST /api/v1/auth/logout | Alta | Completada |
+| T-029 | Implementar flujo de reset de contraseña (POST /reset-password, /reset-password/confirm) | Alta | Completada |
+| T-030 | Implementar PATCH /api/v1/auth/change-password | Media | Completada |
+| T-031 | Implementar GET /api/v1/auth/me | Alta | Completada |
+| T-032 | Configurar Auth.js (NextAuth v5) en frontend con Credentials Provider | Alta | Completada |
+| T-033 | Configurar middleware Next.js para inyectar token JWT en requests a NestJS | Alta | Completada |
+| T-034 | Implementar pantalla /login | Alta | Completada |
+| T-035 | Implementar pantallas /reset-password y /reset-password/[token] | Media | Completada |
 
 ---
 
@@ -43,8 +43,12 @@
   - [ ] `npx prisma studio` muestra 3 filas en `rol`.
 - **Dependencias:** T-010 (en `01-setup-base.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: El modelo `rol` ya existía en el schema base (módulo 01). Se completó el **seed** de los 3 roles globales en `backend/prisma/seed.ts` (`upsert` por `codigo`, idempotente). Verificado: `rol` tiene 3 filas.
+  - ⚠️ La relación inversa de `rol` cambió de `usuarios usuario_rol[]` a `usuarios usuario[]` (ver T-018).
+  - ⚠️ El script de seed se llama vía `prisma.config.ts` (`migrations.seed`), no vía el campo `prisma.seed` de `package.json` (Prisma 7). Se agregó además el script de conveniencia `prisma:seed`.
+  - ⚠️ La migración no se llama `0002_init_roles`: todo el módulo se materializó en una sola migración `20260606053858_auth_usuarios` (las tablas comparten FKs; dividirlas era artificial) + `20260606054011_superadmin_email_index`.
 
 ### T-018 — Crear migración Prisma con `usuario`
 
@@ -58,8 +62,14 @@
   - [ ] El seed es idempotente: no falla si ya existe.
 - **Dependencias:** T-017, T-019 (rol_staff y usuario se crean juntos), T-062 en `04-locales-inquilinos-contratos.md` (FK a inquilino, pero puede ser nullable).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelo `usuario` creado con todos los campos, índices (`@@unique([plaza_id, email])`, `@@index([rol_id])`, `@@index([deleted_at])`) y FKs (plaza, rol, rol_staff). Migración aplicada. Seed de superadmin (`superadmin@plazapp.com` / `Plazapp2026!`, solo dev) idempotente y verificado (hash con prefijo `$2b$`, RI-5).
+  - ⚠️ **Decisión de sesión (2026-06-06):** se modela `rol_id` como **FK directa** en `usuario` y se **eliminó la tabla pivote `usuario_rol`** que había creado el módulo 01. Coincide con docs/04 §1.1 y simplifica las queries.
+  - ⚠️ **Hashing bcrypt (no argon2):** el módulo 01 había instalado `argon2`; se reemplazó por `bcrypt@6` cost 12 para respetar RI-5/RN-AU-2 (hash `$2b$`). Decisión confirmada por el owner en sesión.
+  - `inquilino_id` se modela como columna `String? @db.Uuid` **sin** `@relation` (la tabla `inquilino` llega en módulo 04 / T-062; ahí se añadirá la FK).
+  - Refuerzo de unicidad para superadmin (`plaza_id IS NULL`): índice parcial único `usuario_email_superadmin_uniq` añadido en migración `superadmin_email_index` (un `UNIQUE(plaza_id,email)` no aplica con `plaza_id` NULL).
+  - Validaciones `rol_staff_id` obligatorio para `admin_plaza` y prefijo bcrypt se aplican en la capa de aplicación (servicios de usuarios/auth), no en BD.
 
 ### T-019 — Crear migración Prisma con `rol_staff`
 
@@ -71,8 +81,10 @@
   - [ ] Seed inicial crea 3 roles de staff por plaza demo: `tecnico`, `ingeniero`, `supervisor` (solo si la plaza existe).
 - **Dependencias:** T-036 (en `03-plazas-multitenant.md`, plaza debe existir). En práctica se implementa después; T-018 puede referenciar este modelo aunque aún no haya filas.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelo `rol_staff` creado con `@@unique([plaza_id, codigo])` e `@@index([plaza_id, activo])`, FK a plaza y relación inversa a `usuario`. Migración aplicada.
+  - El seed de roles de staff demo (`tecnico`/`ingeniero`/`supervisor`) es **defensivo**: solo inserta si ya existe una plaza (las plazas se crean en el módulo 03). Hoy no hay plazas → el seed lo omite con un log informativo. Quedará efectivo al sembrar la plaza demo en el módulo 03.
 
 ### T-020 — Crear migración Prisma con `refresh_token` y `password_reset_token`
 
@@ -85,8 +97,10 @@
   - [ ] Ningún campo expone el token original (solo el hash).
 - **Dependencias:** T-018.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelos `refresh_token` y `password_reset_token` creados; ambos guardan solo `token_hash` (SHA-256), nunca el token plano. Índices `@@index([usuario_id])`. Migración aplicada.
+  - Los TTL efectivos (refresh 14d, reset 30 min) se aplican en los servicios de auth leyendo `.env` (T-V13), no se fijan en el schema.
 
 ### T-021 — Crear migración Prisma con `auditoria_login`
 
@@ -99,8 +113,11 @@
   - [ ] Endpoint `GET /api/v1/usuarios/auditoria-login` (admin_plaza ve su plaza, superadmin ve todas) — implementado en T-035.
 - **Dependencias:** T-018.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelo `auditoria_login` creado con `@@index([email, created_at])` y `@@index([plaza_id, created_at])`. Migración aplicada.
+  - ⚠️ El campo se llama `motivo_fallo` (no `razon_fallo` como aparece en docs/04 §1.x); se conservó el nombre del plan T-021/T-026. Valores: `usuario_no_existe`, `password_invalido`, `cuenta_bloqueada`.
+  - El endpoint `GET /api/v1/usuarios/auditoria-login` (mencionado en el criterio) pertenece al CRUD de usuarios (módulo 02, parte de usuarios) — no incluido en el alcance T-017..T-035 de esta entrega; queda para la implementación del controlador de usuarios.
 
 ### T-022 — Definir Zod schemas compartidos de auth y usuarios en @app/contracts
 
@@ -114,8 +131,10 @@
   - [ ] Tanto el frontend como el backend importan los schemas (validación en tiempo de build).
 - **Dependencias:** T-005 (en `01-setup-base.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Los schemas ya estaban implementados en el módulo 01 (`auth/`, `usuarios/`, `roles-staff/`, `common/`). Verificado que el paquete `@app/contracts` compila sin errores (`npm run build`). No requirió cambios.
+  - ⚠️ Política de contraseña: **8 chars + 3 tipos** (mayús/minús/dígito), regex `^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$` — conforme a **T-V13**, no a la regex de 10 chars + símbolo del enunciado original de T-022 (que quedó desactualizado).
 
 ### T-023 — Configurar JwtAuthGuard en NestJS
 
@@ -132,8 +151,11 @@
   - [ ] Cada request autenticado lleva `request.user` con los claims correctos.
 - **Dependencias:** T-022.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `JwtStrategy` (passport-jwt, HS256, `ignoreExpiration:false`, token solo del header) + `JwtAuthGuard` (`modules/auth/guards/jwt-auth.guard.ts`), decorators `@CurrentUser()` y `@Public()` (en `common/decorators/`). Registrado como `APP_GUARD` global. Verificado: `GET /auth/me` sin token → `401 TOKEN_INVALID`; con token → `200`.
+  - Diferenciación de errores: `TOKEN_EXPIRED` (token vencido), `TOKEN_MISSING_SIGNATURE` (firma ausente) y `TOKEN_INVALID` (resto), vía `handleRequest`.
+  - El `HealthController` se marcó `@Public()` para no romper los health checks con el guard global. La ruta express directa `/api/ping` no pasa por guards.
 
 ### T-024 — Configurar PlazaScopeGuard
 
@@ -148,8 +170,11 @@
   - [ ] Test manual: token de superadmin sí puede.
 - **Dependencias:** T-023, T-038 (en `03-plazas-multitenant.md`, RLS).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `PlazaScopeGuard` (`modules/auth/guards/plaza-scope.guard.ts`) registrado como `APP_GUARD`. `superadmin` pasa sin scope; el resto compara un `plazaId` presente en ruta/query/body contra `user.plazaId` del JWT → mismatch `403 PLAZA_SCOPE_VIOLATION`.
+  - ⚠️ **T-V01:** se eliminó toda referencia a `x-plaza-slug`/subdominio. La resolución de tenant es **únicamente** por `plaza_id` del JWT. El criterio original de T-024 que mencionaba el header `x-plaza-slug` quedó desactualizado.
+  - ⚠️ La verificación cross-tenant end-to-end (token de plaza A pidiendo recurso de plaza B → 403) requiere usuarios con `plaza_id`, que se crean en el módulo 03. La lógica del guard está lista y unit-probada por inspección; queda pendiente la prueba manual con dos plazas al implementar T-036+. La capa RLS (T-038) es complementaria y vive en el módulo 03.
 
 ### T-025 — Configurar RolesGuard + @Roles decorator
 
@@ -163,8 +188,10 @@
   - [ ] Triple guard funciona en serie: una falla → 401 o 403 antes de llegar al handler.
 - **Dependencias:** T-023, T-024.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `RolesGuard` (`common/guards/roles.guard.ts`) + decorator `@Roles()` (`common/decorators/roles.decorator.ts`), registrado como `APP_GUARD` después de Jwt y PlazaScope (triple guard en serie). Sin `@Roles()`, cualquier autenticado pasa; rol fuera de lista → `403 ROLE_FORBIDDEN`.
+  - Los tres guards saltan los endpoints `@Public()`. Orden efectivo: Throttler → Jwt → PlazaScope → Roles.
 
 ### T-026 — Implementar POST /api/v1/auth/login (con lockout 5/15)
 
@@ -183,8 +210,11 @@
   - [ ] Sanitización: el email siempre se trimea y se lowercases antes de buscar.
 - **Dependencias:** T-018, T-020, T-021, T-022, T-023, T-025.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `POST /api/v1/auth/login` implementado. Verificado: éxito `200` con `{accessToken, refreshToken, expiresIn:3600, user{...}}`; password incorrecto / email inexistente → `401 INVALID_CREDENTIALS` (no revela cuál); registra `auditoria_login` en cada intento; `last_login_at` actualizado; email trim+lowercase; throttle `5 req/min` por IP verificado (`429`).
+  - ⚠️ **Lockout T-V13 (no 5/15 del título):** **10** intentos fallidos en ventana de **15 min**, por email **o** IP → `429 ACCOUNT_LOCKED` con `retryAfter`. Valores desde `.env` (`LOGIN_LOCKOUT_THRESHOLD`/`LOGIN_LOCKOUT_WINDOW`).
+  - Hashing bcrypt cost 12 (`PasswordService`); refresh = UUID v4, en BD solo su SHA-256 (`TokenService`).
 
 ### T-027 — Implementar POST /api/v1/auth/refresh
 
@@ -199,8 +229,9 @@
   - [ ] El endpoint NO está protegido por JwtAuthGuard (es el que se usa cuando el access expiró).
 - **Dependencias:** T-020, T-023, T-026.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `POST /api/v1/auth/refresh` (`@Public()`). Verificado: rota tokens (`200` con par nuevo); detección de reuso → al usar un refresh revocado, `401 REFRESH_INVALID` **y se revocan todos** los del usuario (confirmado: el refresh recién emitido también quedó inválido); expirado → `401 REFRESH_EXPIRED`.
 
 ### T-028 — Implementar POST /api/v1/auth/logout
 
@@ -213,8 +244,9 @@
   - [ ] Opcional: si se llama con un access token que tiene un `refreshToken` en sus claims, también lo revoca.
 - **Dependencias:** T-020, T-023, T-027.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `POST /api/v1/auth/logout` (protegido por JwtAuthGuard) revoca el refresh recibido y responde `204`.
 
 ### T-029 — Implementar flujo de reset de contraseña
 
@@ -228,8 +260,11 @@
   - [ ] El email de reset es crítico (no se desactiva con unsubscribe).
 - **Dependencias:** T-020, T-022, T-118 (en `09-notificaciones-email.md`, plantilla).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `POST /reset-password` (genera token UUID, SHA-256, TTL 30 min, envía email; responde `200` exista o no el email) y `POST /reset-password/confirm` (valida no usado/no expirado, `used_at=now()`, re-hashea con bcrypt, revoca todos los refresh). Verificado end-to-end con MailHog: email entregado, reset confirmado `200`, login con nueva clave OK, reuso del token → `400 RESET_TOKEN_INVALID`.
+  - ⚠️ **Link de reset T-V01:** `${FRONTEND_URL}/reset-password/{token}` (single domain, la plaza NO va en la URL). No se usa `{plaza.slug}.plazapp.com` del criterio original.
+  - ⚠️ **Mailer provisional (pendiente de T-118):** `MailerService` envía directo por SMTP (MailHog) con plantilla HTML inline. El módulo 09 (cola `email_log` + worker + plantillas) lo reemplazará. Marcado en el código.
 
 ### T-030 — Implementar PATCH /api/v1/auth/change-password
 
@@ -244,8 +279,9 @@
   - [ ] Retorna `204 No Content`.
 - **Dependencias:** T-018, T-022, T-023.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `PATCH /api/v1/auth/change-password` (protegido). Verifica `currentPassword` con bcrypt (`400 INVALID_CURRENT_PASSWORD` si no coincide), valida `newPassword` (Zod), re-hashea, revoca todos los refresh. Responde `204`. Verificado end-to-end.
 
 ### T-031 — Implementar GET /api/v1/auth/me
 
@@ -258,8 +294,9 @@
   - [ ] `404` si el usuario fue soft-deleted entre tanto.
 - **Dependencias:** T-018, T-023.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `GET /api/v1/auth/me` (protegido) retorna el perfil del usuario del JWT sin `password_hash` ni tokens; `404 USER_NOT_FOUND` si fue soft-deleted. Verificado.
 
 ### T-032 — Configurar Auth.js (NextAuth v5) en frontend con Credentials Provider
 
@@ -275,8 +312,11 @@
   - [ ] La sesión se refresca automáticamente cuando el access está a punto de expirar.
 - **Dependencias:** T-026, T-027.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `frontend/src/auth.ts` con NextAuth v5 (Credentials Provider → `POST /api/v1/auth/login`). Callback `jwt` guarda access+refresh y refresca contra `/auth/refresh` al expirar; callback `session` expone **solo** `user` (sin tokens). Route handler en `app/api/auth/[...nextauth]/route.ts`. Verificado end-to-end: login `302`→`/`; `GET /api/auth/session` NO expone tokens; cookie `authjs.session-token` es **HttpOnly** y su contenido es un JWE cifrado (S-ARQ-F).
+  - ⚠️ **Desviación de versión:** Auth.js v5 solo existe como `next-auth@5.0.0-beta.31` (el stable `4.x` es la generación previa). La arquitectura exige v5; la beta declara soporte para `next ^16` y `react ^19`. Documentado.
+  - ⚠️ Error de cuenta bloqueada: clase `AccountLockedError extends CredentialsSignin (code='locked')` para distinguir lockout (`429`) de credenciales inválidas en el formulario.
 
 ### T-033 — Configurar middleware Next.js para inyectar token JWT en requests a NestJS
 
@@ -290,8 +330,12 @@
   - [ ] El helper está disponible tanto en Server Components como en Server Actions.
 - **Dependencias:** T-032, T-038 (en `03-plazas-multitenant.md`, RLS).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `frontend/src/middleware.ts` (auth de NextAuth) redirige rutas privadas a `/login?callbackUrl=...` (verificado: `/dashboard` → `307`). Helper `frontend/src/lib/api.ts` (`apiFetch`, server-only) inyecta `Authorization: Bearer` leyendo el token con `getToken` (sin exponerlo al cliente); en `401` refresca una vez y reintenta, si falla redirige a `/login`. Demostrado end-to-end: la home obtiene el perfil vía `apiFetch('/auth/me')`.
+  - ⚠️ **T-V01:** el middleware/`apiFetch` **no** inyecta `x-plaza-slug` ni resuelve slug por host/path; el `plaza_id` viaja en el JWT.
+  - ⚠️ Next.js 16 deprecó la convención `middleware.ts` a favor de `proxy.ts` (solo warning, sigue funcionando). Se conserva `middleware.ts` como pide el criterio; migrar a `proxy.ts` queda como follow-up menor.
+  - ⚠️ Limitación conocida: el token rotado dentro del reintento de `apiFetch` no se re-persiste en la cookie (lo hace el callback `jwt` en la siguiente navegación). Con access TTL 1h el camino de 401 es excepcional.
 
 ### T-034 — Implementar pantalla /login
 
@@ -309,8 +353,12 @@
   - [ ] Logo y color de la plaza visibles (resueltos desde la URL o desde una config pública).
 - **Dependencias:** T-032, T-033, T-042 (en `03-plazas-multitenant.md`, branding).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `app/(public)/login/page.tsx` (Server Component) + `components/client/login-form.tsx` (React Hook Form + `zodResolver(LoginSchema)`). Server Action `loginAction` llama a `signIn` de Auth.js; credenciales inválidas → toast genérico, cuenta bloqueada → toast específico (sonner). Si hay sesión, redirige a la home. Verificado: el form renderiza y autentica.
+  - ⚠️ **Redirección por rol:** los dashboards (`/admin/dashboard`, `/superadmin/plazas`, `/dashboard`) llegan en módulos posteriores; por ahora todos redirigen a `/` (home autenticada que muestra el perfil). Mapa por rol en `redirectTarget()`, listo para apuntar a los dashboards cuando existan.
+  - Branding básico (nombre + color primario); el logo/color por plaza es T-042 (módulo 03).
+  - Dependencias instaladas (versiones latest estables): `react-hook-form@7.77`, `@hookform/resolvers@5.4`, `sonner@2.0.7`.
 
 ### T-035 — Implementar pantallas /reset-password y /reset-password/[token]
 
@@ -322,5 +370,7 @@
   - [ ] Branding aplicado (logo + color).
 - **Dependencias:** T-029, T-032, T-033, T-034.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `app/(public)/reset-password/page.tsx` (formulario de email → mensaje neutro "Si el email existe…") y `app/(public)/reset-password/[token]/page.tsx` (nueva contraseña + confirmación con `refine` de coincidencia, valida con `PasswordSchema`). Server Actions `requestResetAction`/`confirmResetAction` (BFF). Token inválido/expirado → mensaje con link para solicitar uno nuevo. Éxito → redirige a `/login` con toast. Ambas páginas renderizan (`200`).
+  - El flujo completo (solicitud → email en MailHog → confirmación → login con nueva clave) quedó verificado end-to-end en la parte backend (T-029).

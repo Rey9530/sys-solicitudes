@@ -18,7 +18,9 @@ services:
     container_name: plazapp-postgres
     restart: unless-stopped
     ports:
-      - "5432:5432"
+      # Puerto del host parametrizable (POSTGRES_PORT) para evitar choques con
+      # otros proyectos que ya usen el 5432. El puerto interno sigue siendo 5432.
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-syssol}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-syssol}

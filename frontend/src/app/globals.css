@@ -26,17 +26,20 @@
 }
 
 @layer components {
+  /* Tailwind v4: `@apply` solo admite utilidades, no clases de componente
+     personalizadas. Las variantes repiten las utilidades base en vez de
+     `@apply btn`. (fix del módulo 01) */
   .btn {
     @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-primary text-white hover:opacity-90;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-white hover:opacity-90;
   }
   .btn-secondary {
-    @apply btn bg-gray-100 text-gray-900 hover:bg-gray-200;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gray-100 text-gray-900 hover:bg-gray-200;
   }
   .btn-ghost {
-    @apply btn hover:bg-gray-100;
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-gray-100;
   }
   .input {
     @apply w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary;

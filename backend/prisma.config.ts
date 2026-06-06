@@ -15,8 +15,11 @@ export default defineConfig({
   migrations: {
     seed: 'ts-node prisma/seed.ts',
   },
-  // datasource se sobreescribe por CLI flags (--url, --direct-url)
-  // o por variables de entorno. Mantenemos esta sección explícita.
+  // Prisma 7 exige datasource.url en el config para migrate/introspect.
+  // La URL se lee del entorno (.env cargado arriba con dotenv/config).
+  datasource: {
+    url: process.env.DATABASE_URL,
+  },
   experimental: {
     adapter: true,
   },

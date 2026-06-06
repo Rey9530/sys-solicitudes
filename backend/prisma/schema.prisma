@@ -36,7 +36,7 @@ model rol {
   descripcion String?
   created_at  DateTime @default(now()) @db.Timestamptz(6)
 
-  usuarios usuario_rol[]
+  usuarios usuario[]
 
   @@map("rol")
 }
@@ -65,8 +65,11 @@ model plaza {
   deleted_at         DateTime? @db.Timestamptz(6)
 
   // Relaciones (se completan en las tareas de cada módulo)
-  configuracion configuracion?
-  // usuarios, locales, solicitudes, etc.
+  configuracion   configuracion?
+  usuarios        usuario[]
+  roles_staff     rol_staff[]
+  auditoria_login auditoria_login[]
+  // locales, solicitudes, etc.
 
   @@index([deleted_at])
   @@map("plaza")
@@ -92,20 +95,118 @@ model configuracion {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Usuarios (referencia anticipada para joins del catálogo global)
+// Usuarios y staff (módulo 02 · autenticación)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Pivote usuario-rol. v1: un usuario pertenece a UNA sola plaza y UN solo rol.
-/// El constraint único (usuario_id) lo enforza en la lógica de aplicación
-/// (T-V02, S-MT-C). Detalles: PLANIFICACION/02 T-018.
-model usuario_rol {
-  id         String   @id @default(uuid()) @db.Uuid
-  usuario_id String   @unique @db.Uuid // 1 plaza + 1 rol por usuario
-  rol_id     String   @db.Uuid
-  created_at DateTime @default(now()) @db.Timestamptz(6)
+/// Usuario del sistema. v1: pertenece a UNA sola plaza y UN solo rol (S-MT-C).
+/// Decisiones aplicadas:
+///   - rol_id como FK directa (no pivote). Sesión 2026-06-05.
+///   - plaza_id NULL solo para superadmin; NOT NULL para admin_plaza/inquilino (app).
+///   - rol_staff_id NOT NULL cuando rol=admin_plaza (validado en app, S-ResponsabilidadStaff).
+///   - inquilino_id: columna sin @relation; la FK se añade en módulo 04 (T-062).
+///   - password_hash bcrypt cost 12, prefijo $2b$/$2a$ (RI-5, validado en app).
+/// Detalles: docs/04-modelo-de-datos.md §1.1, PLANIFICACION/02 T-018.
+model usuario {
+  id             String    @id @default(uuid()) @db.Uuid
+  plaza_id       String?   @db.Uuid
+  inquilino_id   String?   @db.Uuid // FK lógica a inquilino (módulo 04)
+  rol_id         String    @db.Uuid
+  rol_staff_id   String?   @db.Uuid
+  email          String
+  password_hash  String
+  nombre         String
+  telefono       String?
+  email_invalido Boolean   @default(false)
+  last_login_at  DateTime? @db.Timestamptz(6)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at     DateTime? @db.Timestamptz(6)
 
-  rol rol @relation(fields: [rol_id], references: [id])
+  plaza                 plaza?                @relation(fields: [plaza_id], references: [id])
+  rol                   rol                   @relation(fields: [rol_id], references: [id])
+  rol_staff             rol_staff?            @relation(fields: [rol_staff_id], references: [id])
+  refresh_tokens        refresh_token[]
+  password_reset_tokens password_reset_token[]
+  auditoria_login       auditoria_login[]
 
+  @@unique([plaza_id, email])
   @@index([rol_id])
-  @@map("usuario_rol")
+  @@index([deleted_at])
+  @@map("usuario")
+}
+
+/// Rol operativo configurable por plaza (técnico, ingeniero, supervisor, …).
+/// Sin catálogo fijo en v1 (S-RolStaff, S-MD-K). Detalles: PLANIFICACION/02 T-019.
+model rol_staff {
+  id          String   @id @default(uuid()) @db.Uuid
+  plaza_id    String   @db.Uuid
+  codigo      String
+  nombre      String
+  descripcion String?
+  activo      Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @updatedAt @db.Timestamptz(6)
+
+  plaza    plaza     @relation(fields: [plaza_id], references: [id])
+  usuarios usuario[]
+
+  @@unique([plaza_id, codigo])
+  @@index([plaza_id, activo])
+  @@map("rol_staff")
+}
+
+/// Refresh token rotado (D3). Se guarda solo el SHA-256, nunca el token plano.
+/// Detalles: PLANIFICACION/02 T-020.
+model refresh_token {
+  id         String    @id @default(uuid()) @db.Uuid
+  usuario_id String    @db.Uuid
+  token_hash String
+  expires_at DateTime  @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  user_agent String?
+  ip         String?
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  usuario usuario @relation(fields: [usuario_id], references: [id])
+
+  @@index([usuario_id])
+  @@map("refresh_token")
+}
+
+/// Token de reset de contraseña, un solo uso, 30 min (RN-AU-6).
+/// Se guarda solo el SHA-256. Detalles: PLANIFICACION/02 T-020.
+model password_reset_token {
+  id         String    @id @default(uuid()) @db.Uuid
+  usuario_id String    @db.Uuid
+  token_hash String
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+
+  usuario usuario @relation(fields: [usuario_id], references: [id])
+
+  @@index([usuario_id])
+  @@map("password_reset_token")
+}
+
+/// Bitácora de intentos de login (RN-AU-4, lockout 10/15 min — T-V13).
+/// Append-only. plaza_id/usuario_id NULL si el email no existe.
+/// Detalles: PLANIFICACION/02 T-021.
+model auditoria_login {
+  id           String   @id @default(uuid()) @db.Uuid
+  plaza_id     String?  @db.Uuid
+  usuario_id   String?  @db.Uuid
+  email        String
+  exitoso      Boolean
+  motivo_fallo String?
+  ip           String?
+  user_agent   String?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  plaza   plaza?   @relation(fields: [plaza_id], references: [id])
+  usuario usuario? @relation(fields: [usuario_id], references: [id])
+
+  @@index([email, created_at])
+  @@index([plaza_id, created_at])
+  @@map("auditoria_login")
 }
