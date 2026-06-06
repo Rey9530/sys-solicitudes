@@ -8,17 +8,17 @@
 
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
-| T-063 | Crear migración Prisma con `categoria` | Alta | Pendiente |
-| T-064 | Crear migración Prisma con `subcategoria` | Alta | Pendiente |
-| T-065 | Crear migración Prisma con `subcategoria_supervisor` (N:M) | Alta | Pendiente |
-| T-066 | Crear trigger `tg_subcategoria_max_5_supervisores` | Alta | Pendiente |
-| T-067 | Implementar CRUD categorias (POST/GET/PATCH/DELETE) | Alta | Pendiente |
-| T-068 | Implementar CRUD subcategorias (POST/GET/PATCH/DELETE) | Alta | Pendiente |
-| T-069 | Implementar asignación/cambio de responsable de subcategoría | Alta | Pendiente |
-| T-070 | Implementar endpoints de supervisores (POST/DELETE) | Alta | Pendiente |
-| T-071 | Validar SC-6 en aplicación (responsable y supervisores admin_plaza con rol_staff activo y misma plaza) | Alta | Pendiente |
-| T-072 | Implementar pantalla /admin/categorias | Alta | Pendiente |
-| T-073 | Implementar pantalla /admin/categorias/[id]/subcategorias | Alta | Pendiente |
+| T-063 | Crear migración Prisma con `categoria` | Alta | Completada |
+| T-064 | Crear migración Prisma con `subcategoria` | Alta | Completada |
+| T-065 | Crear migración Prisma con `subcategoria_supervisor` (N:M) | Alta | Completada |
+| T-066 | Crear trigger `tg_subcategoria_max_5_supervisores` | Alta | Completada |
+| T-067 | Implementar CRUD categorias (POST/GET/PATCH/DELETE) | Alta | Completada |
+| T-068 | Implementar CRUD subcategorias (POST/GET/PATCH/DELETE) | Alta | Completada |
+| T-069 | Implementar asignación/cambio de responsable de subcategoría | Alta | Completada (⚠️ parcial: reasignación masiva T-V04 en módulo 07) |
+| T-070 | Implementar endpoints de supervisores (POST/DELETE) | Alta | Completada |
+| T-071 | Validar SC-6 en aplicación (responsable y supervisores admin_plaza con rol_staff activo y misma plaza) | Alta | Completada |
+| T-072 | Implementar pantalla /admin/categorias | Alta | Completada |
+| T-073 | Implementar pantalla /admin/categorias/[id]/subcategorias | Alta | Completada |
 
 ---
 
@@ -34,8 +34,9 @@
   - [ ] Seed inicial: 4 categorías base por plaza demo (`Mantenimiento`, `Eventos`, `Remodelaciones`, `Otros`).
 - **Dependencias:** T-036 (en `03-plazas-multitenant.md`), T-038.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** Modelo `categoria` en `schema.prisma` con UNIQUE(plaza_id, nombre), INDEX(plaza_id, activo) y RLS (migración `20260606230825_modulo_05_categorias`). Soft delete vía `activo=false` (sin `deleted_at`: el histórico de solicitudes referenciará categorías inactivas). Seed con 4 categorías base para la plaza demo (idempotente, `upsert`). Validación Zod en `packages/contracts/src/categorias`. Verificado: nombre duplicado → 409 `CATEGORIA_NOMBRE_DUPLICADO`.
 
 ### T-064 — Crear migración Prisma con `subcategoria`
 
@@ -49,8 +50,9 @@
   - [ ] RLS habilitado.
 - **Dependencias:** T-063, T-018, T-019.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** Modelo `subcategoria` con relación nombrada `subcategoria_responsable` a `usuario` e índices del plan. ⚠️ El ENUM `solicitud_prioridad` (A|B|C|D|F) se **adelantó de T-078** a esta migración porque `subcategoria.prioridad` lo usa como default heredable; T-078 ya no debe recrearlo. RLS habilitado en la misma migración.
 
 ### T-065 — Crear migración Prisma con `subcategoria_supervisor` (N:M)
 
@@ -64,8 +66,9 @@
   - [ ] Una política RLS que une `subcategoria_supervisor` con `subcategoria.plaza_id`.
 - **Dependencias:** T-064.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** Pivote con PK compuesta y `onDelete: Cascade` hacia `subcategoria`. RLS sin `plaza_id` propio: policy `USING/WITH CHECK (EXISTS … subcategoria.plaza_id = current_setting('app.plaza_id'))` — la subquery corre bajo la policy de `subcategoria`, por lo que el aislamiento es transitivo. Verificado cross-tenant con la plaza `acme` (0 filas visibles, 404 al acceder por id).
 
 ### T-066 — Crear trigger `tg_subcategoria_max_5_supervisores`
 
@@ -79,8 +82,9 @@
   - [ ] El trigger se elimina correctamente al hacer DELETE (y permite re-INSERT).
 - **Dependencias:** T-065.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** Migración `20260606230900_subcategoria_max_5_supervisores_trigger`. `BEFORE INSERT OR UPDATE OF subcategoria_id`, `RAISE EXCEPTION 'SUBCATEGORIA_MAX_5_SUPERVISORES…' USING ERRCODE='check_violation'`; en UPDATE excluye la fila propia (sin doble conteo). Probado en BD: 5 inserts OK, el 6º rechazado, DELETE permite re-INSERT. El backend mapea el mensaje a 409 (mismo patrón que `CONTRATO_OVERLAP`).
 
 ### T-067 — Implementar CRUD categorias (POST/GET/PATCH/DELETE)
 
@@ -95,8 +99,9 @@
   - [ ] Errores con códigos de dominio.
 - **Dependencias:** T-063, T-022.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** CRUD en `categorias.service.ts` con `withTenant` + auditoría en cada mutación. `GET` para `inquilino` fuerza `activo=true` (ignora el filtro). DELETE = soft delete; con subcategorías activas → 400 `CATEGORIA_HAS_ACTIVE_SUBCATEGORIAS` (verificado con curl). Detalle incluye subcategorías **activas** con responsable/supervisores enriquecidos.
 
 ### T-068 — Implementar CRUD subcategorias (POST/GET/PATCH/DELETE)
 
@@ -114,8 +119,9 @@
   - [ ] Errores con códigos: `RESPONSABLE_INVALIDO`, `SUPERVISOR_INVALIDO`, `SUBCATEGORIA_MAX_5_SUPERVISORES`.
 - **Dependencias:** T-064, T-065, T-066, T-067, T-069, T-070, T-071.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** Endpoints según el plan. `supervisorIds` se deduplica y se inserta **secuencialmente** (el trigger T-066 cuenta fila a fila). Errores verificados: `RESPONSABLE_INVALIDO`/`SUPERVISOR_INVALIDO` (422), `SUBCATEGORIA_MAX_5_SUPERVISORES` (409), `SUBCATEGORIA_NOMBRE_DUPLICADO` (409). El PATCH no cambia responsable (endpoint dedicado T-069). Outputs con `supervisorIds` + `responsable`/`supervisores` enriquecidos (`SubcategoriaDetailOutputSchema`).
 
 ### T-069 — Implementar asignación/cambio de responsable de subcategoría
 
@@ -129,8 +135,9 @@
   - [ ] Auditoría: registra el cambio con `antes`/`después` del responsable.
 - **Dependencias:** T-064, T-071.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada (⚠️ parcial).
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** `PATCH …/responsable` con SC-6 y auditoría antes/después implementado. ⚠️ **Desviación temporal:** la decisión T-V04 ("REASIGNAR TODAS las solicitudes activas, incluyendo en_revision") NO se puede implementar aún porque `solicitud`/`solicitud_historial` no existen (módulo 06). La reasignación masiva + emails se entrega en el **módulo 07** (donde existe `SolicitudStateService`); el punto de extensión quedó comentado en `categorias.service.ts::setResponsable`. ⚠️ El criterio original "NO reasigna solicitudes en curso" quedó OBSOLETO por T-V04.
 
 ### T-070 — Implementar endpoints de supervisores (POST/DELETE)
 
@@ -144,8 +151,9 @@
   - [ ] RLS probado.
 - **Dependencias:** T-065, T-066, T-071.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** POST idempotente (si ya está asignado retorna 200/201 con el estado actual, sin tocar auditoría); DELETE → 404 `SUPERVISOR_NOT_FOUND` si no existe (verificado: quitar dos veces). El 6º supervisor llega al trigger y se mapea a 409.
 
 ### T-071 — Validar SC-6 en aplicación (responsable y supervisores admin_plaza con rol_staff activo y misma plaza)
 
@@ -160,8 +168,9 @@
   - [ ] El validador cachea la consulta del usuario por 1 min para no pegar a BD en cada llamada.
 - **Dependencias:** T-018, T-019.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** `validators/staff-for-subcategoria.validator.ts` como provider inyectable (no función suelta: necesita estado para el caché). Recibe el `tx` de la transacción del caller (corre bajo RLS). Caché en memoria TTL 60s **solo de veredictos válidos** (un fallo siempre se re-consulta para no bloquear usuarios recién activados). ⚠️ Lanza **422** (`UnprocessableEntityException`) como pide esta tarea; T-069/T-070 mencionaban 403 — se unificó en 422 por ser un error de datos de entrada, no de permisos. Sin tests unitarios (política del proyecto): casos verificados manualmente con curl (superadmin sin rol_staff → 422; usuario de otra plaza → invisible por RLS → 422).
 
 ### T-072 — Implementar pantalla /admin/categorias
 
@@ -174,8 +183,9 @@
   - [ ] Si `inquilino`, ve un read-only de las categorías activas (usado en el formulario de nueva solicitud).
 - **Dependencias:** T-067.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** `/admin/categorias` (listado + búsqueda + filtro activo + paginación), `/nueva` y `/[id]` (detalle con form de edición y subcategorías activas). `CategoriaForm` reutilizable crear/editar. La acción "Desactivar" muestra el error 400 del backend cuando hay subcategorías activas (no se duplica la validación en cliente). Read-only de inquilino: pendiente de pantalla propia en el wizard de solicitudes (T-088), donde se consumen las categorías activas.
 
 ### T-073 — Implementar pantalla /admin/categorias/[id]/subcategorias
 
@@ -190,5 +200,6 @@
   - [ ] Si `inquilino`, ve solo lectura de las subcategorías activas (usado en T-089).
 - **Dependencias:** T-068, T-069, T-070.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-05-categorias`):** `SubcategoriasManager` (client) con tabla y modales: nueva/editar (RHF+Zod), responsable (select de staff), supervisores (lista + agregar/quitar, badge N/5 en rojo al límite, select deshabilitado al llegar a 5). Los combobox usan `GET /usuarios?rol=admin_plaza` (**adelanto parcial de T-034**: se añadió el listado mínimo con `rolStaffActivo` al módulo usuarios) filtrado client-side a staff activo (SC-6).
