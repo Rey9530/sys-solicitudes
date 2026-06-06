@@ -31,7 +31,7 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 | `01-setup-base.md` | T-001 … T-016 | 16 | 0 | 0% |
 | `02-autenticacion-usuarios.md` | T-017 … T-035 | 19 | 0 | 0% |
 | `03-plazas-multitenant.md` | T-036 … T-046 | 11 | 0 | 0% |
-| `04-locales-inquilinos-contratos.md` | T-047 … T-062 | 16 | 0 | 0% |
+| `04-locales-inquilinos-contratos.md` | T-047 … T-062 | 16 | 14 (+2 descartadas T-V07) | 100% |
 | `05-categorias-subcategorias.md` | T-063 … T-073 | 11 | 0 | 0% |
 | `06-solicitudes.md` | T-074 … T-090 | 17 | 0 | 0% |
 | `07-aprobaciones.md` | T-091 … T-108 | 18 | 0 | 0% |
@@ -41,7 +41,9 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 | `11-reportes-panel.md` | T-135 … T-145 | 11 | 0 | 0% |
 | `12-seguridad-auditoria.md` | T-146 … T-152 | 7 | 0 | 0% |
 | `13-observabilidad-despliegue.md` | T-153 … T-160 | 8 | 0 | 0% |
-| **Total** | | **175** | **0** | **0%** |
+| **Total** | | **175** | **14** | **8%** |
+
+> Nota 2026-06-06: los módulos 01–03 figuran con 0 en esta tabla aunque sus bitácoras los marcan completados — la tabla no se actualizó al cierre de esos módulos. Se actualizó solo la fila del módulo 04 en esta sesión; regularizar las filas 00–03 al revisarlas.
 
 ---
 

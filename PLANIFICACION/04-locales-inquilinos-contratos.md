@@ -8,22 +8,22 @@
 
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
-| T-047 | Crear migración Prisma con `local` | Alta | Pendiente |
-| T-048 | Crear migración Prisma con `inquilino` | Alta | Pendiente |
-| T-049 | Crear migración Prisma con `contrato` + CHECK de fechas | Alta | Pendiente |
-| T-050 | Crear trigger PL/pgSQL para anti-solapamiento de contratos vigentes | Alta | Pendiente |
-| T-051 | Implementar CRUD locales (POST/GET/PATCH /api/v1/locales) | Alta | Pendiente |
-| T-052 | Implementar importación CSV de locales | Media | Pendiente |
-| T-053 | Implementar CRUD inquilinos (POST/GET/PATCH /api/v1/inquilinos) | Alta | Pendiente |
-| T-054 | Implementar CRUD contratos (POST/GET/PATCH /api/v1/contratos) | Alta | Pendiente |
-| T-055 | Implementar cierre/renovación de contrato | Alta | Pendiente |
-| T-056 | Implementar alertas de vencimiento T-30 y T-7 con @nestjs/schedule | Media | Pendiente |
-| T-057 | Implementar pantallas /admin/locales y /admin/locales/[id] | Alta | Pendiente |
-| T-058 | Implementar pantalla /admin/locales/importar | Media | Pendiente |
-| T-059 | Implementar pantallas /admin/inquilinos y /admin/inquilinos/[id] | Alta | Pendiente |
-| T-060 | Implementar pantallas /admin/contratos y /admin/contratos/[id] | Alta | Pendiente |
-| T-061 | Implementar historial de contratos por local y por inquilino | Media | Pendiente |
-| T-062 | Implementar upload de contrato firmado (PDF) con MinIO | Media | Pendiente |
+| T-047 | Crear migración Prisma con `local` | Alta | Completada |
+| T-048 | Crear migración Prisma con `inquilino` | Alta | Completada |
+| T-049 | Crear migración Prisma con `contrato` + CHECK de fechas | Alta | Completada |
+| T-050 | Crear trigger PL/pgSQL para anti-solapamiento de contratos vigentes | Alta | Completada |
+| T-051 | Implementar CRUD locales (POST/GET/PATCH /api/v1/locales) | Alta | Completada |
+| T-052 | Implementar importación CSV de locales | Media | Descartada (T-V07) |
+| T-053 | Implementar CRUD inquilinos (POST/GET/PATCH /api/v1/inquilinos) | Alta | Completada |
+| T-054 | Implementar CRUD contratos (POST/GET/PATCH /api/v1/contratos) | Alta | Completada |
+| T-055 | Implementar cierre/renovación de contrato | Alta | Completada |
+| T-056 | Implementar alertas de vencimiento T-30 y T-7 con @nestjs/schedule | Media | Completada |
+| T-057 | Implementar pantallas /admin/locales y /admin/locales/[id] | Alta | Completada |
+| T-058 | Implementar pantalla /admin/locales/importar | Media | Descartada (T-V07) |
+| T-059 | Implementar pantallas /admin/inquilinos y /admin/inquilinos/[id] | Alta | Completada |
+| T-060 | Implementar pantallas /admin/contratos y /admin/contratos/[id] | Alta | Completada |
+| T-061 | Implementar historial de contratos por local y por inquilino | Media | Completada |
+| T-062 | Implementar upload de contrato firmado (PDF) con MinIO | Media | Completada |
 
 ---
 
@@ -39,8 +39,11 @@
   - [ ] RLS habilitado por T-038.
 - **Dependencias:** T-036 (en `03-plazas-multitenant.md`, plaza), T-038.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelo `local` en `schema.prisma` con enum `local_estado` (4 estados, S-EstadosLocal/T-V07) y todos los índices del criterio. Migración `20260606220306_modulo_04_locales_contratos` aplicada (incluye también T-048/T-049/adjunto/email_log).
+  - **RLS añadida en la propia migración** (patrón T-038): `GRANT` a `syssol_app` + `ENABLE`+`FORCE ROW LEVEL SECURITY` + policy `USING/WITH CHECK (plaza_id = current_setting('app.plaza_id', true)::uuid)` para `local`, `inquilino`, `contrato`, `adjunto` y `email_log`. Verificado fail-closed (0 filas sin contexto) y aislamiento entre 2 plazas.
+  - Validación Zod (`codigo` regex `^[A-Z0-9-]+$` máx 16, `metrajeM2 > 0`) ya existía en `packages/contracts/src/locales` (T-022); se reutilizó sin cambios.
 
 ### T-048 — Crear migración Prisma con `inquilino`
 
@@ -53,8 +56,10 @@
   - [ ] RLS habilitado.
 - **Dependencias:** T-036, T-038.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelo `inquilino` migrado (misma migración que T-047). ⚠️ El UNIQUE parcial `(plaza_id, identificacion) WHERE identificacion IS NOT NULL` no es expresable en Prisma → `CREATE UNIQUE INDEX inquilino_plaza_identificacion_uniq ...` como SQL manual al final de la migración (NO declarar `@@unique` en el schema, generaría un índice no-parcial).
+  - Además se añadió la **FK real `usuario.inquilino_id → inquilino.id`** (estaba pendiente desde T-018 como columna sin relación). Prisma ordenó correctamente el `ALTER TABLE usuario` después del `CREATE TABLE inquilino`.
 
 ### T-049 — Crear migración Prisma con `contrato` + CHECK de fechas
 
@@ -69,8 +74,10 @@
   - [ ] RLS habilitado.
 - **Dependencias:** T-047, T-048, T-038.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Modelo `contrato` migrado con enum `contrato_estado`, fechas `@db.Date`, `monto_mensual DECIMAL(12,2)`, `moneda CHAR(3) default 'USD'` y los 3 índices. ⚠️ Prisma 7 no soporta CHECK declarativo → `ALTER TABLE contrato ADD CONSTRAINT contrato_fechas_chk CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio)` como SQL manual en la migración. El `refine` de Zod en `CreateContratoSchema` cubre la misma regla en la capa de validación.
+  - Zod (`montoMensual >= 0`, `moneda` regex `^[A-Z]{3}$` ISO 4217) ya existía en contracts; sin cambios.
 
 ### T-050 — Crear trigger PL/pgSQL para anti-solapamiento de contratos vigentes
 
@@ -85,8 +92,12 @@
   - [ ] El trigger maneja correctamente el caso de UPDATE del propio registro (no se auto-bloquea).
 - **Dependencias:** T-049.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Migración `20260606220340_contrato_no_overlap_trigger` con `fn_contrato_no_overlap()` + trigger BEFORE INSERT OR UPDATE. Implementado con `daterange(fecha_inicio, fecha_fin, '[)') && daterange(...)` — `fecha_fin NULL` = +infinito (cubre S-ContratoIndefinido) — en lugar del `EXISTS` con comparaciones manuales del enunciado (mismo resultado, menos casos borde). Solo valida cuando `NEW.estado = 'vigente'` y excluye `c.id <> NEW.id` (no se auto-bloquea en UPDATE).
+  - El `RAISE EXCEPTION` empieza con `CONTRATO_OVERLAP` y el backend lo mapea por substring del `message` (llega como `PrismaClientUnknownRequestError` vía `@prisma/adapter-pg`) → `409` RFC 7807 con código `CONTRATO_OVERLAP`.
+  - **Guard de fechas invertidas:** si `fecha_fin < fecha_inicio` el trigger deja pasar la fila para que el CHECK `contrato_fechas_chk` la rechace con su propio error (sin él, `daterange()` lanzaba un error confuso de bounds). `actualización:` este guard se añadió tras la primera verificación; la función se re-aplicó con `CREATE OR REPLACE` y se sincronizó el checksum de la migración (BD dev, migración aún no compartida).
+  - **Verificado en psql:** A ene–dic vs B jul–dic → `CONTRATO_OVERLAP`; A indefinido vs B futuro → `CONTRATO_OVERLAP`; A finalizado + B posterior → OK; UPDATE del propio registro → OK; fechas invertidas → CHECK violation limpia.
 
 ### T-051 — Implementar CRUD locales (POST/GET/PATCH /api/v1/locales)
 
@@ -103,8 +114,14 @@
   - [ ] Errores con códigos de dominio RFC 7807 (`LOCAL_HAS_ACTIVE_CONTRACT`, `INVALID_STATE_TRANSITION`, `LOCAL_NOT_FOUND`).
 - **Dependencias:** T-047, T-022 (en `02-autenticacion-usuarios.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `LocalesService`/`LocalesController` implementados sobre los stubs (patrón de `plazas`): triple guard + `withTenant(actor.plazaId)` en todas las queries (`plaza_id` SIEMPRE del JWT). `POST` crea con `estado: 'disponible'`; código duplicado (P2002 del `@@unique`) → `409 LOCAL_CODIGO_DUPLICADO`.
+  - Rol `inquilino` en `GET /locales`: filtro `contratos.some({ inquilino_id: actor.inquilinoId, estado: 'vigente' })` (S-LO-B); en `GET /:id` → 404 si el local no es suyo.
+  - Reglas de estado (RI-2): `estado:'disponible'` con contrato vigente → `400 INVALID_STATE_TRANSITION`; además `estado:'alquilado'` manual también se rechaza (solo lo setea T-054). `DELETE` con vigente → `409 LOCAL_HAS_ACTIVE_CONTRACT` (soft delete si no).
+  - El criterio de `remodelacion`→`en_mantenimiento` queda para **T-103** (módulo 07), como indica el propio criterio.
+  - ⚠️ `Decimal` de Prisma se convierte a `number` en los outputs (`metraje_m2`).
+  - **Verificado funcionalmente con 2 plazas:** plaza B no ve ni accede a locales de A (lista vacía y 404); códigos de dominio confirmados con curl.
 
 ### T-052 — Implementar importación CSV de locales
 
@@ -120,8 +137,9 @@
   - [ ] Auditoría: registra la importación con `cantidad_creados`, `cantidad_fallidos` en `auditoria`.
 - **Dependencias:** T-051.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Descartada.
+- **Bitácora de cambios:**
+  - 2026-06-06: ⚠️ **Descartada por decisión vinculante T-V07** (2026-06-05): «SIN importador CSV en v1; el alta de locales es uno por uno desde el panel admin». Confirmado con el owner antes de iniciar el módulo. CSV puede reconsiderarse en v1.1. No se instala `papaparse`.
 
 ### T-053 — Implementar CRUD inquilinos (POST/GET/PATCH /api/v1/inquilinos)
 
@@ -136,8 +154,13 @@
   - [ ] RLS probado.
 - **Dependencias:** T-048, T-022.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Módulo `inquilinos` creado desde cero (no había stub) y registrado en `app.module.ts`. CRUD completo con `withTenant`; `PATCH` solo contacto/dirección (razón social e identificación inmutables, decisión de UX del enunciado); `DELETE` con contrato vigente → `409 INQUILINO_HAS_ACTIVE_CONTRACT`.
+  - Violación del UNIQUE parcial → `409 INQUILINO_IDENTIFICACION_DUPLICADA` (match por P2002 o por nombre del índice en el mensaje, ya que el índice manual no está en el schema de Prisma).
+  - Se añadió `ListInquilinosQuerySchema` (filtros `razonSocial`, `identificacion`) a `packages/contracts/src/locales` (no existía).
+  - El opcional «alta rápida de inquilino + usuario» se implementó en **T-059** (vía `POST /usuarios` mínimo).
+  - **Verificado:** identificación duplicada → 409; inquilino solo ve su propio registro; RLS probado con 2 plazas.
 
 ### T-054 — Implementar CRUD contratos (POST/GET/PATCH /api/v1/contratos)
 
@@ -153,8 +176,14 @@
   - [ ] RLS probado.
 - **Dependencias:** T-049, T-050, T-051, T-053.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `ContratosService`/`ContratosController` implementados. `POST` valida local+inquilino de la plaza dentro de la transacción `withTenant`, crea `vigente` (trigger T-050 → catch → `409 CONTRATO_OVERLAP`) y actualiza `local.estado='alquilado'` **en la misma transacción**.
+  - `GET /:id` incluye adjuntos (vía endpoints de T-062) y flags `enVentanaT30`/`enVentanaT7` calculados contra la fecha actual; el listado (`ContratoListItem`) incluye `localCodigo` e `inquilinoRazonSocial` para las tablas del frontend.
+  - Rol `inquilino`: `GET /contratos` fuerza `inquilino_id = actor.inquilinoId` ignorando cualquier `inquilinoId` del query (nunca confiar en input del cliente); `GET /:id` → 404 si no es suyo.
+  - `PATCH` solo `montoMensual`/`condiciones` (cambiar fechas/local/inquilino = cerrar y crear, decisión de UX del enunciado).
+  - Mapper compartido `contrato.mapper.ts`: `Decimal`→`number`, `DATE`→`'YYYY-MM-DD'`, orden de historial.
+  - **Verificado con 2 plazas:** creación→`alquilado`, solapado→409, B no ve contratos de A.
 
 ### T-055 — Implementar cierre/renovación de contrato
 
@@ -167,8 +196,13 @@
   - [ ] Auditoría: cada cierre/renovación registrada con `antes`/`después`.
 - **Dependencias:** T-054.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `POST /:id/cerrar` y `POST /:id/renovar` implementados. ⚠️ **Decisión de sesión:** `CerrarContratoSchema` ganó el campo opcional `estado: 'finalizado' | 'cancelado'` (default `finalizado`) porque el criterio dice «pasa a finalizado o cancelado» pero el schema original no permitía elegir.
+  - Cerrar: no-vigente → `400 INVALID_STATE_TRANSITION`; `fechaFinEfectiva < fecha_inicio` → `400 INVALID_DATE`; default de `fecha_fin_efectiva` = hoy; si era el último vigente del local → `local.estado='disponible'` en la misma tx.
+  - Renovar: **cierra PRIMERO** (`finalizado`, `motivo_fin:'renovado'`) y luego inserta el nuevo vigente — el orden importa: insertar antes de cerrar dispararía un falso `CONTRATO_OVERLAP` del trigger. Devuelve `{ cerrado, nuevo }`.
+  - Auditoría con `antes`/`después` en ambas operaciones.
+  - **Verificado:** renovar → viejo `finalizado` + nuevo `vigente` + local sigue `alquilado`; cerrar → local `disponible`; cerrar dos veces → 400.
 
 ### T-056 — Implementar alertas de vencimiento T-30 y T-7 con @nestjs/schedule
 
@@ -183,8 +217,14 @@
   - [ ] Cron testeable manualmente con endpoint `POST /api/v1/contratos/cron/test-alertas` (solo en dev).
 - **Dependencias:** T-054, T-118 (en `09-notificaciones-email.md`, plantillas).
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `backend/src/modules/contratos/cron/vencimiento-alert.cron.ts` con `@Cron('0 9 * * *')`. ⚠️ **Desviación (T-V08):** timeZone `America/El_Salvador`, NO `America/Costa_Rica` como dice el enunciado — la TZ de la plataforma es fija por decisión vinculante.
+  - ⚠️ **Adelanto de T-118:** como las plantillas/cola aún no existen, se creó la tabla `email_log` mínima (misma migración de T-047) y `MailerService.sendContratoPorVencer()` con plantilla HTML inline provisional. T-118 debe migrar esto a `contrato-por-vencer.html` + cola con reintentos. La dedup usa `plantilla='contrato_vencimiento_alert'` y `variables.ventana` ('T-30'/'T-7') por plaza y día de El Salvador.
+  - **El cron usa `PrismaAdminService`** (bypassa RLS): corre sin contexto de tenant y recorre todas las plazas; el aislamiento se garantiza agrupando explícitamente por `plaza_id`. NO usar `withTenant` aquí.
+  - `ScheduleModule.forRoot()` ya estaba registrado vía `NotificacionesModule`; el descubrimiento de `@Cron` es global, no hubo que importarlo en `ContratosModule`.
+  - Endpoint dev-only `POST /contratos/cron/test-alertas` (404 si `NODE_ENV==='production'`).
+  - **Verificado:** contrato T-30 en plaza A y T-7 en plaza B → 2 emails en MailHog (cada plaza solo con sus contratos), filas en `email_log`, segunda ejecución el mismo día → 0 enviadas (dedup).
 
 ### T-057 — Implementar pantallas /admin/locales y /admin/locales/[id]
 
@@ -199,8 +239,14 @@
   - [ ] Acciones con React Query (useSWR o tanstack-query) para refresh optimista.
 - **Dependencias:** T-051, T-053, T-054, T-058.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Route group nuevo `(admin-plaza)` con layout que verifica rol `admin_plaza`/`superadmin` server-side (patrón de `(admin-plataform)`). Pantallas: `/admin/locales` (tabla paginada + filtros estado/piso/sector por query params), `/admin/locales/nuevo` (RHF + Zod) y `/admin/locales/[id]` con tabs Datos/Contratos/Adjuntos/Solicitudes (las dos últimas como placeholder hasta módulos 08/06).
+  - ⚠️ **Sin botón «Importar CSV»** (T-V07, T-052/T-058 descartadas).
+  - ⚠️ **Desviación del criterio «React Query»:** se mantiene el patrón arquitectónico existente — Server Components + Server Actions + `revalidatePath`/`router.refresh` (S-ARQ-E/F). Introducir react-query habría requerido exponer la API al cliente. Confirmado con el owner antes de implementar.
+  - Select de estado: solo transiciones válidas (`disponible`/`en_mantenimiento`/`fuera_de_servicio`); con contrato vigente queda deshabilitado mostrando `alquilado`. Desactivar con vigente → toast con el error 409 del backend.
+  - Tablas simples estilo `PlazasTable` (sin DataTable de tanstack-table por ahora; el paquete está instalado para cuando se necesite ordenamiento/column-pinning).
+  - **Verificado:** rutas protegidas (307 → /login sin sesión) y render autenticado con datos reales (login programático NextAuth + curl).
 
 ### T-058 — Implementar pantalla /admin/locales/importar
 
@@ -215,8 +261,9 @@
   - [ ] Indicador de progreso durante el upload.
 - **Dependencias:** T-052.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Descartada.
+- **Bitácora de cambios:**
+  - 2026-06-06: ⚠️ **Descartada por decisión vinculante T-V07** (sin importador CSV en v1). Ver bitácora de T-052.
 
 ### T-059 — Implementar pantallas /admin/inquilinos y /admin/inquilinos/[id]
 
@@ -229,8 +276,12 @@
   - [ ] Si tiene contrato vigente, el botón "Desactivar" está deshabilitado.
 - **Dependencias:** T-053, T-054, T-034 (en `02-autenticacion-usuarios.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `/admin/inquilinos` (tabla + filtros razón social/identificación), `/admin/inquilinos/nuevo` y `/admin/inquilinos/[id]` con tabs Datos/Contratos/Solicitudes (placeholder módulo 06). «Desactivar» deshabilitado con contrato vigente (y el backend lo bloquea con 409 igualmente).
+  - ⚠️ **Adelanto parcial de T-034:** la «alta rápida de usuario asociado» necesitaba `POST /usuarios`, que era un stub. Se implementó la **versión mínima** en backend (`UsuariosService.create`): rol `inquilino` exige `inquilinoId` válido de la plaza, rol `admin_plaza` exige `rolStaffId` activo, `superadmin` no se crea por API, email duplicado → `409 USUARIO_EMAIL_DUPLICADO`. **El CRUD completo de usuarios sigue pendiente en T-034.**
+  - La contraseña temporal se genera en el Server Action (cumple política T-V13) y se muestra **una sola vez** en el modal; el backend envía el email de bienvenida (mailer provisional — T-118 podrá incluir flujo de set-password en vez de password por pantalla).
+  - **Verificado:** usuario inquilino creado vía modal → login OK → ve SOLO sus contratos/locales/registro (aislamiento por rol confirmado con curl); 403 al intentar crear locales.
 
 ### T-060 — Implementar pantallas /admin/contratos y /admin/contratos/[id]
 
@@ -244,8 +295,14 @@
   - [ ] Si es `inquilino`, ve `/inquilino/contratos` con los suyos.
 - **Dependencias:** T-054, T-055, T-056.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `/admin/contratos` (tabla + filtros local/inquilino/estado con selects precargados server-side), `/admin/contratos/nuevo` (select solo de locales `disponible` + inquilinos + fechas + monto; vacío = indefinido) y `/admin/contratos/[id]` con detalle + adjuntos + acciones.
+  - Banner de alerta T-30 (ámbar) / T-7 (rojo) usando los flags `enVentanaT30/T7` del backend.
+  - Cerrar contrato: modal con tipo de cierre (finalizado/cancelado), motivo obligatorio y fecha efectiva. Renovar: modal con preview del nuevo contrato antes de confirmar.
+  - **Portal del inquilino incluido:** route group `(inquilino)` con `/inquilino/contratos` (read-only, el backend filtra por el JWT) y `/inquilino/contratos/[id]` con descarga/subida de su PDF firmado (T-062).
+  - ⚠️ Ajuste único a `frontend/src/lib/api.ts`: con `FormData` ya no se fija `Content-Type: application/json` (deja que fetch ponga el boundary multipart). Sin esto la subida de adjuntos fallaba.
+  - **Verificado:** render autenticado de todas las pantallas (200 + datos), redirecciones 307 sin sesión.
 
 ### T-061 — Implementar historial de contratos por local y por inquilino
 
@@ -259,8 +316,12 @@
   - [ ] Consumido por las pantallas T-057 y T-059.
 - **Dependencias:** T-054.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `GET /locales/:id/contratos` y `GET /inquilinos/:id/contratos` con filtro `?estado=` y paginación. Rol inquilino solo sobre su propio id (404 en otro caso).
+  - ⚠️ **Orden de negocio (vigente → finalizado → cancelado):** el `orderBy` de Prisma sobre el enum es alfabético (cancelado < finalizado < vigente), así que se ordena **en memoria** con un mapa de prioridad + `fecha_inicio DESC` dentro de cada grupo (`contrato.mapper.ordenarHistorial`). Volúmenes por local/inquilino son bajos; si crecieran, migrar a `ORDER BY CASE` con `$queryRaw`.
+  - Consumido por las tabs «Contratos» de `/admin/locales/[id]` y `/admin/inquilinos/[id]` (el detalle embebe el histórico; los endpoints quedan para listados paginados).
+  - **Verificado:** orden correcto tras crear/renovar/cerrar (vigente primero), RLS con 2 plazas.
 
 ### T-062 — Implementar upload de contrato firmado (PDF) con MinIO
 
@@ -276,5 +337,11 @@
   - [ ] Solo el usuario que subió o un `admin_plaza` puede eliminar.
 - **Dependencias:** T-054, T-110 (en `08-adjuntos.md`, MinIO client).
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: ⚠️ **Adelanto parcial de T-110:** se usó/extendió el `MinioService` mínimo del módulo 03 (`bucketForContratos()` nuevo; `putObject`/`presignedGetUrl`/`moveToQuarantine` reutilizados) en lugar de esperar el cliente completo. T-110 lo ampliará sin romper estas rutas. La tabla `adjunto` polimórfica se creó en la migración de T-047 (la reutilizarán solicitudes/locales en módulo 08).
+  - Endpoints: `POST/GET /contratos/:id/adjuntos` en `ContratosController` (cohesión con el recurso); `GET /adjuntos/:id/download` y `DELETE /adjuntos/:id` en el módulo `adjuntos` (polimórficos, se expanden en T-112..T-117). Lógica compartida en `AdjuntosService`.
+  - ⚠️ **Límite 50 MB** (default de `configuracion.tamanio_max_archivo_mb`, T-V06 — no 25 MB del plan original); se lee la config de la plaza en cada subida → `413 ADJUNTO_DEMASIADO_GRANDE`. Solo `application/pdf` → `400 ADJUNTO_MIME_INVALIDO`.
+  - Permisos (docs/06 §6.2.9): admin_plaza sube/borra cualquiera de su plaza; inquilino solo en SUS contratos y solo borra lo que subió (`403 ADJUNTO_DELETE_FORBIDDEN`).
+  - `DELETE` → `moveToQuarantine` (bucket `quarantine-{plaza_id}`) + soft delete.
+  - **Verificado:** subida 201 (admin e inquilino), no-PDF → 400, download pre-firmado 200, delete → objeto en cuarentena + `deleted_at`, todo con MinIO real.
