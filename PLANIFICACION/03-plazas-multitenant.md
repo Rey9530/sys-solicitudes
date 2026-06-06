@@ -12,11 +12,11 @@
 | T-037 | Crear migración Prisma con `configuracion` (1:1 con plaza) | Alta | Completada |
 | T-038 | Implementar RLS en PostgreSQL con `SET LOCAL app.plaza_id` | Alta | Completada |
 | T-039 | Configurar resolución de tenant en middleware Next.js (subdominio/path) | Alta | Pendiente |
-| T-040 | CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin | Alta | Pendiente |
+| T-040 | CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin | Alta | Completada |
 | T-041 | Implementar carga de logo y color_primario por plaza | Media | Pendiente |
 | T-042 | Configurar branding dinámico en frontend (CSS variable con color_primario) | Media | Pendiente |
 | T-043 | Configurar TZ de la plaza con date-fns-tz | Media | Pendiente |
-| T-044 | CRUD configuracion plaza (SLA, MIME, tamaño máx) | Alta | Pendiente |
+| T-044 | CRUD configuracion plaza (SLA, MIME, tamaño máx) | Alta | Completada |
 | T-045 | Seed inicial: crear superadmin y plaza demo | Alta | Pendiente |
 | T-046 | Implementar pantallas /superadmin/plazas | Media | Pendiente |
 
@@ -111,8 +111,13 @@
   - [ ] Errores con códigos de dominio RFC 7807.
 - **Dependencias:** T-036, T-037, T-038, T-022 (en `02-autenticacion-usuarios.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `PlazasModule` implementado. `POST /plazas` (superadmin) crea en una transacción del admin client: `plaza` + `configuracion` (defaults, **cierra T-037**) + 3 `rol_staff` por defecto (`tecnico/ingeniero/supervisor`) + opcional `admin_plaza` inicial (bcrypt, `rol_staff` por `rolStaffCodigo`) + email de bienvenida (`MailerService.sendBienvenida`). `GET /plazas` paginado (superadmin), `GET /plazas/:id` (superadmin: admin client; admin_plaza: su plaza vía `withTenant`), `PATCH /plazas/:id` (no slug/timezone), `DELETE` soft delete (superadmin). Cada mutación → `AuditoriaService.record`.
+  - Verificado: crear plaza `201`, listar, slug duplicado `409`, bienvenida en MailHog; **RLS cross-tenant**: admin de Acme → su plaza `200`, plaza ajena `403 PLAZA_SCOPE_VIOLATION`, listar todas `403 ROLE_FORBIDDEN`.
+  - ⚠️ **Hardening (multi-tenant-auditor):** `update` lee `before` y escribe con el mismo cliente acotado (admin_plaza vía `withTenant`, RLS como backstop); `PrismaAdminService` exige `DATABASE_ADMIN_URL` (sin fallback); `TokenService` pasó al admin client y se añadió RLS `USING(false)` a `refresh_token`/`password_reset_token` (solo admin client las toca).
+  - ⚠️ **Auditoría mínima:** modelo `auditoria` + `AuditoriaService.record` (insert append-only vía admin client). El trigger no-update/delete, el interceptor automático y la retención son **T-146/T-150** (módulo 12).
+  - ⚠️ Crear plaza siembra roles de staff por defecto para que el admin inicial tenga `rol_staff` (S-ResponsabilidadStaff); si `rolStaffCodigo` no existe → `400 ROL_STAFF_NO_EXISTE`.
 
 ### T-041 — Implementar carga de logo y color_primario por plaza
 
@@ -172,8 +177,10 @@
   - [ ] El `GET` se cachea 5 min en Redis (opcional) o `unstable_cache` de Next.js para no pegar a la BD.
 - **Dependencias:** T-037, T-038.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `ConfiguracionModule` con `GET /configuracion` y `PATCH /configuracion` (`@Roles('admin_plaza')`, vía `withTenant` de la plaza del JWT). El PATCH valida MIME contra lista cerrada (`400 MIME_NO_PERMITIDO`) y SLA≥0 (Zod); registra antes/después en `auditoria`. Verificado: GET `200`, PATCH SLA `200`, MIME inválido `400`.
+  - El cacheo de `GET` con `unstable_cache` (T-V11, sin Redis) se aplica en el frontend que lo consume (T-042/T-044 FE); el backend expone el endpoint directo.
 
 ### T-045 — Seed inicial: crear superadmin y plaza demo
 

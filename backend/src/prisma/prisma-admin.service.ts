@@ -18,10 +18,13 @@ export class PrismaAdminService extends PrismaClient implements OnModuleInit, On
   private readonly logger = new Logger(PrismaAdminService.name);
 
   constructor() {
-    const connectionString =
-      process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL;
+    // Exigir explícitamente la URL admin: un fallback silencioso a DATABASE_URL
+    // (syssol_app, con RLS) rompería el bypass que requieren superadmin y auditoría.
+    const connectionString = process.env.DATABASE_ADMIN_URL;
     if (!connectionString) {
-      throw new Error('DATABASE_ADMIN_URL/DATABASE_URL no está definida en el entorno');
+      throw new Error(
+        'DATABASE_ADMIN_URL no está definida: el admin client (bypass RLS) la requiere (T-038).',
+      );
     }
     const adapter = new PrismaPg({ connectionString });
     super({

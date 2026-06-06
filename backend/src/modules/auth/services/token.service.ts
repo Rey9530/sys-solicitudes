@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { createHash, randomUUID } from 'node:crypto';
 import type { RolGlobal } from '@app/contracts';
-import { PrismaService } from '../../../prisma/prisma.service';
+import { PrismaAdminService } from '../../../prisma/prisma-admin.service';
 import { durationToMs, durationToSeconds } from '../../../common/utils/duration';
 import type { JwtPayload } from '../types/jwt-payload';
 
@@ -32,7 +32,9 @@ export interface RequestMeta {
 export class TokenService {
   constructor(
     private readonly jwt: JwtService,
-    private readonly prisma: PrismaService,
+    // Admin client: refresh_token no tiene plaza_id y su RLS es restrictiva
+    // (USING false); solo el admin client/superusuario puede tocarla. Ver T-038.
+    private readonly prisma: PrismaAdminService,
     private readonly config: ConfigService,
   ) {}
 

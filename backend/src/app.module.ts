@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { PlazasModule } from './modules/plazas/plazas.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
 import { RolesStaffModule } from './modules/roles-staff/roles-staff.module';
+import { ConfiguracionModule } from './modules/configuracion/configuracion.module';
 import { LocalesModule } from './modules/locales/locales.module';
 import { ContratosModule } from './modules/contratos/contratos.module';
 import { CategoriasModule } from './modules/categorias/categorias.module';
@@ -55,6 +56,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     // Módulos funcionales
     AuthModule,
     PlazasModule,
+    ConfiguracionModule,
     UsuariosModule,
     RolesStaffModule,
     LocalesModule,
