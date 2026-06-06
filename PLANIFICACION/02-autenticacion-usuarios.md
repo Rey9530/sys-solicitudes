@@ -23,10 +23,10 @@
 | T-029 | Implementar flujo de reset de contraseña (POST /reset-password, /reset-password/confirm) | Alta | Completada |
 | T-030 | Implementar PATCH /api/v1/auth/change-password | Media | Completada |
 | T-031 | Implementar GET /api/v1/auth/me | Alta | Completada |
-| T-032 | Configurar Auth.js (NextAuth v5) en frontend con Credentials Provider | Alta | Pendiente |
-| T-033 | Configurar middleware Next.js para inyectar token JWT en requests a NestJS | Alta | Pendiente |
-| T-034 | Implementar pantalla /login | Alta | Pendiente |
-| T-035 | Implementar pantallas /reset-password y /reset-password/[token] | Media | Pendiente |
+| T-032 | Configurar Auth.js (NextAuth v5) en frontend con Credentials Provider | Alta | Completada |
+| T-033 | Configurar middleware Next.js para inyectar token JWT en requests a NestJS | Alta | Completada |
+| T-034 | Implementar pantalla /login | Alta | Completada |
+| T-035 | Implementar pantallas /reset-password y /reset-password/[token] | Media | Completada |
 
 ---
 
@@ -312,8 +312,11 @@
   - [ ] La sesión se refresca automáticamente cuando el access está a punto de expirar.
 - **Dependencias:** T-026, T-027.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `frontend/src/auth.ts` con NextAuth v5 (Credentials Provider → `POST /api/v1/auth/login`). Callback `jwt` guarda access+refresh y refresca contra `/auth/refresh` al expirar; callback `session` expone **solo** `user` (sin tokens). Route handler en `app/api/auth/[...nextauth]/route.ts`. Verificado end-to-end: login `302`→`/`; `GET /api/auth/session` NO expone tokens; cookie `authjs.session-token` es **HttpOnly** y su contenido es un JWE cifrado (S-ARQ-F).
+  - ⚠️ **Desviación de versión:** Auth.js v5 solo existe como `next-auth@5.0.0-beta.31` (el stable `4.x` es la generación previa). La arquitectura exige v5; la beta declara soporte para `next ^16` y `react ^19`. Documentado.
+  - ⚠️ Error de cuenta bloqueada: clase `AccountLockedError extends CredentialsSignin (code='locked')` para distinguir lockout (`429`) de credenciales inválidas en el formulario.
 
 ### T-033 — Configurar middleware Next.js para inyectar token JWT en requests a NestJS
 
@@ -327,8 +330,12 @@
   - [ ] El helper está disponible tanto en Server Components como en Server Actions.
 - **Dependencias:** T-032, T-038 (en `03-plazas-multitenant.md`, RLS).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `frontend/src/middleware.ts` (auth de NextAuth) redirige rutas privadas a `/login?callbackUrl=...` (verificado: `/dashboard` → `307`). Helper `frontend/src/lib/api.ts` (`apiFetch`, server-only) inyecta `Authorization: Bearer` leyendo el token con `getToken` (sin exponerlo al cliente); en `401` refresca una vez y reintenta, si falla redirige a `/login`. Demostrado end-to-end: la home obtiene el perfil vía `apiFetch('/auth/me')`.
+  - ⚠️ **T-V01:** el middleware/`apiFetch` **no** inyecta `x-plaza-slug` ni resuelve slug por host/path; el `plaza_id` viaja en el JWT.
+  - ⚠️ Next.js 16 deprecó la convención `middleware.ts` a favor de `proxy.ts` (solo warning, sigue funcionando). Se conserva `middleware.ts` como pide el criterio; migrar a `proxy.ts` queda como follow-up menor.
+  - ⚠️ Limitación conocida: el token rotado dentro del reintento de `apiFetch` no se re-persiste en la cookie (lo hace el callback `jwt` en la siguiente navegación). Con access TTL 1h el camino de 401 es excepcional.
 
 ### T-034 — Implementar pantalla /login
 
@@ -346,8 +353,12 @@
   - [ ] Logo y color de la plaza visibles (resueltos desde la URL o desde una config pública).
 - **Dependencias:** T-032, T-033, T-042 (en `03-plazas-multitenant.md`, branding).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `app/(public)/login/page.tsx` (Server Component) + `components/client/login-form.tsx` (React Hook Form + `zodResolver(LoginSchema)`). Server Action `loginAction` llama a `signIn` de Auth.js; credenciales inválidas → toast genérico, cuenta bloqueada → toast específico (sonner). Si hay sesión, redirige a la home. Verificado: el form renderiza y autentica.
+  - ⚠️ **Redirección por rol:** los dashboards (`/admin/dashboard`, `/superadmin/plazas`, `/dashboard`) llegan en módulos posteriores; por ahora todos redirigen a `/` (home autenticada que muestra el perfil). Mapa por rol en `redirectTarget()`, listo para apuntar a los dashboards cuando existan.
+  - Branding básico (nombre + color primario); el logo/color por plaza es T-042 (módulo 03).
+  - Dependencias instaladas (versiones latest estables): `react-hook-form@7.77`, `@hookform/resolvers@5.4`, `sonner@2.0.7`.
 
 ### T-035 — Implementar pantallas /reset-password y /reset-password/[token]
 
@@ -359,5 +370,7 @@
   - [ ] Branding aplicado (logo + color).
 - **Dependencias:** T-029, T-032, T-033, T-034.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: `app/(public)/reset-password/page.tsx` (formulario de email → mensaje neutro "Si el email existe…") y `app/(public)/reset-password/[token]/page.tsx` (nueva contraseña + confirmación con `refine` de coincidencia, valida con `PasswordSchema`). Server Actions `requestResetAction`/`confirmResetAction` (BFF). Token inválido/expirado → mensaje con link para solicitar uno nuevo. Éxito → redirige a `/login` con toast. Ambas páginas renderizan (`200`).
+  - El flujo completo (solicitud → email en MailHog → confirmación → login con nueva clave) quedó verificado end-to-end en la parte backend (T-029).
