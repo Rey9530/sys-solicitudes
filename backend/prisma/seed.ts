@@ -40,9 +40,12 @@ const SUPERADMIN_EMAIL = 'superadmin@plazapp.com';
 const SUPERADMIN_PASSWORD = 'Plazapp2026!'; // solo dev
 
 async function main(): Promise<void> {
-  const connectionString = process.env.DATABASE_URL;
+  // El seed crea el superadmin (usuario con plaza_id NULL) y, en T-045, la plaza
+  // demo + su admin. Debe usar la conexión ADMIN (superusuario) para bypassar
+  // RLS (T-038): insertar como syssol_app sería rechazado por las políticas.
+  const connectionString = process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL;
   if (!connectionString) {
-    throw new Error('DATABASE_URL no está definida en el entorno');
+    throw new Error('DATABASE_ADMIN_URL/DATABASE_URL no está definida en el entorno');
   }
   const adapter = new PrismaPg({ connectionString });
   const prisma = new PrismaClient({ adapter });

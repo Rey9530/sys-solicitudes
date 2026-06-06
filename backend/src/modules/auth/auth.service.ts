@@ -15,7 +15,7 @@ import type {
   ResetPasswordConfirm,
   RolGlobal,
 } from '@app/contracts';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaAdminService } from '../../prisma/prisma-admin.service';
 import { durationToMs } from '../../common/utils/duration';
 import { PasswordService } from './services/password.service';
 import { TokenService, type RequestMeta, type TokenUser } from './services/token.service';
@@ -25,7 +25,9 @@ import type { AuthenticatedUser } from './types/jwt-payload';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly prisma: PrismaService,
+    // Admin client (bypassa RLS): las operaciones de auth son pre-sesión y
+    // globales (por email/token), sin contexto de plaza. Ver T-038.
+    private readonly prisma: PrismaAdminService,
     private readonly config: ConfigService,
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,

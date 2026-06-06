@@ -1,0 +1,26 @@
+{
+  "_comment_paso1": "⚠️ ${CLAUDE_PROJECT_DIR} NO se expande en .mcp.json (solo en settings.json/hooks). Solución: usar rutas relativas y el campo 'cwd' para fijar el directorio de trabajo al raíz del proyecto. Claude Code pasa el cwd resuelto del workspace al spawn del MCP server.",
+  "_comment_paso2": "Si esto tampoco funciona en tu versión de Claude Code, reemplazá '.' por la ruta absoluta y avisame para que ajustemos.",
+  "_comment_scope": "MCP servers a nivel de proyecto (NO global). Todo lo específico de sys-solicitudes vive aquí. Para tus otros proyectos, crea su propio .mcp.json en cada uno.",
+
+  "mcpServers": {
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": {
+        "MEMORY_FILE_PATH": "./.claude/memory/project-graph.jsonl"
+      },
+      "cwd": "."
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "cwd": "."
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git", "--repository", "."],
+      "cwd": "."
+    }
+  }
+}

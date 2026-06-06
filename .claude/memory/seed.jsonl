@@ -1,0 +1,66 @@
+{"name": "Proyecto_sys-solicitudes", "entityType": "proyecto", "observations": ["Nombre código: sys-solicitudes", "Nombre comercial: Plazapp", "Tipo: SaaS multi-plaza para gestión de solicitudes en centros comerciales", "Repositorio local: F:/sys-solicitudes", "Fase actual: documentación + setup del monorepo (T-001 a T-016)", "175 tareas planificadas, 0 completadas al 2026-06-05"]}
+{"name": "Producto_Plazapp", "entityType": "producto", "observations": ["Portal web multi-plaza (SaaS)", "Gestión de solicitudes en centros comerciales", "Tres roles: superadmin, admin_plaza, inquilino", "Resolución de tenant única por JWT (single subdomain app.plazapp.com)"]}
+{"name": "Stack_Tecnologico", "entityType": "stack", "observations": ["Frontend: Next.js 16.2.7 (App Router) + React 19.2.7 + TypeScript 5.9.x + Tailwind 4 + shadcn/ui", "Backend: NestJS 11.1.24 + Node.js 24 LTS + Prisma 7.8.0", "BD: PostgreSQL 16 con RLS activo", "Storage: MinIO (S3-compatible) con buckets por tenant", "Reportes: jsreport 4.13 como contenedor Docker separado", "Email: SMTP con Nodemailer + cola en tabla email_log", "Auth: Auth.js (NextAuth v5) + JWT HS256 compartido", "Validación: Zod 4.4.3 en @app/contracts compartido FE/BE"]}
+{"name": "Decision_D3", "entityType": "decision", "observations": ["Auth: Auth.js (NextAuth v5) en frontend + JWT HS256 compartido con NestJS (mismo JWT_SECRET)", "Access token: 15 min", "Refresh token: 7 días rotado", "Cookies httpOnly; JWT nunca llega a JavaScript del cliente"]}
+{"name": "Decision_D5", "entityType": "decision", "observations": ["Frontend: Next.js 14 (App Router) en lugar del Angular de la cotización original", "Justificación documentada en docs/02-stack-tecnologico.md §2.3"]}
+{"name": "Decision_T-V01", "entityType": "decision", "observations": ["S-EstrategiaMT: DB compartida con discriminador plaza_id (confirmado 2026-06-05)", "S-MT-A REVISADO: Single subdomain app.plazapp.com en producción, NO aparece la plaza en la URL", "S-MT-B: slug sigue inmutable en BD para emails/branding interno, ya no afecta URLs", "S-MT-C: un usuario pertenece a una sola plaza y un solo rol", "ELIMINADO: DNS wildcard, TLS wildcard, middleware de resolución de tenant por host, header x-plaza-slug"]}
+{"name": "Supuesto_S-LockTimeout", "entityType": "supuesto", "observations": ["Lock de revisión de solicitud expira a 30 min", "Estado: pendiente de validar con cliente (T-Vxx)"]}
+{"name": "Supuesto_S-TamanoMax", "entityType": "supuesto", "observations": ["Adjuntos: 25 MB máximo por archivo", "Estado: pendiente de validar con cliente"]}
+{"name": "Supuesto_S-MimeTypes", "entityType": "supuesto", "observations": ["Lista cerrada de MIME types permitidos para adjuntos", "Estado: pendiente de validar con cliente"]}
+{"name": "Supuesto_S-CamposTipo", "entityType": "supuesto", "observations": ["4 tipos de solicitud: mantenimiento, evento, remodelacion, otro", "Cada tipo tiene campos extra en JSONB validados con Zod", "Estado: pendiente de validar con cliente"]}
+{"name": "Supuesto_S-SLA", "entityType": "supuesto", "observations": ["Semáforo visual por tipo de solicitud según configuracion.sla_dias_por_tipo", "Estado: pendiente de validar con cliente"]}
+{"name": "Supuesto_S-JSReport", "entityType": "supuesto", "observations": ["jsreport 4.13 como contenedor Docker separado", "Backend NO instala librerías de generación de PDFs/XLSX; solo hace de proxy HTTP", "Imagen: jsreport/jsreport:4.13.0"]}
+{"name": "Supuesto_S-CI", "entityType": "supuesto", "observations": ["Pipeline CI/CD con GitHub Actions ya configurado en .github/workflows/", "Estado: parcialmente implementado, falta validar gates"]}
+{"name": "Supuesto_S-Deploy", "entityType": "supuesto", "observations": ["Hosting NO incluido en cotización", "Estado: pendiente de validar con cliente"]}
+{"name": "Supuesto_S-Obs", "entityType": "supuesto", "observations": ["Observabilidad: Pino + Prometheus + Sentry", "Estado: pendiente de validar con cliente"]}
+{"name": "Modulo_auth", "entityType": "modulo_backend", "observations": ["Prefijo: /api/v1/auth", "Login, refresh, logout, reset password", "Triple guard: JwtAuthGuard -> PlazaScopeGuard -> RolesGuard"]}
+{"name": "Modulo_plazas", "entityType": "modulo_backend", "observations": ["Prefijo: /api/v1/plazas", "CRUD de plazas, branding, configuración 1:1 por plaza"]}
+{"name": "Modulo_usuarios", "entityType": "modulo_backend", "observations": ["Prefijo: /api/v1/usuarios", "CRUD usuarios staff (superadmin, admin_plaza)"]}
+{"name": "Modulo_locales", "entityType": "modulo_backend", "observations": ["Prefijo: /api/v1/locales", "Incluye sub-recurso adjuntos anidado"]}
+{"name": "Modulo_contratos", "entityType": "modulo_backend", "observations": ["Prefijo: /api/v1/contratos", "Trigger anti-solapamiento en PG", "Alertas T-30/T-7 antes de vencer"]}
+{"name": "Modulo_solicitudes", "entityType": "modulo_backend", "observations": ["Prefijo: /api/v1/solicitudes", "Incluye sub-recursos: aprobacion, comentarios, historial, adjuntos", "Tabla historial append-only (fuente de verdad de auditoría)", "4 tipos: mantenimiento, evento, remodelacion, otro"]}
+{"name": "Modulo_notificaciones", "entityType": "modulo_backend", "observations": ["Worker con @nestjs/schedule", "Prefijo: /api/v1/notificaciones (log)", "Reintentos: 1m, 5m, 30m"]}
+{"name": "Modulo_calendario", "entityType": "modulo_backend", "observations": ["Prefijo: /api/v1/calendario", "FullCalendar React en FE como Client Component", "Tabla evento_calendario con detección de choques"]}
+{"name": "Modulo_adjuntos", "entityType": "modulo_backend", "observations": ["Anidado en /solicitudes/:id/adjuntos y /locales/:id/adjuntos", "URLs pre-firmadas con 15 min de expiración", "Cuarentena 30 días al eliminar"]}
+{"name": "Modulo_reportes", "entityType": "modulo_backend", "observations": ["Prefijo: /api/v1/reportes", "BFF: delega PDF/XLSX a jsreport; CSV inline", "Dashboard con recharts"]}
+{"name": "Modulo_admin", "entityType": "modulo_backend", "observations": ["Prefijo: /api/v1/admin", "SOLO superadmin"]}
+{"name": "Rol_superadmin", "entityType": "rol", "observations": ["Nivel plataforma, no tiene plaza_id", "Acceso a /api/v1/admin", "Gestiona plazas, usuarios globales, configuración global"]}
+{"name": "Rol_admin_plaza", "entityType": "rol", "observations": ["Una sola plaza", "Toma y resuelve solicitudes", "NO puede aprobar sus propias solicitudes (defense-in-depth, SC-4)"]}
+{"name": "Rol_inquilino", "entityType": "rol", "observations": ["Una sola plaza + un local", "Crea solicitudes, comenta, ve historial propio", "Cancelar solicitud solo si aún no tomada"]}
+{"name": "Invariante_plaza_id", "entityType": "invariante", "observations": ["Toda tabla de negocio tiene plaza_id NOT NULL + FK a plaza.id", "Regla absoluta: ninguna operación de negocio sin plaza_id válido en el token", "Backend NUNCA lee plaza_id del body/query — siempre del JWT", "RLS en PG como segunda capa: SET LOCAL app.plaza_id = <uuid>"]}
+{"name": "Invariante_state_machine", "entityType": "invariante", "observations": ["Estados terminales: aprobada, rechazada, cancelada", "Lock anti-doble-revisión: 30 min, segundo POST /tomar recibe 409 Conflict", "Rechazo y subsanación requieren comentario obligatorio no vacío", "Cada transición dispara email + inserta fila en solicitud_historial (append-only)"]}
+{"name": "Invariante_seguridad", "entityType": "invariante", "observations": ["bcrypt cost 12", "Helmet activo", "CORS restrictivo", "Rate limit 100 req/min global, 5 req/min en login (@nestjs/throttler)", "Sanitización HTML en descripciones", "Auditoría para todo POST/PATCH/DELETE", "TLS obligatorio en producción"]}
+{"name": "Invariante_api", "entityType": "invariante", "observations": ["Prefijo /api/v1", "JSON UTF-8", "Fechas ISO-8601 con TZ", "Paginación: ?page=1&pageSize=20&sort=", "Errores RFC 7807 con códigos de dominio: SOLICITUD_LOCKED, CONTRATO_OVERLAP, LOCAL_NO_DISPONIBLE, ADJUNTO_MIME_INVALIDO"]}
+{"name": "Regla_investigacion_versiones", "entityType": "regla_operativa", "observations": ["Antes de instalar cualquier dependencia: investigar versión más reciente estable en el registry oficial", "Verificar breaking changes entre la versión del plan y la latest", "Si difiere en major, preguntar al usuario", "Documentar cualquier desviación en la bitácora de la tarea con ⚠️", "Preferir LTS para Node, evitar .0 en TS para proyectos largos"]}
+{"name": "Regla_documentacion_tareas", "entityType": "regla_operativa", "observations": ["Al finalizar tarea técnica de PLANIFICACION/*.md: rellenar bitácora con desviaciones, criterios modificados, decisiones técnicas", "Marcar con ⚠️ las desviaciones en versiones o comportamiento", "Si se modifica código de tarea completada: commit con prefijo fix: o chore:", "Bitácoras son inmutables; correcciones se agregan como 'actualización:'"]}
+{"name": "Regla_comunicacion_usuario", "entityType": "regla_operativa", "observations": ["Si una tarea tiene ambigüedad, conflicto con decisiones previas (T-Vxx) o múltiples interpretaciones: PREGUNTAR antes de codificar", "No asumir. Decisiones T-Vxx son vinculantes; si una tarea las contradice, marcar para revisión"]}
+{"name": "Regla_scope_project_only", "entityType": "regla_operativa", "observations": ["TODO lo de Claude Code específico de este proyecto vive en .claude/ y .mcp.json de la RAÍZ del proyecto", "NUNCA crear ni modificar archivos en ~/.claude/ ni ~/.claude.json", "NUNCA usar ~/.claude/CLAUDE.md para info de este proyecto", "El usuario trabaja en múltiples proyectos; cada proyecto tiene su propio .claude/", "MCP memory file: ${CLAUDE_PROJECT_DIR}/.claude/memory/project-graph.jsonl (dentro del proyecto, no en home)", "Si una tool/skill/hook es útil para todos los proyectos, evaluar si va como global SOLO con confirmación explícita del usuario"]}
+{"name": "PLANIFICACION", "entityType": "documento", "observations": ["Ubicación: /PLANIFICACION/", "15 archivos: 00-INDICE.md + 13 módulos (01 al 13)", "175 tareas: 160 técnicas T-001 a T-160 + 15 validación T-V01 a T-V15", "Cada archivo agrupa backend de un módulo + pantallas FE", "Cada PR entrega típicamente un solo archivo"]}
+{"name": "Plantilla_tarea", "entityType": "plantilla", "observations": ["Cada tarea tiene: ID, descripción, SUPUESTOS, origen (doc), criterios de aceptación, tareas dependientes, prioridad, estado, bitácora", "Estados: pendiente, en_progreso, completada, bloqueada", "Tareas bloqueadas referencian a la T-Vxx o a la decisión que las desbloquea"]}
+{"from": "Proyecto_sys-solicitudes", "to": "Producto_Plazapp", "relationType": "se_conoce_como"}
+{"from": "Proyecto_sys-solicitudes", "to": "Stack_Tecnologico", "relationType": "usa"}
+{"from": "Producto_Plazapp", "to": "Rol_superadmin", "relationType": "tiene_rol"}
+{"from": "Producto_Plazapp", "to": "Rol_admin_plaza", "relationType": "tiene_rol"}
+{"from": "Producto_Plazapp", "to": "Rol_inquilino", "relationType": "tiene_rol"}
+{"from": "Decision_T-V01", "to": "Invariante_plaza_id", "relationType": "establece"}
+{"from": "Decision_T-V01", "to": "Supuesto_S-EstrategiaMT", "relationType": "confirma"}
+{"from": "Decision_T-V01", "to": "Supuesto_S-MT-A", "relationType": "reviso"}
+{"from": "Decision_T-V01", "to": "Supuesto_S-MT-C", "relationType": "confirma"}
+{"from": "Modulo_solicitudes", "to": "Invariante_state_machine", "relationType": "implementa"}
+{"from": "Modulo_solicitudes", "to": "Invariante_plaza_id", "relationType": "respeta"}
+{"from": "Modulo_auth", "to": "Decision_D3", "relationType": "implementa"}
+{"from": "Modulo_auth", "to": "Invariante_seguridad", "relationType": "aplica"}
+{"from": "Modulo_contratos", "to": "Supuesto_S-TamanoMax", "relationType": "afectado_por"}
+{"from": "Modulo_adjuntos", "to": "Supuesto_S-TamanoMax", "relationType": "limitado_por"}
+{"from": "Modulo_adjuntos", "to": "Supuesto_S-MimeTypes", "relationType": "limitado_por"}
+{"from": "Modulo_solicitudes", "to": "Supuesto_S-CamposTipo", "relationType": "parametrizado_por"}
+{"from": "Modulo_solicitudes", "to": "Supuesto_S-LockTimeout", "relationType": "parametrizado_por"}
+{"from": "Modulo_solicitudes", "to": "Supuesto_S-SLA", "relationType": "parametrizado_por"}
+{"from": "Modulo_reportes", "to": "Supuesto_S-JSReport", "relationType": "delega_a"}
+{"from": "Modulo_calendario", "to": "Supuesto_S-Obs", "relationType": "instrumentado_por"}
+{"from": "PLANIFICACION", "to": "Proyecto_sys-solicitudes", "relationType": "planifica"}
+{"from": "Plantilla_tarea", "to": "PLANIFICACION", "relationType": "estructura"}
+{"from": "Regla_investigacion_versiones", "to": "Stack_Tecnologico", "relationType": "aplica_a_actualizacion_de"}
+{"from": "Regla_documentacion_tareas", "to": "PLANIFICACION", "relationType": "rige"}
+{"from": "Regla_comunicacion_usuario", "to": "PLANIFICACION", "relationType": "rige"}
+{"from": "Regla_scope_project_only", "to": "Proyecto_sys-solicitudes", "relationType": "aplica_a"}

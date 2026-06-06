@@ -16,9 +16,11 @@ export default defineConfig({
     seed: 'ts-node prisma/seed.ts',
   },
   // Prisma 7 exige datasource.url en el config para migrate/introspect.
-  // La URL se lee del entorno (.env cargado arriba con dotenv/config).
+  // Las migraciones usan la conexión ADMIN (superusuario syssol): crean el rol
+  // `syssol_app`, las políticas RLS y las tablas. El runtime de la app usa
+  // DATABASE_URL (syssol_app, sin BYPASSRLS). Ver T-038.
   datasource: {
-    url: process.env.DATABASE_URL,
+    url: process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL,
   },
   experimental: {
     adapter: true,

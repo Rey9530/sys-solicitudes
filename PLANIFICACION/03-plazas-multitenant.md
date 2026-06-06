@@ -8,9 +8,9 @@
 
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
-| T-036 | Crear migración Prisma con `plaza` | Alta | Pendiente |
-| T-037 | Crear migración Prisma con `configuracion` (1:1 con plaza) | Alta | Pendiente |
-| T-038 | Implementar RLS en PostgreSQL con `SET LOCAL app.plaza_id` | Alta | Pendiente |
+| T-036 | Crear migración Prisma con `plaza` | Alta | Completada |
+| T-037 | Crear migración Prisma con `configuracion` (1:1 con plaza) | Alta | Completada |
+| T-038 | Implementar RLS en PostgreSQL con `SET LOCAL app.plaza_id` | Alta | Completada |
 | T-039 | Configurar resolución de tenant en middleware Next.js (subdominio/path) | Alta | Pendiente |
 | T-040 | CRUD plazas (POST/GET/PATCH /api/v1/plazas) — solo superadmin | Alta | Pendiente |
 | T-041 | Implementar carga de logo y color_primario por plaza | Media | Pendiente |
@@ -35,8 +35,10 @@
   - [ ] Test: dos plazas con el mismo slug → error `UNIQUE constraint violation`.
 - **Dependencias:** T-010 (en `01-setup-base.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: El modelo `plaza` ya existía y fue migrado en el baseline `auth_usuarios` (módulo 02): `id`, `slug` UNIQUE, `nombre_comercial`, `email_contacto?`, `telefono_contacto?`, `logo_url?`, `color_primario` default `#2563eb`, `timezone`, soft delete, `@@index([deleted_at])`. Validaciones Zod (slug `^[a-z0-9-]+$`, HEX color) ya están en `packages/contracts/src/plazas`.
+  - ⚠️ **T-V08:** `timezone` es **fija** `America/El_Salvador` (no `America/Costa_Rica` del enunciado) y **no editable**; `TimezoneSchema` es un literal, sin dropdown IANA.
 
 ### T-037 — Crear migración Prisma con `configuracion` (1:1 con plaza)
 
@@ -49,8 +51,10 @@
   - [ ] Función helper que crea la `configuracion` automáticamente al crear una `plaza` (hook Prisma `@default` o servicio de aplicación).
 - **Dependencias:** T-036.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: El modelo `configuracion` ya existía y fue migrado en el baseline. `plaza_id` UNIQUE (1:1), defaults: `tamanio_max_archivo_mb=50` (⚠️ **T-V06**, no 25), `mime_types_permitidos`, `sla_dias_por_tipo`, `sla_multiplicador_por_prioridad`, `calendar_mostrar_hitos_contrato=true`, `aprobacion_especial_asistentes_min=200` (T-V05). `onDelete: Cascade` desde plaza.
+  - El helper que crea la `configuracion` automáticamente al crear una plaza se implementa en **T-040** (transacción del CRUD), no como trigger Prisma.
 
 ### T-038 — Implementar RLS en PostgreSQL con `SET LOCAL app.plaza_id`
 
@@ -66,8 +70,13 @@
   - [ ] `prisma db push` o `prisma migrate dev` aplica la migración correctamente.
 - **Dependencias:** T-018, T-036, T-037, y modelos de las tablas que se protegen.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - 2026-06-06: Migración `enable_rls` aplicada. Crea el rol **`syssol_app`** (LOGIN, NOSUPERUSER, **NOBYPASSRLS**) con sus grants (+ `ALTER DEFAULT PRIVILEGES` para tablas futuras). Activa `ENABLE`+`FORCE ROW LEVEL SECURITY` y políticas `USING/WITH CHECK` en `plaza` (por `id`), `configuracion`, `usuario`, `rol_staff`, `auditoria_login` (por `plaza_id`).
+  - **Dos clientes Prisma:** `PrismaService` (rol `syssol_app`, `DATABASE_URL`, RLS activa) con helper `withTenant(plazaId, fn)` que hace `SELECT set_config('app.plaza_id', $1, true)` (SET LOCAL parametrizado) dentro de una transacción; y `PrismaAdminService` (superusuario `syssol`, `DATABASE_ADMIN_URL`, bypassa RLS) para superadmin y auth pre-sesión.
+  - ⚠️ **Refactor módulo 02:** `AuthService` ahora usa `PrismaAdminService` (login busca usuario por email sin contexto de plaza; con RLS activa devolvería 0 filas). `TokenService` sigue en `PrismaService` (la tabla `refresh_token` no tiene `plaza_id`/RLS). El seed usa la conexión admin.
+  - ⚠️ **Env:** `DATABASE_URL`→`syssol_app`; nuevo `DATABASE_ADMIN_URL`→`syssol`. `prisma.config.ts` migra con la URL admin (las migraciones crean roles/políticas). `.env.example` y `.env` locales actualizados (puerto 5433).
+  - **Verificado:** psql como `syssol_app` sin contexto → 0 filas (fail-closed); `syssol` ve todo; login/`/me`/readiness siguen `200`. Las tablas de módulos futuros añadirán su RLS en sus propias migraciones.
 
 ### T-039 — Configurar resolución de tenant en middleware Next.js (subdominio/path)
 
