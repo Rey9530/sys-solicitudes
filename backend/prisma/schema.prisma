@@ -74,6 +74,8 @@ model plaza {
   contratos       contrato[]
   adjuntos        adjunto[]
   email_logs      email_log[]
+  categorias      categoria[]
+  subcategorias   subcategoria[]
   // solicitudes, etc.
 
   @@index([deleted_at])
@@ -134,6 +136,8 @@ model usuario {
   refresh_tokens        refresh_token[]
   password_reset_tokens password_reset_token[]
   auditoria_login       auditoria_login[]
+  subcategorias_responsable subcategoria[]            @relation("subcategoria_responsable")
+  supervisor_de             subcategoria_supervisor[]
 
   @@unique([plaza_id, email])
   @@index([rol_id])
@@ -367,6 +371,84 @@ model adjunto {
 
   @@index([plaza_id, entidad_tipo, entidad_id])
   @@map("adjunto")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Categorías y subcategorías (módulo 05 · T-063..T-066)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Prioridad de solicitud (A más alta … F más baja). Se declara en el módulo 05
+/// (⚠️ adelantada de T-078) porque `subcategoria.prioridad` la usa como default
+/// heredable (S-FS-Prioridad). Confirmada en T-V04.
+enum solicitud_prioridad {
+  A
+  B
+  C
+  D
+  F
+}
+
+/// Categoría de solicitudes, configurable por plaza (T-063, S-Categorias).
+/// Soft delete vía `activo=false` (no deleted_at: se conserva para histórico).
+model categoria {
+  id          String    @id @default(uuid()) @db.Uuid
+  plaza_id    String    @db.Uuid
+  nombre      String
+  descripcion String?
+  activo      Boolean   @default(true)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+
+  plaza         plaza          @relation(fields: [plaza_id], references: [id])
+  subcategorias subcategoria[]
+
+  @@unique([plaza_id, nombre])
+  @@index([plaza_id, activo])
+  @@map("categoria")
+}
+
+/// Subcategoría con 1 responsable y 0..5 supervisores (T-064, S-Subcategoria).
+/// SC-6: responsable debe ser admin_plaza con rol_staff activo y misma plaza
+/// (validado en aplicación, T-071). `prioridad` es la default heredada por
+/// las solicitudes al crearse (S-FS-Prioridad).
+model subcategoria {
+  id             String              @id @default(uuid()) @db.Uuid
+  plaza_id       String              @db.Uuid
+  categoria_id   String              @db.Uuid
+  responsable_id String              @db.Uuid
+  nombre         String
+  descripcion    String?
+  prioridad      solicitud_prioridad @default(B)
+  activo         Boolean             @default(true)
+  created_at     DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime            @updatedAt @db.Timestamptz(6)
+
+  plaza        plaza                     @relation(fields: [plaza_id], references: [id])
+  categoria    categoria                 @relation(fields: [categoria_id], references: [id])
+  responsable  usuario                   @relation("subcategoria_responsable", fields: [responsable_id], references: [id])
+  supervisores subcategoria_supervisor[]
+
+  @@unique([categoria_id, nombre])
+  @@index([plaza_id, activo])
+  @@index([responsable_id])
+  @@map("subcategoria")
+}
+
+/// Pivote N:M subcategoría ↔ supervisores (T-065, S-SC-A). Máx 5 por
+/// subcategoría, enforced por trigger tg_subcategoria_max_5_supervisores
+/// (T-066, SQL manual). RLS heredado de subcategoria.plaza_id (policy con
+/// EXISTS, SQL manual).
+model subcategoria_supervisor {
+  subcategoria_id String   @db.Uuid
+  usuario_id      String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  subcategoria subcategoria @relation(fields: [subcategoria_id], references: [id], onDelete: Cascade)
+  usuario      usuario      @relation(fields: [usuario_id], references: [id])
+
+  @@id([subcategoria_id, usuario_id])
+  @@index([usuario_id])
+  @@map("subcategoria_supervisor")
 }
 
 /// Log/cola de emails. Versión MÍNIMA (T-056): registro post-envío para
