@@ -24,6 +24,9 @@ import { HealthModule } from './modules/health/health.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { buildPinoOptions } from './common/logger/pino.config';
 import { ThrottlerBehindProxyGuard } from './common/guards/throttler-behind-proxy.guard';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { PlazaScopeGuard } from './modules/auth/guards/plaza-scope.guard';
+import { RolesGuard } from './common/guards/roles.guard';
 
 @Module({
   imports: [
@@ -68,9 +71,13 @@ import { ThrottlerBehindProxyGuard } from './common/guards/throttler-behind-prox
     HealthModule,
   ],
   providers: [
-    // ThrottlerGuard global detrás de proxy (T-014). 100 req/min por IP.
-    // Se sobreescribe con @Throttle() en endpoints sensibles (e.g. /auth/login).
+    // El orden define la ejecución del triple guard (T-023..T-025):
+    //   1) Throttler (rate limit)  2) JwtAuthGuard  3) PlazaScopeGuard  4) RolesGuard
+    // Los endpoints @Public() se saltan los guards 2-4.
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: PlazaScopeGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })
 export class AppModule {}
