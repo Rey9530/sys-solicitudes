@@ -33,7 +33,7 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 | `03-plazas-multitenant.md` | T-036 … T-046 | 11 | 0 | 0% |
 | `04-locales-inquilinos-contratos.md` | T-047 … T-062 | 16 | 14 (+2 descartadas T-V07) | 100% |
 | `05-categorias-subcategorias.md` | T-063 … T-073 | 11 | 11 | 100% |
-| `06-solicitudes.md` | T-074 … T-090 | 17 | 0 | 0% |
+| `06-solicitudes.md` | T-074 … T-090 | 17 | 16 (+1 descartada T-V05) | 100% |
 | `07-aprobaciones.md` | T-091 … T-108 | 18 | 0 | 0% |
 | `08-adjuntos.md` | T-109 … T-117 | 9 | 0 | 0% |
 | `09-notificaciones-email.md` | T-118 … T-127 | 10 | 0 | 0% |
