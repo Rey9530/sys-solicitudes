@@ -141,6 +141,22 @@ async function main(): Promise<void> {
       console.log(`✓ Admin demo creado: ${ADMIN_DEMO_EMAIL} / ${SUPERADMIN_PASSWORD} (solo dev).`);
     }
 
+    // ── Categorías base de la plaza demo (T-063) ──────────────────────────────
+    const CATEGORIAS_DEMO = [
+      { nombre: 'Mantenimiento', descripcion: 'Reparaciones y mantenimiento general.' },
+      { nombre: 'Eventos', descripcion: 'Eventos y activaciones en áreas comunes.' },
+      { nombre: 'Remodelaciones', descripcion: 'Obras y remodelaciones de locales.' },
+      { nombre: 'Otros', descripcion: 'Solicitudes que no encajan en las demás.' },
+    ];
+    for (const cat of CATEGORIAS_DEMO) {
+      await prisma.categoria.upsert({
+        where: { plaza_id_nombre: { plaza_id: plazaDemo.id, nombre: cat.nombre } },
+        update: { descripcion: cat.descripcion },
+        create: { plaza_id: plazaDemo.id, ...cat },
+      });
+    }
+    console.log(`✓ Categorías base de la plaza demo (${CATEGORIAS_DEMO.length}).`);
+
     console.log('Seed completado.');
   } finally {
     await prisma.$disconnect();

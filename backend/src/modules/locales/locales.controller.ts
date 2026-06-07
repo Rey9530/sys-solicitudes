@@ -18,10 +18,12 @@ import {
   UpdateLocalSchema,
   ListLocalesQuerySchema,
   ListContratoHistorialQuerySchema,
+  FueraDeServicioSchema,
   type CreateLocalInput,
   type UpdateLocalInput,
   type ListLocalesQuery,
   type ListContratoHistorialQuery,
+  type FueraDeServicioInput,
 } from '@app/contracts';
 import { LocalesService, type RequestMeta } from './locales.service';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -89,6 +91,28 @@ export class LocalesController {
     @Headers('x-request-id') requestId: string | undefined,
   ) {
     return this.service.update(id, body, user, this.meta(ip, userAgent, requestId));
+  }
+
+  @Post(':id/fuera-de-servicio')
+  @Roles('admin_plaza', 'superadmin')
+  @ApiOperation({
+    summary: 'Baja a fuera_de_servicio con rechazo masivo opcional de solicitudes (T-108).',
+  })
+  fueraDeServicio(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(FueraDeServicioSchema)) body: FueraDeServicioInput,
+    @CurrentUser() user: AuthenticatedUser,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+  ) {
+    return this.service.fueraDeServicio(
+      id,
+      body.motivo,
+      body.rechazarSolicitudesPendientes,
+      user,
+      this.meta(ip, userAgent, requestId),
+    );
   }
 
   @Delete(':id')

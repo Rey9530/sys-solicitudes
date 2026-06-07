@@ -17,6 +17,7 @@ import type {
 } from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { SolicitudStateService } from '../solicitudes/state/solicitud-state.service';
 import { contratoToOutput, ordenarHistorial } from '../contratos/contrato.mapper';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
@@ -49,7 +50,88 @@ export class LocalesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditoria: AuditoriaService,
+    private readonly solicitudState: SolicitudStateService,
   ) {}
+
+  // ── T-108: fuera de servicio + rechazo masivo de solicitudes en curso ─────────
+  /**
+   * Caso especial docs/05 §5.10.3: si el local baja a `fuera_de_servicio` con
+   * solicitudes en curso, el admin puede rechazarlas masivamente con el motivo.
+   * Cada rechazo es una transición individual (historial + email).
+   * Las solicitudes en `borrador` NO se tocan (el dueño decide); las que están
+   * en `enviada`/`asignado` se cancelan con motivo (no hay revisor que rechace)
+   * y las `en_revision`/`requerida_subsanacion` se rechazan.
+   */
+  async fueraDeServicio(
+    id: string,
+    motivo: string,
+    rechazarSolicitudesPendientes: boolean,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<{ local: LocalOutput; solicitudesRechazadas: string[] }> {
+    const plazaId = this.requirePlaza(actor);
+
+    const { local, rechazadas } = await this.prisma.withTenant(plazaId, async (tx) => {
+      const before = this.assertFound(
+        await tx.local.findFirst({ where: { id, deleted_at: null } }),
+      );
+      const local = await tx.local.update({
+        where: { id },
+        data: { estado: 'fuera_de_servicio' },
+      });
+
+      const rechazadas: string[] = [];
+      if (rechazarSolicitudesPendientes) {
+        const pendientes = await tx.solicitud.findMany({
+          where: {
+            local_id: id,
+            estado: { in: ['enviada', 'asignado', 'en_revision', 'requerida_subsanacion'] },
+          },
+          include: { usuario_creador: { select: { email: true, email_invalido: true } } },
+        });
+        for (const solicitud of pendientes) {
+          const comentario = `Local fuera de servicio: ${motivo}`;
+          if (solicitud.estado === 'en_revision') {
+            // Transición de rechazo formal. SC-4 no aplica (motivo operativo),
+            // pero el state service la exige: si el actor creó la solicitud,
+            // cae al camino de cancelación.
+            if (solicitud.usuario_creador_id !== actor.sub) {
+              await this.solicitudState.rechazar(tx, solicitud, actor, comentario);
+            } else {
+              await this.solicitudState.cancelar(tx, solicitud, actor, comentario);
+            }
+          } else {
+            // enviada/asignado/requerida_subsanacion: no están "en revisión";
+            // se cancelan con el motivo (estado terminal igualmente).
+            await this.solicitudState.cancelar(tx, solicitud, actor, comentario);
+          }
+          rechazadas.push(solicitud.codigo);
+          if (solicitud.usuario_creador && !solicitud.usuario_creador.email_invalido) {
+            await this.solicitudState.enqueueEmail(tx, {
+              plazaId,
+              destinatario: solicitud.usuario_creador.email,
+              plantilla: 'solicitud-rechazada',
+              variables: { solicitudCodigo: solicitud.codigo, comentario },
+            });
+          }
+        }
+      }
+
+      await this.auditoria.record({
+        accion: 'local.fuera_de_servicio',
+        entidadTipo: 'local',
+        entidadId: id,
+        plazaId,
+        usuarioId: actor.sub,
+        antes: this.toOutput(before),
+        despues: { estado: 'fuera_de_servicio', motivo, solicitudesRechazadas: rechazadas },
+        ...meta,
+      });
+      return { local, rechazadas };
+    });
+
+    return { local: this.toOutput(local), solicitudesRechazadas: rechazadas };
+  }
 
   // ── Crear (admin_plaza / superadmin con plaza) ────────────────────────────────
   async create(dto: CreateLocalInput, actor: AuthenticatedUser, meta: RequestMeta): Promise<LocalOutput> {

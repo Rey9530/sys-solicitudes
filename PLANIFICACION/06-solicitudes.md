@@ -8,23 +8,23 @@
 
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
-| T-074 | Crear migración Prisma con `solicitud` | Alta | Pendiente |
-| T-075 | Crear migración Prisma con `solicitud_historial` (append-only) | Alta | Pendiente |
-| T-076 | Crear migración Prisma con `solicitud_evento_recurrente` | Alta | Pendiente |
-| T-077 | Crear migración Prisma con `comentario` | Alta | Pendiente |
-| T-078 | Crear ENUMs PostgreSQL (solicitud_estado, solicitud_tipo, solicitud_prioridad) | Alta | Pendiente |
-| T-079 | Definir Zod schemas para campos_extra por tipo en @app/contracts | Alta | Pendiente |
-| T-080 | Implementar CRUD solicitudes (POST/GET/PATCH /api/v1/solicitudes) | Alta | Pendiente |
-| T-081 | Implementar POST /api/v1/solicitudes/:id/enviar (T2 auto-asignación) | Alta | Pendiente |
-| T-082 | Implementar POST /api/v1/solicitudes/:id/cancelar | Alta | Pendiente |
-| T-083 | Implementar POST /api/v1/solicitudes/:id/subsanar | Alta | Pendiente |
-| T-084 | Implementar POST /api/v1/solicitudes/:id/duplicar | Media | Pendiente |
-| T-085 | Implementar PATCH /api/v1/solicitudes/:id/prioridad | Alta | Pendiente |
-| T-086 | Implementar endpoints de comentarios e historial | Alta | Pendiente |
-| T-087 | Implementar pantalla /solicitudes (listado) | Alta | Pendiente |
-| T-088 | Implementar pantalla /solicitudes/nueva con formulario dinámico por tipo | Alta | Pendiente |
-| T-089 | Implementar pantalla /solicitudes/[id] | Alta | Pendiente |
-| T-090 | Implementar heurística de duplicados y límite de 10 adjuntos | Media | Pendiente |
+| T-074 | Crear migración Prisma con `solicitud` | Alta | Completada |
+| T-075 | Crear migración Prisma con `solicitud_historial` (append-only) | Alta | Completada |
+| T-076 | Crear migración Prisma con `solicitud_evento_recurrente` | Alta | Descartada (T-V05) |
+| T-077 | Crear migración Prisma con `comentario` | Alta | Completada |
+| T-078 | Crear ENUMs PostgreSQL (solicitud_estado, solicitud_tipo, solicitud_prioridad) | Alta | Completada |
+| T-079 | Definir Zod schemas para campos_extra por tipo en @app/contracts | Alta | Completada |
+| T-080 | Implementar CRUD solicitudes (POST/GET/PATCH /api/v1/solicitudes) | Alta | Completada |
+| T-081 | Implementar POST /api/v1/solicitudes/:id/enviar (borrador→enviada, T-V03) | Alta | Completada |
+| T-082 | Implementar POST /api/v1/solicitudes/:id/cancelar | Alta | Completada |
+| T-083 | Implementar POST /api/v1/solicitudes/:id/subsanar (reenvío→cola, T-V03) | Alta | Completada |
+| T-084 | Implementar POST /api/v1/solicitudes/:id/duplicar | Media | Completada |
+| T-085 | Implementar PATCH /api/v1/solicitudes/:id/prioridad | Alta | Completada |
+| T-086 | Implementar endpoints de comentarios e historial | Alta | Completada |
+| T-087 | Implementar pantalla /solicitudes (listado) | Alta | Completada |
+| T-088 | Implementar pantalla /solicitudes/nueva con formulario dinámico por tipo | Alta | Completada |
+| T-089 | Implementar pantalla /solicitudes/[id] | Alta | Completada |
+| T-090 | Implementar heurística de duplicados y límite de 10 adjuntos | Media | Completada |
 
 ---
 
@@ -40,8 +40,9 @@
   - [ ] Función helper para generar `codigo`: `SOL-{plaza.short}-{seq}` donde `seq` es un contador por plaza (secuencia PG o ROW_NUMBER).
 - **Dependencias:** T-047, T-048, T-063, T-018, T-078.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Modelo `solicitud` en migración `20260606232906`. ⚠️ T-V03: SIN `lock_expira_at` ni su índice (el lock de 30 min se eliminó); en su lugar `INDEX(plaza_id, estado, enviada_at)` para el cron de auto-asignación y la bandeja. Validación de titulo/descripcion en Zod (sin CHECK, mensajes más claros). Código `SOL-{SLUG8}-{seq}` por trigger `fn_solicitud_set_codigo` **SECURITY DEFINER** con tabla contador `solicitud_codigo_seq` (único bypass de RLS, documentado en la migración `20260606232940`); verificado secuencial por plaza en BD. RLS habilitado.
 
 ### T-075 — Crear migración Prisma con `solicitud_historial` (append-only)
 
@@ -56,8 +57,9 @@
   - [ ] Test: intentar UPDATE o DELETE falla con error de permisos/trigger.
 - **Dependencias:** T-018, T-074.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Modelo + trigger `tg_solicitud_historial_no_update_delete` + `REVOKE UPDATE, DELETE FROM syssol_app` (doble defensa). Verificado en BD: UPDATE y DELETE rechazados con `insufficient_privilege`. El enum de eventos añade `asignada` (auto-asignación del cron T-091b) y `reasignada`/`prioridad_cambiada`. `usuario_id` nullable (eventos del sistema).
 
 ### T-076 — Crear migración Prisma con `solicitud_evento_recurrente`
 
@@ -70,8 +72,9 @@
   - [ ] RLS habilitado (heredado de `solicitud.plaza_id`).
 - **Dependencias:** T-074.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Descartada (T-V05).
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** ⚠️ **DESCARTADA por T-V05** (sin recurrencia en v1): el modelo `solicitud_evento_recurrente` NO se crea. Los eventos recurrentes se manejan creando N solicitudes manualmente. El wizard (T-088) no tiene paso de recurrencia.
 
 ### T-077 — Crear migración Prisma con `comentario`
 
@@ -85,8 +88,9 @@
   - [ ] Endpoint `GET /api/v1/solicitudes/:id/comentarios` retorna el thread de comentarios.
 - **Dependencias:** T-074, T-018.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Modelo `comentario` con enum `comentario_tipo` y RLS. `GET /solicitudes/:id/comentarios` implementado en T-086. Validación Zod 1-4000 en `CreateComentarioSchema`.
 
 ### T-078 — Crear ENUMs PostgreSQL (solicitud_estado, solicitud_tipo, solicitud_prioridad)
 
@@ -99,8 +103,9 @@
   - [ ] Test: intentar insertar un valor inválido en cualquier campo ENUM falla con error de BD.
 - **Dependencias:** T-074.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Enums creados en la migración del módulo: `solicitud_estado` con **8 valores** (⚠️ T-V03 añade `asignado`), `solicitud_tipo`, `solicitud_historial_evento`, `comentario_tipo`. ⚠️ `solicitud_prioridad` se creó en el módulo 05 (lo necesitaba `subcategoria.prioridad`). Insert con valor inválido falla por el enum PG.
 
 ### T-079 — Definir Zod schemas para campos_extra por tipo en @app/contracts
 
@@ -117,8 +122,9 @@
   - [ ] El paquete compila sin errores.
 - **Dependencias:** T-005 (en `01-setup-base.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Schemas ya existían en `packages/contracts/src/solicitudes/index.ts` (discriminated union por tipo); se añadieron `SolicitudHistorialEventoSchema`, `SlaStatusSchema`, outputs de listado/detalle/comentario/historial, `DuplicadosQuerySchema` y `UsuarioRefSchema`. Flag `requiere_aprobacion_especial` se calcula server-side contra `configuracion.aprobacion_especial_asistentes_min` (verificado: 500 asistentes con umbral 200 → true). Sin referencias a recurrencia (T-V05). Compila sin errores.
 
 ### T-080 — Implementar CRUD solicitudes (POST/GET/PATCH /api/v1/solicitudes)
 
@@ -137,8 +143,9 @@
   - [ ] Errores con códigos: `LOCAL_NO_DISPONIBLE`, `SUBCATEGORIA_INACTIVA`, `SUBCATEGORIA_REQUERIDA`, `SOLICITUD_NOT_FOUND`, `INVALID_STATE_FOR_EDIT`.
 - **Dependencias:** T-074, T-077, T-078, T-079, T-047, T-048, T-063, T-022.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** CRUD completo verificado con curl: POST solo inquilino crea `borrador` con prioridad heredada (subcategoría A → solicitud A) y código autogenerado; local validado vía contrato VIGENTE (`LOCAL_NO_DEL_INQUILINO`) y no `fuera_de_servicio`; `SUBCATEGORIA_REQUERIDA` salvo tipo=otro (verificado 400); campos_extra validados (400 con payload de otro tipo); PATCH solo borrador/requerida_subsanacion → `INVALID_STATE_FOR_EDIT` (verificado en `enviada`); detalle con adjuntos+comentarios+historial; RLS verificado con plaza acme (404 / total 0).
 
 ### T-081 — Implementar POST /api/v1/solicitudes/:id/enviar (T2 auto-asignación)
 
@@ -157,8 +164,9 @@
   - [ ] RLS probado.
 - **Dependencias:** T-080, T-075, T-118 (en `09-notificaciones-email.md`), T-091 (en `07-aprobaciones.md`, state service).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** ⚠️ REDEFINIDA por T-V03: `enviar` ahora transiciona `borrador → enviada` (NO a en_revision), `enviada_at=now()`, sin asignación, sin lock y sin emails — la auto-asignación + emails los hace el cron T-091b a los 15 min. Sí valida: local no fuera_de_servicio, subcategoría activa y su responsable cumple SC-6 (para que la cola no quede huérfana). Implementada en `SolicitudStateService.enviar` (state service MÍNIMO adelantado de T-091; el resto de transiciones llega en módulo 07). El requisito "adjuntos obligatorios por plaza" NO se implementó: `configuracion` no tiene campo `requiere_adjuntos` (SUPUESTO sin validar; anotar para v1.1). Verificado con curl.
 
 ### T-082 — Implementar POST /api/v1/solicitudes/:id/cancelar
 
@@ -174,8 +182,9 @@
   - [ ] RLS probado.
 - **Dependencias:** T-080, T-075, T-091.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Implementada vía `SolicitudStateService.cancelar`. ⚠️ Ajuste T-V03: se permite cancelar desde CUALQUIER estado no terminal (borrador/enviada/asignado/en_revision/requerida_subsanacion) — el plan original solo listaba borrador y en_revision porque no existían los estados de espera del flujo nuevo. Inquilino solo las suyas; admin cualquiera de su plaza. Sin email. Verificado (cancelación desde enviada).
 
 ### T-083 — Implementar POST /api/v1/solicitudes/:id/subsanar
 
@@ -193,8 +202,9 @@
   - [ ] RLS probado.
 - **Dependencias:** T-080, T-081, T-075, T-118.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** ⚠️ REDEFINIDA por T-V03: el reenvío transiciona `requerida_subsanacion → enviada` (NO a en_revision) y limpia `admin_asignado_id`; el cron T-091b re-asigna al responsable ACTUAL de la subcategoría a los 15 min. Historial `evento=enviada` con comentario "Reenviada tras subsanación". Sin email inmediato (lo dispara la auto-asignación). No exige marcado de items (S-FS-E). ⚠️ `POST /solicitudes/:id/subsanar` queda para el INQUILINO; la petición de subsanación del admin será `POST /solicitudes/:id/pedir-subsanacion` (T-096) para resolver la colisión de rutas del plan original.
 
 ### T-084 — Implementar POST /api/v1/solicitudes/:id/duplicar
 
@@ -209,8 +219,9 @@
   - [ ] Inserta `solicitud_historial` con `evento: 'creada'`, `comentario: 'Duplicada de SOL-{codigo_original}'`.
 - **Dependencias:** T-080, T-075.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Verificado: copia campos editables, `titulo` "Copia de …" (truncado a 120), código nuevo, fechas reseteadas, prioridad de la subcategoría ACTUAL, adjuntos NO copiados, historial `creada` con "Duplicada de SOL-…".
 
 ### T-085 — Implementar PATCH /api/v1/solicitudes/:id/prioridad
 
@@ -225,8 +236,9 @@
   - [ ] RLS probado.
 - **Dependencias:** T-080, T-075, T-101 (en `07-aprobaciones.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Verificado: admin cambia prioridad en `enviada` (B→C) con historial `prioridad_cambiada` "B → C"; bloqueado en `borrador` y terminales. ⚠️ Ajuste T-V03: permitido en enviada/asignado/en_revision/requerida_subsanacion (la prioridad ordena la cola de la bandeja). El recálculo de la matview SLA ocurre con el cron diario (T-101, módulo 07); no se refresca sincrónicamente.
 
 ### T-086 — Implementar endpoints de comentarios e historial
 
@@ -238,8 +250,9 @@
   - [ ] RLS probado.
 - **Dependencias:** T-077, T-075, T-080.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Verificado: `tipo=decision|subsanacion` exige admin (403 `COMENTARIO_TIPO_FORBIDDEN` como inquilino); thread ASC; el historial solo se escribe desde las transiciones (endpoint de lectura). Cada comentario también inserta historial `evento=comentario` para el timeline.
 
 ### T-087 — Implementar pantalla /solicitudes (listado)
 
@@ -254,8 +267,9 @@
   - [ ] Paginación server-side.
 - **Dependencias:** T-080, T-043.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** `/inquilino/solicitudes` (los route groups montan al inquilino bajo `/inquilino/...`): tabla con código/tipo/título/local/estado/prioridad/fechas, filtros (estado/tipo/prioridad/fechas) y paginación server-side. La redirección de roles la hace el layout del route group (rol distinto de inquilino → `/`). Build y lint en verde.
 
 ### T-088 — Implementar pantalla /solicitudes/nueva con formulario dinámico por tipo
 
@@ -272,8 +286,9 @@
   - [ ] Recurrencia: si `tipo=evento`, pregunta "¿Es recurrente?" → muestra sub-form para `solicitud_evento_recurrente`.
 - **Dependencias:** T-080, T-081, T-079, T-112 (en `08-adjuntos.md`, upload).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** Wizard de 3 pasos en `/inquilino/solicitudes/nueva` (⚠️ SIN paso de recurrencia, T-V05): tipo+categoría/subcategoría (omitidos para tipo=otro), detalles con campos_extra dinámicos por tipo, adjuntos (máx 10) + revisión con "Guardar borrador"/"Enviar ahora". Banner amarillo de duplicados (T-090) al elegir local. El mismo wizard sirve para editar (`/[id]/editar`, PATCH). Validación por paso en cliente + Zod en la Server Action + Zod en backend.
 
 ### T-089 — Implementar pantalla /solicitudes/[id]
 
@@ -292,8 +307,9 @@
   - [ ] SLA visual: barra de progreso con color (verde/amarillo/rojo) calculada según T-100.
 - **Dependencias:** T-080, T-086, T-112 (en `08-adjuntos.md`), T-100 (en `07-aprobaciones.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** `/inquilino/solicitudes/[id]` con header (código + badges estado/prioridad + asignado) y tabs Detalle (campos_extra formateados)/Comentarios (thread+form)/Historial (timeline)/Adjuntos (upload si borrador|requerida_subsanacion, descarga pre-firmada, eliminar). Acciones por estado: borrador→Editar/Enviar/Cancelar/Duplicar; requerida_subsanacion→Editar/Reenviar/Cancelar; no terminal→Cancelar; siempre Duplicar. ⚠️ La barra SLA visual llega con T-100 (módulo 07); el campo `slaStatus` ya viaja en el contrato.
 
 ### T-090 — Implementar heurística de duplicados y límite de 10 adjuntos
 
@@ -307,5 +323,6 @@
   - [ ] RLS probado.
 - **Dependencias:** T-080, T-112.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-06-solicitudes`):** `GET /solicitudes/duplicados` (ruta estática declarada antes de `:id`): mismo local+tipo, 30 días, estados no terminales, máx 5; inquilino solo ve los suyos. Banner NO bloqueante en el wizard. Límite de 10 adjuntos en `AdjuntosService.uploadSolicitudAdjunto` (excluye soft-deleted) → 400 `MAX_ADJUNTOS_EXCEDIDO`. ⚠️ T-112 (módulo 08) se adelantó aquí: MIME contra `configuracion.mime_types_permitidos` (verificado txt→400), tamaño por plaza, bucket `solicitudes-adjuntos-{plaza_id}`, historial `adjunto_agregado`, permisos (inquilino solo borrador/requerida_subsanacion → 403 en cancelada, verificado). RLS verificado.

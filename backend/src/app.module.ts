@@ -68,8 +68,11 @@ import { RolesGuard } from './common/guards/roles.guard';
     InquilinosModule,
     ContratosModule,
     CategoriasModule,
-    SolicitudesModule,
+    // AprobacionesModule ANTES de SolicitudesModule: sus rutas estaticas
+    // (/solicitudes/bandeja, /solicitudes/cron/*) deben registrarse antes
+    // que el parametro :id del controller de solicitudes.
     AprobacionesModule,
+    SolicitudesModule,
     NotificacionesModule,
     CalendarioModule,
     AdjuntosModule,

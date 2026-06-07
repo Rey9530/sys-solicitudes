@@ -8,7 +8,7 @@
 
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
-| T-128 | Crear migración Prisma con `evento_calendario` | Alta | Pendiente |
+| T-128 | Crear migración Prisma con `evento_calendario` | Alta | Completada (adelantada al módulo 07) |
 | T-129 | Implementar GET /api/v1/calendario (feed de eventos para FullCalendar) | Alta | Pendiente |
 | T-130 | Implementar GET /api/v1/calendario/export.ics | Alta | Pendiente |
 | T-131 | Implementar detección visual de choques (overlap query) | Media | Pendiente |
@@ -31,8 +31,9 @@
   - [ ] Trigger: si `evento_calendario.solicitud_id` cambia de estado (e.g. a `cancelada` por reversión), soft delete automático del evento.
 - **Dependencias:** T-074, T-102 (en `07-aprobaciones.md`).
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada (⚠️ adelantada al módulo 07).
+- **Bitácora de cambios:**
+  - **2026-06-06 (rama `feat/modulo-07-aprobaciones`):** Modelo + migración + RLS + CHECK `fin > inicio` adelantados al módulo 07 (T-102 los necesitaba al aprobar eventos). Upsert 1:1 al aprobar; soft delete con `deleted_at`. ⚠️ El trigger de soft-delete automático por cambio de estado de la solicitud NO se implementó (la reversión es solo-BD por superadmin, S-FS-B; decidir en módulo 10 si se añade). El feed `GET /api/v1/calendario` sigue pendiente (T-129).
 
 ### T-129 — Implementar GET /api/v1/calendario (feed de eventos para FullCalendar)
 

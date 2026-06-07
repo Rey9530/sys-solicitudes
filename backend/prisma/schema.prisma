@@ -74,7 +74,13 @@ model plaza {
   contratos       contrato[]
   adjuntos        adjunto[]
   email_logs      email_log[]
-  // solicitudes, etc.
+  categorias      categoria[]
+  subcategorias   subcategoria[]
+  solicitudes     solicitud[]
+  solicitud_historial solicitud_historial[]
+  comentarios     comentario[]
+  eventos_calendario  evento_calendario[]
+  solicitud_codigo_seq solicitud_codigo_seq?
 
   @@index([deleted_at])
   @@map("plaza")
@@ -134,6 +140,12 @@ model usuario {
   refresh_tokens        refresh_token[]
   password_reset_tokens password_reset_token[]
   auditoria_login       auditoria_login[]
+  subcategorias_responsable subcategoria[]            @relation("subcategoria_responsable")
+  supervisor_de             subcategoria_supervisor[]
+  solicitudes_creadas       solicitud[]               @relation("solicitud_creador")
+  solicitudes_asignadas     solicitud[]               @relation("solicitud_admin_asignado")
+  solicitud_historial       solicitud_historial[]
+  comentarios               comentario[]
 
   @@unique([plaza_id, email])
   @@index([rol_id])
@@ -281,12 +293,16 @@ model local {
   sector      String?
   descripcion String?
   estado      local_estado @default(disponible)
+  // T-103: ventana de mantenimiento por remodelación aprobada (módulo 07).
+  fecha_inicio_mantenimiento DateTime? @db.Date
+  fecha_fin_mantenimiento    DateTime? @db.Date
   created_at  DateTime     @default(now()) @db.Timestamptz(6)
   updated_at  DateTime     @updatedAt @db.Timestamptz(6)
   deleted_at  DateTime?    @db.Timestamptz(6)
 
-  plaza     plaza      @relation(fields: [plaza_id], references: [id])
-  contratos contrato[]
+  plaza       plaza       @relation(fields: [plaza_id], references: [id])
+  contratos   contrato[]
+  solicitudes solicitud[]
 
   @@unique([plaza_id, codigo])
   @@index([plaza_id, estado])
@@ -310,9 +326,10 @@ model inquilino {
   updated_at        DateTime  @updatedAt @db.Timestamptz(6)
   deleted_at        DateTime? @db.Timestamptz(6)
 
-  plaza     plaza      @relation(fields: [plaza_id], references: [id])
-  contratos contrato[]
-  usuarios  usuario[]
+  plaza       plaza       @relation(fields: [plaza_id], references: [id])
+  contratos   contrato[]
+  usuarios    usuario[]
+  solicitudes solicitud[]
 
   @@index([plaza_id])
   @@map("inquilino")
@@ -367,6 +384,265 @@ model adjunto {
 
   @@index([plaza_id, entidad_tipo, entidad_id])
   @@map("adjunto")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Categorías y subcategorías (módulo 05 · T-063..T-066)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Prioridad de solicitud (A más alta … F más baja). Se declara en el módulo 05
+/// (⚠️ adelantada de T-078) porque `subcategoria.prioridad` la usa como default
+/// heredable (S-FS-Prioridad). Confirmada en T-V04.
+enum solicitud_prioridad {
+  A
+  B
+  C
+  D
+  F
+}
+
+/// Categoría de solicitudes, configurable por plaza (T-063, S-Categorias).
+/// Soft delete vía `activo=false` (no deleted_at: se conserva para histórico).
+model categoria {
+  id          String    @id @default(uuid()) @db.Uuid
+  plaza_id    String    @db.Uuid
+  nombre      String
+  descripcion String?
+  activo      Boolean   @default(true)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+
+  plaza         plaza          @relation(fields: [plaza_id], references: [id])
+  subcategorias subcategoria[]
+  solicitudes   solicitud[]
+
+  @@unique([plaza_id, nombre])
+  @@index([plaza_id, activo])
+  @@map("categoria")
+}
+
+/// Subcategoría con 1 responsable y 0..5 supervisores (T-064, S-Subcategoria).
+/// SC-6: responsable debe ser admin_plaza con rol_staff activo y misma plaza
+/// (validado en aplicación, T-071). `prioridad` es la default heredada por
+/// las solicitudes al crearse (S-FS-Prioridad).
+model subcategoria {
+  id             String              @id @default(uuid()) @db.Uuid
+  plaza_id       String              @db.Uuid
+  categoria_id   String              @db.Uuid
+  responsable_id String              @db.Uuid
+  nombre         String
+  descripcion    String?
+  prioridad      solicitud_prioridad @default(B)
+  activo         Boolean             @default(true)
+  created_at     DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime            @updatedAt @db.Timestamptz(6)
+
+  plaza        plaza                     @relation(fields: [plaza_id], references: [id])
+  categoria    categoria                 @relation(fields: [categoria_id], references: [id])
+  responsable  usuario                   @relation("subcategoria_responsable", fields: [responsable_id], references: [id])
+  supervisores subcategoria_supervisor[]
+  solicitudes  solicitud[]
+
+  @@unique([categoria_id, nombre])
+  @@index([plaza_id, activo])
+  @@index([responsable_id])
+  @@map("subcategoria")
+}
+
+/// Pivote N:M subcategoría ↔ supervisores (T-065, S-SC-A). Máx 5 por
+/// subcategoría, enforced por trigger tg_subcategoria_max_5_supervisores
+/// (T-066, SQL manual). RLS heredado de subcategoria.plaza_id (policy con
+/// EXISTS, SQL manual).
+model subcategoria_supervisor {
+  subcategoria_id String   @db.Uuid
+  usuario_id      String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+
+  subcategoria subcategoria @relation(fields: [subcategoria_id], references: [id], onDelete: Cascade)
+  usuario      usuario      @relation(fields: [usuario_id], references: [id])
+
+  @@id([subcategoria_id, usuario_id])
+  @@index([usuario_id])
+  @@map("subcategoria_supervisor")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Solicitudes (módulo 06 · T-074..T-078, state machine revisada por T-V03)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Estados del flujo (T-078). ⚠️ T-V03: incluye `asignado` (entre `enviada` y
+/// `en_revision`) y NO existe lock de 30 min. Flujo:
+///   borrador → enviada → (cron 15 min) asignado → (tomar) en_revision
+///   en_revision → aprobada | rechazada | requerida_subsanacion
+///   requerida_subsanacion → enviada (reenvío, vuelve a la cola)
+///   * no terminal → cancelada
+enum solicitud_estado {
+  borrador
+  enviada
+  asignado
+  en_revision
+  requerida_subsanacion
+  aprobada
+  rechazada
+  cancelada
+}
+
+/// Tipos de solicitud (T-078, S-CamposTipo).
+enum solicitud_tipo {
+  mantenimiento
+  evento
+  remodelacion
+  otro
+}
+
+/// Eventos del historial (T-075). `asignada` es la auto-asignación del cron
+/// (T-091b); `tomada` es el admin pasando a revisión (T-091c).
+enum solicitud_historial_evento {
+  creada
+  enviada
+  asignada
+  tomada
+  aprobada
+  rechazada
+  subsanada
+  reasignada
+  cancelada
+  comentario
+  adjunto_agregado
+  prioridad_cambiada
+}
+
+/// Tipos de comentario (T-077).
+enum comentario_tipo {
+  decision
+  subsanacion
+  general
+}
+
+/// Solicitud (T-074) — núcleo del negocio. ⚠️ T-V03: sin `lock_expira_at`.
+/// `codigo` lo genera el trigger fn_solicitud_set_codigo (SOL-{slug}-{seq},
+/// secuencia por plaza); el default '' solo satisface el INSERT de Prisma.
+/// `campos_extra` JSONB validado con Zod según `tipo` (T-079).
+model solicitud {
+  id                 String              @id @default(uuid()) @db.Uuid
+  plaza_id           String              @db.Uuid
+  local_id           String              @db.Uuid
+  inquilino_id       String              @db.Uuid
+  usuario_creador_id String              @db.Uuid
+  admin_asignado_id  String?             @db.Uuid
+  categoria_id       String?             @db.Uuid
+  subcategoria_id    String?             @db.Uuid
+  codigo             String              @default("")
+  tipo               solicitud_tipo
+  prioridad          solicitud_prioridad @default(B)
+  titulo             String
+  descripcion        String
+  estado             solicitud_estado    @default(borrador)
+  campos_extra       Json                @default("{}")
+  fecha_evento_inicio DateTime?          @db.Date
+  fecha_evento_fin    DateTime?          @db.Date
+  hora_inicio        String?
+  hora_fin           String?
+  enviada_at         DateTime?           @db.Timestamptz(6)
+  asignada_at        DateTime?           @db.Timestamptz(6)
+  decision_at        DateTime?           @db.Timestamptz(6)
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime            @updatedAt @db.Timestamptz(6)
+
+  plaza          plaza         @relation(fields: [plaza_id], references: [id])
+  local          local         @relation(fields: [local_id], references: [id])
+  inquilino      inquilino     @relation(fields: [inquilino_id], references: [id])
+  usuario_creador usuario      @relation("solicitud_creador", fields: [usuario_creador_id], references: [id])
+  admin_asignado usuario?      @relation("solicitud_admin_asignado", fields: [admin_asignado_id], references: [id])
+  categoria      categoria?    @relation(fields: [categoria_id], references: [id])
+  subcategoria   subcategoria? @relation(fields: [subcategoria_id], references: [id])
+  historial      solicitud_historial[]
+  comentarios    comentario[]
+  evento_calendario evento_calendario?
+
+  @@unique([plaza_id, codigo])
+  @@index([plaza_id, estado])
+  @@index([plaza_id, local_id, created_at])
+  @@index([plaza_id, tipo, created_at])
+  @@index([plaza_id, fecha_evento_inicio])
+  @@index([plaza_id, admin_asignado_id, estado])
+  @@index([plaza_id, estado, enviada_at])
+  @@map("solicitud")
+}
+
+/// Historial append-only del flujo (T-075, RI-1). NO se actualiza ni borra:
+/// trigger tg_solicitud_historial_no_update_delete + REVOKE UPDATE/DELETE.
+/// `usuario_id` NULL cuando el actor es el sistema (cron de auto-asignación).
+model solicitud_historial {
+  id              String                     @id @default(uuid()) @db.Uuid
+  plaza_id        String                     @db.Uuid
+  solicitud_id    String                     @db.Uuid
+  usuario_id      String?                    @db.Uuid
+  evento          solicitud_historial_evento
+  estado_anterior solicitud_estado?
+  estado_nuevo    solicitud_estado?
+  comentario      String?
+  created_at      DateTime                   @default(now()) @db.Timestamptz(6)
+
+  plaza     plaza     @relation(fields: [plaza_id], references: [id])
+  solicitud solicitud @relation(fields: [solicitud_id], references: [id])
+  usuario   usuario?  @relation(fields: [usuario_id], references: [id])
+
+  @@index([solicitud_id, created_at])
+  @@map("solicitud_historial")
+}
+
+/// Comentario de solicitud (T-077). `decision`/`subsanacion` solo admin.
+model comentario {
+  id           String          @id @default(uuid()) @db.Uuid
+  plaza_id     String          @db.Uuid
+  solicitud_id String          @db.Uuid
+  usuario_id   String          @db.Uuid
+  tipo         comentario_tipo @default(general)
+  cuerpo       String
+  created_at   DateTime        @default(now()) @db.Timestamptz(6)
+
+  plaza     plaza     @relation(fields: [plaza_id], references: [id])
+  solicitud solicitud @relation(fields: [solicitud_id], references: [id])
+  usuario   usuario   @relation(fields: [usuario_id], references: [id])
+
+  @@index([solicitud_id, created_at])
+  @@map("comentario")
+}
+
+/// Contador interno del trigger fn_solicitud_set_codigo (T-074). Lo escribe
+/// SOLO la función SECURITY DEFINER (sin GRANT a syssol_app); se declara aquí
+/// para que prisma migrate no lo detecte como drift. No usar desde la app.
+model solicitud_codigo_seq {
+  plaza_id     String @id @db.Uuid
+  ultimo_valor BigInt @default(0)
+
+  plaza plaza @relation(fields: [plaza_id], references: [id])
+
+  @@map("solicitud_codigo_seq")
+}
+
+/// Evento de calendario 1:1 con solicitud de tipo `evento` aprobada
+/// (T-128, adelantado del módulo 10 por T-102). Soft delete para auditoría.
+/// CHECK (fin > inicio) en SQL manual.
+model evento_calendario {
+  id           String    @id @default(uuid()) @db.Uuid
+  plaza_id     String    @db.Uuid
+  solicitud_id String    @unique @db.Uuid
+  titulo       String
+  inicio       DateTime  @db.Timestamptz(6)
+  fin          DateTime  @db.Timestamptz(6)
+  color        String    @default("#10b981")
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at   DateTime? @db.Timestamptz(6)
+
+  plaza     plaza     @relation(fields: [plaza_id], references: [id])
+  solicitud solicitud @relation(fields: [solicitud_id], references: [id])
+
+  @@index([plaza_id, inicio])
+  @@index([plaza_id, deleted_at])
+  @@map("evento_calendario")
 }
 
 /// Log/cola de emails. Versión MÍNIMA (T-056): registro post-envío para

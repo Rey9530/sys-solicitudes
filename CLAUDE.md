@@ -76,30 +76,33 @@ Tres roles: `superadmin` (plataforma), `admin_plaza` (una plaza), `inquilino` (u
 
 ## Flujo de solicitudes (state machine — núcleo de la lógica de negocio)
 
-Definición canónica en `docs/05-flujo-de-solicitudes.md`.
+Definición canónica en `docs/05-flujo-de-solicitudes.md` (revisado por **T-V03**: estado `asignado`, cola de 15 min, **SIN lock de 30 min**). Implementado en módulos 06/07 (`SolicitudStateService` es el único escritor de `solicitud.estado`).
 
 ```
                     ┌───────────┐
-[*] ────────────────▶ borrador  │
+[*] ────────────────▶ borrador  │──▶ cancelada (cualquier estado no terminal)
                     └─────┬─────┘
-              enviar │    │ cancelar (inquilino)
-                     ▼    ▼
-                  enviada ──▶ cancelada (si aún no tomada)
-                     │ tomar (admin_plaza, lock 30 min)
+              enviar │ (NO asigna, NO email)
                      ▼
-                en_revision ──▶ aprobada (terminal)
-                     │       └─▶ rechazada (terminal, comentario obligatorio)
-                     └───────▶ requerida_subsanacion
-                                   │ reenviar (inquilino)
-                                   ▼
-                                enviada
+                  enviada ◀──────────────┐ liberar / reenviar tras subsanación
+                     │ cron 1 min:       │
+                     │ enviada_at>15min  │
+                     ▼                   │
+                  asignado ──────────────┤  (reasignar: asignado|en_revision,
+                     │ tomar (SOLO el    │   cualquier admin_plaza, T-V04)
+                     │ admin asignado)   │
+                     ▼                   │
+                en_revision ─────────────┘──▶ aprobada (terminal; evento→calendario,
+                     │                          remodelación→local en_mantenimiento)
+                     ├──▶ rechazada (terminal, comentario obligatorio)
+                     └──▶ requerida_subsanacion ──reenviar (inquilino)──▶ enviada
 ```
 
 - **Estados terminales:** `aprobada`, `rechazada`, `cancelada`.
-- **Lock anti-doble-revisión:** al tomar, se setea `admin_asignado_id` + `lock_expira_at = now() + 30 min`. Segundo `POST /tomar` recibe `409 Conflict`. Se libera al aprobar/rechazar/subsanar/cancelar o al expirar.
-- **Cada transición** dispara un email (plantilla por evento, ver `docs/02-stack-tecnologico.md` §2.8.2) **e inserta** una fila inmutable en `solicitud_historial`. Esa tabla es append-only y es la fuente de verdad de auditoría del flujo.
-- **Rechazo y subsanación** requieren comentario obligatorio no vacío.
-- **SUPUESTO S-SLA:** semáforo visual por tipo de solicitud según `configuracion.sla_dias_por_tipo`.
+- **Sin lock (T-V03):** la defensa anti-doble es estructural — solo el `admin_asignado_id` puede tomar/decidir (`403 NOT_ASSIGNED_ADMIN`); otro admin debe reasignar (T12). Las solicitudes sin subcategoría/responsable válido quedan en `enviada` para toma manual.
+- **Cada transición** encola un email en `email_log` (estado `pendiente`; el worker que envía es del módulo 09) **e inserta** una fila inmutable en `solicitud_historial` (append-only: trigger + REVOKE).
+- **Rechazo y subsanación** requieren comentario obligatorio no vacío (`POST :id/rechazar`, `POST :id/pedir-subsanacion`; el reenvío del inquilino es `POST :id/subsanar`).
+- **SLA (T-V03):** semáforo desde `enviada_at`; `sla_dias_por_tipo[tipo] × sla_multiplicador_por_prioridad[prioridad]`; matview `solicitud_sla_view` + cron diario.
 
 ## Convenciones de código (definidas en `docs/07-arquitectura.md` §7.4)
 

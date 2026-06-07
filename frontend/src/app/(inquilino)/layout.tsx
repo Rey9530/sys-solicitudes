@@ -20,6 +20,9 @@ export default async function InquilinoLayout({ children }: { children: React.Re
               <Link href="/inquilino/contratos" className="text-gray-600 hover:text-primary">
                 Mis contratos
               </Link>
+              <Link href="/inquilino/solicitudes" className="text-gray-600 hover:text-primary">
+                Mis solicitudes
+              </Link>
             </nav>
           </div>
           <form action={logoutAction}>

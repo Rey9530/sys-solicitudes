@@ -71,6 +71,20 @@ export const ListSubcategoriasQuerySchema = PaginationSchema.extend({
 });
 export type ListSubcategoriasQuery = z.infer<typeof ListSubcategoriasQuerySchema>;
 
+export const ListCategoriasQuerySchema = PaginationSchema.extend({
+  activo: z.coerce.boolean().optional(),
+  search: z.string().trim().min(1).max(100).optional(),
+});
+export type ListCategoriasQuery = z.infer<typeof ListCategoriasQuerySchema>;
+
+/** Referencia mínima a un usuario staff (responsable/supervisor). */
+export const StaffRefSchema = z.object({
+  id: UuidSchema,
+  nombre: z.string(),
+  email: z.string(),
+});
+export type StaffRef = z.infer<typeof StaffRefSchema>;
+
 export const SubcategoriaOutputSchema = z.object({
   id: UuidSchema,
   plazaId: UuidSchema,
@@ -80,7 +94,21 @@ export const SubcategoriaOutputSchema = z.object({
   descripcion: z.string().nullable(),
   prioridad: SolicitudPrioridadSchema,
   activo: z.boolean(),
+  supervisorIds: z.array(UuidSchema),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });
 export type SubcategoriaOutput = z.infer<typeof SubcategoriaOutputSchema>;
+
+/** Detalle con responsable y supervisores enriquecidos (pantalla T-073). */
+export const SubcategoriaDetailOutputSchema = SubcategoriaOutputSchema.extend({
+  responsable: StaffRefSchema.nullable(),
+  supervisores: z.array(StaffRefSchema),
+});
+export type SubcategoriaDetailOutput = z.infer<typeof SubcategoriaDetailOutputSchema>;
+
+/** Detalle de categoría + subcategorías (T-067). */
+export const CategoriaDetailOutputSchema = CategoriaOutputSchema.extend({
+  subcategorias: z.array(SubcategoriaDetailOutputSchema),
+});
+export type CategoriaDetailOutput = z.infer<typeof CategoriaDetailOutputSchema>;

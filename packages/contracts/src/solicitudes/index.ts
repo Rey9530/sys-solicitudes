@@ -9,6 +9,7 @@
 import { z } from 'zod';
 import { UuidSchema, PaginationSchema } from '../common/index.js';
 import { SolicitudPrioridadSchema } from '../categorias/index.js';
+import { AdjuntoOutputSchema } from '../adjuntos/index.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Enums (T-078)
@@ -27,6 +28,35 @@ export const SolicitudEstadoSchema = z.enum([
   'requerida_subsanacion',
 ]);
 export type SolicitudEstado = z.infer<typeof SolicitudEstadoSchema>;
+
+/** Estados desde los que aún se puede transicionar. */
+export const SOLICITUD_ESTADOS_ACTIVOS = [
+  'borrador',
+  'enviada',
+  'asignado',
+  'en_revision',
+  'requerida_subsanacion',
+] as const satisfies readonly SolicitudEstado[];
+
+export const SolicitudHistorialEventoSchema = z.enum([
+  'creada',
+  'enviada',
+  'asignada',
+  'tomada',
+  'aprobada',
+  'rechazada',
+  'subsanada',
+  'reasignada',
+  'cancelada',
+  'comentario',
+  'adjunto_agregado',
+  'prioridad_cambiada',
+]);
+export type SolicitudHistorialEvento = z.infer<typeof SolicitudHistorialEventoSchema>;
+
+/** Semáforo SLA (S-SLA): null para estados terminales o sin enviar. */
+export const SlaStatusSchema = z.enum(['verde', 'amarillo', 'rojo']).nullable();
+export type SlaStatus = z.infer<typeof SlaStatusSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Campos extra por tipo (T-079, S-CamposTipo)
@@ -131,6 +161,53 @@ export const ReasignarSolicitudSchema = z.object({
 });
 export type ReasignarSolicitudInput = z.infer<typeof ReasignarSolicitudSchema>;
 
+/** T-094: la aprobación admite comentario opcional. */
+export const AprobarSolicitudSchema = z.object({
+  comentario: z.string().trim().min(1).max(4000).optional(),
+});
+export type AprobarSolicitudInput = z.infer<typeof AprobarSolicitudSchema>;
+
+/** T-093: liberar devuelve la solicitud a la cola (`enviada`). */
+export const LiberarSolicitudSchema = z.object({
+  motivo: z.string().trim().max(1000).optional(),
+});
+export type LiberarSolicitudInput = z.infer<typeof LiberarSolicitudSchema>;
+
+/** T-099: bandeja del admin (colas enviada/asignado/en_revision). */
+export const BandejaQuerySchema = PaginationSchema.extend({
+  estado: z.enum(['enviada', 'asignado', 'en_revision']).optional(),
+  tipo: SolicitudTipoSchema.optional(),
+  categoriaId: UuidSchema.optional(),
+  subcategoriaId: UuidSchema.optional(),
+  localId: UuidSchema.optional(),
+  prioridad: SolicitudPrioridadSchema.optional(),
+  asignadasAMi: z
+    .union([z.boolean(), z.string()])
+    .transform((v) => v === true || v === 'true')
+    .optional(),
+});
+export type BandejaQuery = z.infer<typeof BandejaQuerySchema>;
+
+/** T-108: baja de local con rechazo masivo de solicitudes pendientes. */
+export const FueraDeServicioSchema = z.object({
+  motivo: z.string().trim().min(1).max(1000),
+  rechazarSolicitudesPendientes: z.boolean().default(false),
+});
+export type FueraDeServicioInput = z.infer<typeof FueraDeServicioSchema>;
+
+/** T-128/T-102: evento de calendario 1:1 con la solicitud aprobada. */
+export const EventoCalendarioOutputSchema = z.object({
+  id: UuidSchema,
+  plazaId: UuidSchema,
+  solicitudId: UuidSchema,
+  titulo: z.string(),
+  inicio: z.iso.datetime(),
+  fin: z.iso.datetime(),
+  color: z.string(),
+  createdAt: z.iso.datetime(),
+});
+export type EventoCalendarioOutput = z.infer<typeof EventoCalendarioOutputSchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Comentarios
 
@@ -158,8 +235,23 @@ export const ListSolicitudesQuerySchema = PaginationSchema.extend({
 });
 export type ListSolicitudesQuery = z.infer<typeof ListSolicitudesQuerySchema>;
 
+/** Heurística de duplicados (T-090): mismo local + tipo, últimos 30 días. */
+export const DuplicadosQuerySchema = z.object({
+  localId: UuidSchema,
+  tipo: SolicitudTipoSchema,
+});
+export type DuplicadosQuery = z.infer<typeof DuplicadosQuerySchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Output
+
+/** Referencia mínima a un usuario (creador/asignado/comentarista). */
+export const UsuarioRefSchema = z.object({
+  id: UuidSchema,
+  nombre: z.string(),
+  email: z.string(),
+});
+export type UsuarioRef = z.infer<typeof UsuarioRefSchema>;
 
 export const SolicitudOutputSchema = z.object({
   id: UuidSchema,
@@ -188,3 +280,45 @@ export const SolicitudOutputSchema = z.object({
   updatedAt: z.iso.datetime(),
 });
 export type SolicitudOutput = z.infer<typeof SolicitudOutputSchema>;
+
+/** Item de listado con relaciones aplanadas (T-087/T-106). */
+export const SolicitudListItemSchema = SolicitudOutputSchema.extend({
+  localCodigo: z.string().nullable(),
+  categoriaNombre: z.string().nullable(),
+  subcategoriaNombre: z.string().nullable(),
+  adminAsignado: UsuarioRefSchema.nullable(),
+  slaStatus: SlaStatusSchema,
+});
+export type SolicitudListItem = z.infer<typeof SolicitudListItemSchema>;
+
+export const ComentarioOutputSchema = z.object({
+  id: UuidSchema,
+  solicitudId: UuidSchema,
+  usuario: UsuarioRefSchema.nullable(),
+  tipo: ComentarioTipoSchema,
+  cuerpo: z.string(),
+  createdAt: z.iso.datetime(),
+});
+export type ComentarioOutput = z.infer<typeof ComentarioOutputSchema>;
+
+export const SolicitudHistorialOutputSchema = z.object({
+  id: UuidSchema,
+  solicitudId: UuidSchema,
+  usuario: UsuarioRefSchema.nullable(),
+  evento: SolicitudHistorialEventoSchema,
+  estadoAnterior: SolicitudEstadoSchema.nullable(),
+  estadoNuevo: SolicitudEstadoSchema.nullable(),
+  comentario: z.string().nullable(),
+  createdAt: z.iso.datetime(),
+});
+export type SolicitudHistorialOutput = z.infer<typeof SolicitudHistorialOutputSchema>;
+
+/** Detalle completo (T-080/T-089): incluye adjuntos, comentarios e historial. */
+export const SolicitudDetailOutputSchema = SolicitudListItemSchema.extend({
+  inquilinoRazonSocial: z.string().nullable(),
+  usuarioCreador: UsuarioRefSchema.nullable(),
+  adjuntos: z.array(AdjuntoOutputSchema),
+  comentarios: z.array(ComentarioOutputSchema),
+  historial: z.array(SolicitudHistorialOutputSchema),
+});
+export type SolicitudDetailOutput = z.infer<typeof SolicitudDetailOutputSchema>;
