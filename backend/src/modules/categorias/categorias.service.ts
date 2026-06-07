@@ -489,8 +489,10 @@ export class CategoriasService {
             plazaId,
             destinatario: nuevo.email,
             plantilla: 'solicitud-reasignada',
+            solicitudId: solicitud.id,
             variables: {
               solicitudCodigo: solicitud.codigo,
+              solicitudTitulo: solicitud.titulo,
               motivo: 'Cambio de responsable de subcategoría',
             },
           });

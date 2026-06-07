@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
 import type { Prisma, usuario as UsuarioModel } from '@prisma/client';
 import type {
@@ -130,8 +131,8 @@ export class UsuariosService {
         throw err;
       });
 
-    // Email de bienvenida con instrucción de credenciales (best-effort).
-    await this.mailer.sendBienvenida(usuario.email, usuario.nombre, nombrePlaza);
+    // Email de bienvenida con instrucción de credenciales (encolado, T-126).
+    await this.mailer.sendBienvenida(usuario.email, usuario.nombre, nombrePlaza, plazaId);
 
     await this.auditoria.record({
       accion: 'usuario.create',
@@ -195,6 +196,47 @@ export class UsuariosService {
       pageSize,
       totalPages: Math.ceil(total / pageSize),
     };
+  }
+
+  /**
+   * T-124: resetea `email_invalido` cuando el admin corrige la dirección.
+   * Idempotente. La columna se marca true solo desde el worker (hard bounce).
+   */
+  async resetEmailInvalido(
+    id: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<UsuarioOutput> {
+    const plazaId = this.requirePlaza(actor);
+    const usuario = await this.prisma.withTenant(plazaId, async (tx) => {
+      const existente = await tx.usuario.findFirst({
+        where: { id, deleted_at: null },
+        include: { rol: { select: { codigo: true } } },
+      });
+      if (!existente) {
+        throw new NotFoundException({
+          code: 'USUARIO_NO_ENCONTRADO',
+          title: 'Recurso no encontrado',
+          message: 'El usuario no existe en esta plaza.',
+        });
+      }
+      if (!existente.email_invalido) return existente;
+      return tx.usuario.update({
+        where: { id },
+        data: { email_invalido: false },
+        include: { rol: { select: { codigo: true } } },
+      });
+    });
+    await this.auditoria.record({
+      accion: 'usuario.reset_email_invalido',
+      entidadTipo: 'usuario',
+      entidadId: usuario.id,
+      plazaId,
+      usuarioId: actor.sub,
+      despues: { emailInvalido: usuario.email_invalido },
+      ...meta,
+    });
+    return this.toOutput(usuario, usuario.rol.codigo as RolGlobal);
   }
 
   private requirePlaza(actor: AuthenticatedUser): string {

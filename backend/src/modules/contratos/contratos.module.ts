@@ -3,14 +3,14 @@ import { ContratosController } from './contratos.controller';
 import { ContratosService } from './contratos.service';
 import { VencimientoAlertCron } from './cron/vencimiento-alert.cron';
 import { AuditoriaModule } from '../auditoria/auditoria.module';
-import { AuthModule } from '../auth/auth.module';
 import { AdjuntosModule } from '../adjuntos/adjuntos.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 @Module({
-  // AuthModule aporta MailerService (alertas T-056); AuditoriaModule, AuditoriaService;
-  // AdjuntosModule, AdjuntosService (T-062, subida/listado de PDF firmado).
+  // NotificacionesModule aporta EmailService (T-126: alerta T-056 encolada);
+  // AuditoriaModule, AuditoriaService; AdjuntosModule, AdjuntosService (T-062).
   // El descubrimiento de @Cron lo hace ScheduleModule.forRoot() (NotificacionesModule).
-  imports: [AuditoriaModule, AuthModule, AdjuntosModule],
+  imports: [AuditoriaModule, AdjuntosModule, NotificacionesModule],
   controllers: [ContratosController],
   providers: [ContratosService, VencimientoAlertCron],
   exports: [ContratosService],

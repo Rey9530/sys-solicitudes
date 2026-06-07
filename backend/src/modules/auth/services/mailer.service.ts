@@ -1,140 +1,128 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import nodemailer, { type Transporter } from 'nodemailer';
+import type { Prisma } from '@prisma/client';
+import { MailerService as SmtpMailerService } from '../../../common/mailer/mailer.service';
+import { TemplateRendererService } from '../../notificaciones/template-renderer.service';
+import { EmailService } from '../../notificaciones/email.service';
+import { PrismaAdminService } from '../../../prisma/prisma-admin.service';
 
 /**
- * Mailer PROVISIONAL para el flujo de reset (T-029).
+ * Wrapper de compatibilidad (T-126) sobre la infraestructura del módulo 09.
+ * Mantiene la API que ya consumían auth (T-029), usuarios (T-059) y plazas
+ * (T-040), pero delega en TemplateRendererService (T-120) + SMTP común
+ * (T-119) + cola EmailService (T-121).
  *
- * ⚠️ Provisional: el módulo de notificaciones (PLANIFICACION/09, T-118) define
- * la cola `email_log`, el worker con reintentos y las plantillas HTML. Aquí solo
- * enviamos directo por SMTP (MailHog en dev) con una plantilla inline para
- * desbloquear el flujo de auth end-to-end. Reemplazar al implementar T-118.
+ * Decisión "híbrido" (sesión 2026-06-07 con el owner):
+ *  - reset-password es time-sensitive → se ENVÍA INMEDIATO (sin esperar el
+ *    tick de 1 min del worker) y se registra post-envío en email_log.
+ *    ⚠️ La resetUrl NO se persiste en email_log (contiene el token en claro:
+ *    un admin podría tomar la cuenta desde el preview de T-127) → sin
+ *    reintento del worker; si el envío falla, el usuario re-solicita.
+ *  - bienvenida va por la COLA estándar (sin secretos; latencia ≤1 min OK).
  */
 @Injectable()
 export class MailerService {
   private readonly logger = new Logger(MailerService.name);
-  private readonly transporter: Transporter;
-  private readonly from: string;
 
-  constructor(private readonly config: ConfigService) {
-    this.from = this.config.get<string>('SMTP_FROM', 'Plazapp <noreply@plazapp.com>');
-    this.transporter = nodemailer.createTransport({
-      host: this.config.get<string>('SMTP_HOST', 'localhost'),
-      port: Number(this.config.get<string>('SMTP_PORT', '1025')),
-      secure: this.config.get<string>('SMTP_SECURE', 'false') === 'true',
-      auth: this.config.get<string>('SMTP_USER')
-        ? {
-            user: this.config.get<string>('SMTP_USER'),
-            pass: this.config.get<string>('SMTP_PASSWORD'),
-          }
-        : undefined,
-    });
-  }
-
-  async sendPasswordReset(to: string, nombre: string, resetUrl: string): Promise<void> {
-    const html = `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2>Restablecer contraseña</h2>
-        <p>Hola ${this.escape(nombre)},</p>
-        <p>Recibimos una solicitud para restablecer tu contraseña en Plazapp.
-        El enlace expira en 30 minutos y solo puede usarse una vez.</p>
-        <p><a href="${resetUrl}"
-          style="display:inline-block;padding:10px 18px;background:#2563eb;color:#fff;
-          text-decoration:none;border-radius:6px;">Restablecer contraseña</a></p>
-        <p style="color:#666;font-size:13px;">Si no fuiste tú, ignora este correo.</p>
-      </div>`;
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to,
-        subject: 'Restablecer tu contraseña · Plazapp',
-        html,
-      });
-    } catch (err) {
-      // No exponemos fallos de envío al cliente (el endpoint siempre responde 200).
-      this.logger.error(`No se pudo enviar el email de reset a ${to}: ${String(err)}`);
-    }
-  }
-
-  /** Email de bienvenida al crear un usuario admin_plaza (RN-AU-8, T-040). */
-  async sendBienvenida(to: string, nombre: string, plazaNombre: string): Promise<void> {
-    const loginUrl = `${this.config.get<string>('FRONTEND_URL', 'http://localhost:3000').replace(/\/$/, '')}/login`;
-    const html = `
-      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-        <h2>Bienvenido a Plazapp</h2>
-        <p>Hola ${this.escape(nombre)},</p>
-        <p>Tu cuenta de administrador para <strong>${this.escape(plazaNombre)}</strong>
-        ya está activa. Ingresa con el email <strong>${this.escape(to)}</strong> y la
-        contraseña que te compartieron.</p>
-        <p><a href="${loginUrl}"
-          style="display:inline-block;padding:10px 18px;background:#2563eb;color:#fff;
-          text-decoration:none;border-radius:6px;">Ir a Plazapp</a></p>
-      </div>`;
-    try {
-      await this.transporter.sendMail({
-        from: this.from,
-        to,
-        subject: `Bienvenido a Plazapp · ${plazaNombre}`,
-        html,
-      });
-    } catch (err) {
-      this.logger.error(`No se pudo enviar el email de bienvenida a ${to}: ${String(err)}`);
-    }
-  }
+  constructor(
+    private readonly smtp: SmtpMailerService,
+    private readonly renderer: TemplateRendererService,
+    private readonly emails: EmailService,
+    private readonly prismaAdmin: PrismaAdminService,
+    private readonly config: ConfigService,
+  ) {}
 
   /**
-   * Alerta de contratos por vencer T-30/T-7 (T-056, S-AlertaVencimiento).
-   * ⚠️ Plantilla inline provisional; T-118 la migra a `contrato-por-vencer.html`.
-   * Lanza en caso de error (el cron decide si registrar el fallo en email_log).
+   * Email de reset (T-029, crítico): render + envío inmediato. `plazaId`
+   * null para superadmin (sin tenant): se envía igual, sin fila en email_log
+   * (plaza_id es NOT NULL en la tabla).
    */
-  async sendContratoPorVencer(
+  async sendPasswordReset(
     to: string,
-    plazaNombre: string,
-    ventana: 'T-30' | 'T-7',
-    contratos: Array<{
-      localCodigo: string;
-      inquilinoRazonSocial: string;
-      fechaFin: string;
-    }>,
+    nombre: string,
+    resetUrl: string,
+    plazaId?: string | null,
   ): Promise<void> {
-    const dias = ventana === 'T-30' ? 30 : 7;
-    const filas = contratos
-      .map(
-        (c) => `
-        <tr>
-          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${this.escape(c.localCodigo)}</td>
-          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${this.escape(c.inquilinoRazonSocial)}</td>
-          <td style="padding:6px 10px;border-bottom:1px solid #eee;">${this.escape(c.fechaFin)}</td>
-        </tr>`,
-      )
-      .join('');
-    const html = `
-      <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto;">
-        <h2>Contratos por vencer en ${dias} días · ${this.escape(plazaNombre)}</h2>
-        <p>Los siguientes contratos vencen en ${dias} días (alerta ${ventana}):</p>
-        <table style="border-collapse:collapse;width:100%;font-size:14px;">
-          <thead>
-            <tr style="text-align:left;background:#f5f5f5;">
-              <th style="padding:6px 10px;">Local</th>
-              <th style="padding:6px 10px;">Inquilino</th>
-              <th style="padding:6px 10px;">Vence</th>
-            </tr>
-          </thead>
-          <tbody>${filas}</tbody>
-        </table>
-        <p style="color:#666;font-size:13px;">Revisa el módulo de contratos para renovar o cerrar.</p>
-      </div>`;
-    await this.transporter.sendMail({
-      from: this.from,
-      to,
-      subject: `⚠️ Contratos por vencer (${ventana}) · ${plazaNombre}`,
-      html,
+    const contexto = await this.contextoPlaza(plazaId);
+    const { subject, html } = this.renderer.render('reset-password', {
+      nombre,
+      resetUrl,
+      ...contexto,
     });
+    const variablesLog = { nombre, resetUrl: '[REDACTADO]' };
+    try {
+      await this.smtp.send(to, subject, html);
+      if (plazaId) {
+        await this.registrarEnLog(plazaId, to, 'reset-password', variablesLog, 'enviado');
+      }
+    } catch (err) {
+      // El endpoint de reset SIEMPRE responde 200 (no revela existencia).
+      this.logger.error(`no se pudo enviar el reset a ${to}: ${String(err)}`);
+      if (plazaId) {
+        await this.registrarEnLog(plazaId, to, 'reset-password', variablesLog, 'fallido', err);
+      }
+    }
   }
 
-  private escape(value: string): string {
-    return value.replace(/[<>&"]/g, (c) =>
-      ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' })[c] ?? c,
-    );
+  /** Email de bienvenida (RN-AU-8): encolado en email_log; envía el worker. */
+  async sendBienvenida(
+    to: string,
+    nombre: string,
+    _plazaNombre: string,
+    plazaId: string,
+  ): Promise<void> {
+    const loginUrl = `${this.frontendUrl()}/login`;
+    await this.emails.sendEmail('bienvenida', to, { nombre, email: to, loginUrl }, { plazaId });
+  }
+
+  /** Branding para el render inmediato (los encolados los enriquece el worker). */
+  private async contextoPlaza(plazaId?: string | null): Promise<Record<string, unknown>> {
+    const plaza = plazaId
+      ? await this.prismaAdmin.plaza.findUnique({
+          where: { id: plazaId },
+          select: { nombre_comercial: true, logo_url: true, color_primario: true },
+        })
+      : null;
+    return {
+      plaza: {
+        nombreComercial: plaza?.nombre_comercial ?? 'Plazapp',
+        logoUrl: plaza?.logo_url ?? null,
+        colorPrimario: plaza?.color_primario ?? '#2563eb',
+      },
+      appUrl: this.frontendUrl(),
+    };
+  }
+
+  /** Registro post-envío (mismo patrón que la alerta T-056). Best-effort. */
+  private async registrarEnLog(
+    plazaId: string,
+    destinatario: string,
+    plantilla: string,
+    variables: Record<string, unknown>,
+    estado: 'enviado' | 'fallido',
+    err?: unknown,
+  ): Promise<void> {
+    await this.prismaAdmin.email_log
+      .create({
+        data: {
+          plaza_id: plazaId,
+          destinatario,
+          plantilla,
+          variables: variables as Prisma.InputJsonValue,
+          estado,
+          // Fallido por diseño SIN reintentos del worker (la URL va redactada):
+          // reintentos agotados para que el reintento manual tampoco lo tome.
+          reintentos: estado === 'fallido' ? 3 : 0,
+          sent_at: estado === 'enviado' ? new Date() : null,
+          last_error: err ? String(err) : null,
+        },
+      })
+      .catch((e: unknown) =>
+        this.logger.error(`no se pudo registrar email_log de ${plantilla}: ${String(e)}`),
+      );
+  }
+
+  private frontendUrl(): string {
+    return this.config.get<string>('FRONTEND_URL', 'http://localhost:3000').replace(/\/$/, '');
   }
 }

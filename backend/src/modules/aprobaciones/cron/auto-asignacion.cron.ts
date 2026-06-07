@@ -106,7 +106,8 @@ export class AutoAsignacionCron {
               plazaId: solicitud.plaza_id,
               destinatario: r.email,
               plantilla: 'solicitud-asignada-responsable',
-              variables: { solicitudCodigo: solicitud.codigo },
+              solicitudId: solicitud.id,
+              variables: { solicitudCodigo: solicitud.codigo, solicitudTitulo: solicitud.titulo },
             });
           }
           const notificados = new Set([r.email]);
@@ -118,7 +119,8 @@ export class AutoAsignacionCron {
               plazaId: solicitud.plaza_id,
               destinatario: u.email,
               plantilla: 'solicitud-nueva-supervisor',
-              variables: { solicitudCodigo: solicitud.codigo },
+              solicitudId: solicitud.id,
+              variables: { solicitudCodigo: solicitud.codigo, solicitudTitulo: solicitud.titulo },
             });
           }
           return true;

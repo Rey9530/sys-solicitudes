@@ -1,0 +1,13 @@
+{{> _header}}
+<h2 style="margin:0 0 12px;font-size:18px;">Solicitud reasignada a ti</h2>
+<p>La solicitud <strong>{{solicitudCodigo}}</strong>{{#if solicitudTitulo}} — “{{solicitudTitulo}}”{{/if}} fue reasignada y ahora está bajo tu responsabilidad.</p>
+{{#if motivo}}
+<div style="border-left:4px solid #52525b;background:#fafafa;padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0;">
+  <p style="margin:0 0 4px;font-weight:600;">Motivo</p>
+  <p style="margin:0;">{{motivo}}</p>
+</div>
+{{/if}}
+<p style="margin:20px 0;">
+  <a href="{{appUrl}}/admin/solicitudes" style="display:inline-block;padding:10px 18px;background:{{plaza.colorPrimario}};color:#fff;text-decoration:none;border-radius:6px;">Ir a mi bandeja</a>
+</p>
+{{> _footer}}

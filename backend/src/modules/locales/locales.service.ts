@@ -106,12 +106,19 @@ export class LocalesService {
             await this.solicitudState.cancelar(tx, solicitud, actor, comentario);
           }
           rechazadas.push(solicitud.codigo);
-          if (solicitud.usuario_creador && !solicitud.usuario_creador.email_invalido) {
+          // T-126: 'solicitud-rechazada' es CRÍTICA — EmailService la encola
+          // aunque email_invalido sea true (antes se filtraba aquí).
+          if (solicitud.usuario_creador) {
             await this.solicitudState.enqueueEmail(tx, {
               plazaId,
               destinatario: solicitud.usuario_creador.email,
               plantilla: 'solicitud-rechazada',
-              variables: { solicitudCodigo: solicitud.codigo, comentario },
+              solicitudId: solicitud.id,
+              variables: {
+                solicitudCodigo: solicitud.codigo,
+                solicitudTitulo: solicitud.titulo,
+                comentario,
+              },
             });
           }
         }
