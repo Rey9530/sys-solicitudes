@@ -14,7 +14,7 @@
 | T-066 | Crear trigger `tg_subcategoria_max_5_supervisores` | Alta | Completada |
 | T-067 | Implementar CRUD categorias (POST/GET/PATCH/DELETE) | Alta | Completada |
 | T-068 | Implementar CRUD subcategorias (POST/GET/PATCH/DELETE) | Alta | Completada |
-| T-069 | Implementar asignación/cambio de responsable de subcategoría | Alta | Completada (⚠️ parcial: reasignación masiva T-V04 en módulo 07) |
+| T-069 | Implementar asignación/cambio de responsable de subcategoría | Alta | Completada (reasignación masiva T-V04 entregada en módulo 07) |
 | T-070 | Implementar endpoints de supervisores (POST/DELETE) | Alta | Completada |
 | T-071 | Validar SC-6 en aplicación (responsable y supervisores admin_plaza con rol_staff activo y misma plaza) | Alta | Completada |
 | T-072 | Implementar pantalla /admin/categorias | Alta | Completada |
@@ -135,9 +135,10 @@
   - [ ] Auditoría: registra el cambio con `antes`/`después` del responsable.
 - **Dependencias:** T-064, T-071.
 - **Prioridad:** Alta.
-- **Estado:** Completada (⚠️ parcial).
+- **Estado:** Completada.
 - **Bitácora de cambios:**
   - **2026-06-06 (rama `feat/modulo-05-categorias`):** `PATCH …/responsable` con SC-6 y auditoría antes/después implementado. ⚠️ **Desviación temporal:** la decisión T-V04 ("REASIGNAR TODAS las solicitudes activas, incluyendo en_revision") NO se puede implementar aún porque `solicitud`/`solicitud_historial` no existen (módulo 06). La reasignación masiva + emails se entrega en el **módulo 07** (donde existe `SolicitudStateService`); el punto de extensión quedó comentado en `categorias.service.ts::setResponsable`. ⚠️ El criterio original "NO reasigna solicitudes en curso" quedó OBSOLETO por T-V04.
+  - **actualización 2026-06-06 (rama `feat/modulo-07-aprobaciones`):** la reasignación masiva T-V04 quedó implementada: el cambio de responsable reasigna en la MISMA transacción todas las solicitudes en `asignado`/`en_revision` de la subcategoría (historial `reasignada` + email `solicitud-reasignada` por cada una). Verificado E2E: una `en_revision` migró al nuevo responsable. La tarea pasa a **Completada** (sin parcial).
 
 ### T-070 — Implementar endpoints de supervisores (POST/DELETE)
 
