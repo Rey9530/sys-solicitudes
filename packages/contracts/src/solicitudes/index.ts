@@ -161,6 +161,53 @@ export const ReasignarSolicitudSchema = z.object({
 });
 export type ReasignarSolicitudInput = z.infer<typeof ReasignarSolicitudSchema>;
 
+/** T-094: la aprobación admite comentario opcional. */
+export const AprobarSolicitudSchema = z.object({
+  comentario: z.string().trim().min(1).max(4000).optional(),
+});
+export type AprobarSolicitudInput = z.infer<typeof AprobarSolicitudSchema>;
+
+/** T-093: liberar devuelve la solicitud a la cola (`enviada`). */
+export const LiberarSolicitudSchema = z.object({
+  motivo: z.string().trim().max(1000).optional(),
+});
+export type LiberarSolicitudInput = z.infer<typeof LiberarSolicitudSchema>;
+
+/** T-099: bandeja del admin (colas enviada/asignado/en_revision). */
+export const BandejaQuerySchema = PaginationSchema.extend({
+  estado: z.enum(['enviada', 'asignado', 'en_revision']).optional(),
+  tipo: SolicitudTipoSchema.optional(),
+  categoriaId: UuidSchema.optional(),
+  subcategoriaId: UuidSchema.optional(),
+  localId: UuidSchema.optional(),
+  prioridad: SolicitudPrioridadSchema.optional(),
+  asignadasAMi: z
+    .union([z.boolean(), z.string()])
+    .transform((v) => v === true || v === 'true')
+    .optional(),
+});
+export type BandejaQuery = z.infer<typeof BandejaQuerySchema>;
+
+/** T-108: baja de local con rechazo masivo de solicitudes pendientes. */
+export const FueraDeServicioSchema = z.object({
+  motivo: z.string().trim().min(1).max(1000),
+  rechazarSolicitudesPendientes: z.boolean().default(false),
+});
+export type FueraDeServicioInput = z.infer<typeof FueraDeServicioSchema>;
+
+/** T-128/T-102: evento de calendario 1:1 con la solicitud aprobada. */
+export const EventoCalendarioOutputSchema = z.object({
+  id: UuidSchema,
+  plazaId: UuidSchema,
+  solicitudId: UuidSchema,
+  titulo: z.string(),
+  inicio: z.iso.datetime(),
+  fin: z.iso.datetime(),
+  color: z.string(),
+  createdAt: z.iso.datetime(),
+});
+export type EventoCalendarioOutput = z.infer<typeof EventoCalendarioOutputSchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Comentarios
 

@@ -148,6 +148,247 @@ export class SolicitudStateService {
     return updated;
   }
 
+  // ── Transiciones del sistema y del admin (rama 3 · módulo 07) ────────────────
+
+  /**
+   * T-091b (reemplaza T-098): auto-asignación del cron a los 15 min.
+   * `enviada → asignado` con el responsable ACTUAL de la subcategoría.
+   * Actor = sistema (usuario_id NULL en historial).
+   */
+  async autoAsignar(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    responsableId: string,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'autoAsignar');
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: { estado: 'asignado', admin_asignado_id: responsableId, asignada_at: new Date() },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: null, // sistema
+      evento: 'asignada',
+      estadoAnterior: solicitud.estado,
+      estadoNuevo: 'asignado',
+      comentario: 'Auto-asignada al responsable de la subcategoría',
+    });
+    return updated;
+  }
+
+  /**
+   * T-091c (reemplaza T-092): `asignado → en_revision`.
+   * Decisión confirmada: en `asignado` SOLO el admin asignado puede tomar.
+   * Desde `enviada` (cola sin asignar: tipo=otro o sin responsable válido)
+   * cualquier admin_plaza puede tomarla (espíritu del T-092 legacy).
+   */
+  async tomar(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    actor: AuthenticatedUser,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'tomar');
+    if (
+      solicitud.estado === 'asignado' &&
+      solicitud.admin_asignado_id !== actor.sub &&
+      actor.rol !== 'superadmin'
+    ) {
+      throw new ForbiddenException({
+        code: 'NOT_ASSIGNED_ADMIN',
+        title: 'Acceso denegado',
+        message: 'Solo el administrador asignado puede tomar esta solicitud (o reasignarla).',
+      });
+    }
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: { estado: 'en_revision', admin_asignado_id: actor.sub, asignada_at: new Date() },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: actor.sub,
+      evento: 'tomada',
+      estadoAnterior: solicitud.estado,
+      estadoNuevo: 'en_revision',
+    });
+    return updated;
+  }
+
+  /** T-094 (T6): `en_revision → aprobada`. SC-4: el creador no aprueba. */
+  async aprobar(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    actor: AuthenticatedUser,
+    comentario?: string,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'aprobar');
+    this.assertNoEsCreador(solicitud, actor, 'CANNOT_APPROVE_OWN_REQUEST');
+    this.assertEsAsignado(solicitud, actor);
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: { estado: 'aprobada', decision_at: new Date() },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: actor.sub,
+      evento: 'aprobada',
+      estadoAnterior: solicitud.estado,
+      estadoNuevo: 'aprobada',
+      comentario: comentario ?? null,
+    });
+    return updated;
+  }
+
+  /** T-095 (T7): `en_revision → rechazada`. Comentario OBLIGATORIO (Zod). */
+  async rechazar(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    actor: AuthenticatedUser,
+    comentario: string,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'rechazar');
+    this.assertNoEsCreador(solicitud, actor, 'CANNOT_REJECT_OWN_REQUEST');
+    if (!comentario?.trim()) {
+      throw new BadRequestException({
+        code: 'COMENTARIO_REQUERIDO',
+        title: 'Solicitud inválida',
+        message: 'El rechazo requiere un comentario no vacío.',
+      });
+    }
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: { estado: 'rechazada', decision_at: new Date() },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: actor.sub,
+      evento: 'rechazada',
+      estadoAnterior: solicitud.estado,
+      estadoNuevo: 'rechazada',
+      comentario,
+    });
+    return updated;
+  }
+
+  /**
+   * T-096 (T8): `en_revision → requerida_subsanacion`. Comentario OBLIGATORIO.
+   * `admin_asignado_id` queda NULL (sin asignar hasta el reenvío T9).
+   */
+  async pedirSubsanacion(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    actor: AuthenticatedUser,
+    comentario: string,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'pedirSubsanacion');
+    this.assertEsAsignado(solicitud, actor);
+    if (!comentario?.trim()) {
+      throw new BadRequestException({
+        code: 'COMENTARIO_REQUERIDO',
+        title: 'Solicitud inválida',
+        message: 'Pedir subsanación requiere un comentario no vacío.',
+      });
+    }
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: { estado: 'requerida_subsanacion', admin_asignado_id: null },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: actor.sub,
+      evento: 'subsanada',
+      estadoAnterior: solicitud.estado,
+      estadoNuevo: 'requerida_subsanacion',
+      comentario,
+    });
+    // El cuerpo también vive como comentario tipo `subsanacion` (T-096).
+    await tx.comentario.create({
+      data: {
+        plaza_id: solicitud.plaza_id,
+        solicitud_id: solicitud.id,
+        usuario_id: actor.sub,
+        tipo: 'subsanacion',
+        cuerpo: comentario,
+      },
+    });
+    return updated;
+  }
+
+  /**
+   * T-097 (T12, ajustada T-V04): reasignación en `asignado` o `en_revision`
+   * por CUALQUIER admin_plaza. Sin lock (T-V03): solo cambia el asignado.
+   * El estado se conserva tal cual (en_revision sigue en_revision).
+   */
+  async reasignar(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    actor: AuthenticatedUser | null,
+    nuevoResponsableId: string,
+    comentario?: string,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'reasignar');
+    if (solicitud.admin_asignado_id === nuevoResponsableId) {
+      throw new BadRequestException({
+        code: 'SAME_ASSIGNEE',
+        title: 'Solicitud inválida',
+        message: 'La solicitud ya está asignada a ese administrador.',
+      });
+    }
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: { admin_asignado_id: nuevoResponsableId, asignada_at: new Date() },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: actor?.sub ?? null,
+      evento: 'reasignada',
+      estadoAnterior: solicitud.estado,
+      estadoNuevo: solicitud.estado,
+      comentario: comentario ?? null,
+    });
+    return updated;
+  }
+
+  /**
+   * T-093 (ajustada T-V03): `asignado|en_revision → enviada`. Solo el admin
+   * asignado libera; vuelve a la cola y el cron re-asigna a los 15 min.
+   * `enviada_at` NO se resetea: el SLA cuenta desde el envío original.
+   */
+  async liberar(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    actor: AuthenticatedUser,
+    motivo?: string,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'liberar');
+    if (solicitud.admin_asignado_id !== actor.sub && actor.rol !== 'superadmin') {
+      throw new ForbiddenException({
+        code: 'NOT_ASSIGNED_ADMIN',
+        title: 'Acceso denegado',
+        message: 'Solo el administrador asignado puede liberar la solicitud.',
+      });
+    }
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: { estado: 'enviada', admin_asignado_id: null },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: actor.sub,
+      evento: 'comentario',
+      estadoAnterior: solicitud.estado,
+      estadoNuevo: 'enviada',
+      comentario: motivo?.trim() ? `Liberada: ${motivo.trim()}` : 'Liberada por el asignado',
+    });
+    return updated;
+  }
+
   // ── Helpers compartidos (T-105, T-118 mínimo) ─────────────────────────────────
 
   /** Único punto de escritura en `solicitud_historial` (append-only, RI-1). */
@@ -202,6 +443,17 @@ export class SolicitudStateService {
         code,
         title: 'Acceso denegado',
         message: 'Un administrador no puede decidir sobre su propia solicitud (SC-4).',
+      });
+    }
+  }
+
+  /** Solo el admin asignado decide sobre una solicitud en revisión. */
+  private assertEsAsignado(solicitud: SolicitudModel, actor: AuthenticatedUser): void {
+    if (solicitud.admin_asignado_id !== actor.sub && actor.rol !== 'superadmin') {
+      throw new ForbiddenException({
+        code: 'NOT_ASSIGNED_ADMIN',
+        title: 'Acceso denegado',
+        message: 'Solo el administrador asignado puede decidir sobre esta solicitud.',
       });
     }
   }

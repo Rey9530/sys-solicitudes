@@ -19,6 +19,7 @@ import type {
 } from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { SolicitudStateService } from '../solicitudes/state/solicitud-state.service';
 import { StaffForSubcategoriaValidator } from './validators/staff-for-subcategoria.validator';
 import {
   categoriaToOutput,
@@ -71,6 +72,7 @@ export class CategoriasService {
     private readonly prisma: PrismaService,
     private readonly auditoria: AuditoriaService,
     private readonly staffValidator: StaffForSubcategoriaValidator,
+    private readonly solicitudState: SolicitudStateService,
   ) {}
 
   // ── Categorías ────────────────────────────────────────────────────────────────
@@ -441,10 +443,11 @@ export class CategoriasService {
   /**
    * Cambia el responsable de la subcategoría.
    *
-   * ⚠️ T-V04: las solicitudes activas se reasignan TODAS al nuevo responsable.
-   * Esa reasignación masiva se implementa en el módulo 07 (requiere
-   * `solicitud`/`solicitud_historial` + SolicitudStateService); aquí queda el
-   * punto de extensión.
+   * T-V04 (módulo 07): reasigna TODAS las solicitudes activas con asignado
+   * (`asignado` y `en_revision` — sí, también las en revisión) al nuevo
+   * responsable, con historial `reasignada` y email por cada una. Las
+   * `enviada`/`requerida_subsanacion` no tienen asignado: el cron de
+   * auto-asignación ya usará al nuevo responsable.
    */
   async setResponsable(
     categoriaId: string,
@@ -455,7 +458,7 @@ export class CategoriasService {
   ): Promise<SubcategoriaDetailOutput> {
     const plazaId = this.requirePlaza(actor);
 
-    const { before, updated } = await this.prisma.withTenant(plazaId, async (tx) => {
+    const { before, updated, reasignadas } = await this.prisma.withTenant(plazaId, async (tx) => {
       const before = await this.assertSubcategoria(tx, categoriaId, subId);
       await this.staffValidator.validate(tx, responsableId, plazaId, 'responsable');
       const updated = await tx.subcategoria.update({
@@ -463,7 +466,37 @@ export class CategoriasService {
         data: { responsable_id: responsableId },
         include: SUBCATEGORIA_INCLUDE,
       });
-      return { before, updated };
+
+      // T-V04: reasignación masiva en la MISMA transacción.
+      const activas = await tx.solicitud.findMany({
+        where: {
+          subcategoria_id: subId,
+          estado: { in: ['asignado', 'en_revision'] },
+          NOT: { admin_asignado_id: responsableId },
+        },
+      });
+      const nuevo = await tx.usuario.findFirst({ where: { id: responsableId } });
+      for (const solicitud of activas) {
+        await this.solicitudState.reasignar(
+          tx,
+          solicitud,
+          null,
+          responsableId,
+          'Cambio de responsable de subcategoría',
+        );
+        if (nuevo && !nuevo.email_invalido) {
+          await this.solicitudState.enqueueEmail(tx, {
+            plazaId,
+            destinatario: nuevo.email,
+            plantilla: 'solicitud-reasignada',
+            variables: {
+              solicitudCodigo: solicitud.codigo,
+              motivo: 'Cambio de responsable de subcategoría',
+            },
+          });
+        }
+      }
+      return { before, updated, reasignadas: activas.length };
     });
 
     const output = subcategoriaToDetail(updated as SubcategoriaConRelaciones);
@@ -474,7 +507,7 @@ export class CategoriasService {
       plazaId,
       usuarioId: actor.sub,
       antes: { responsableId: before.responsable_id },
-      despues: { responsableId },
+      despues: { responsableId, solicitudesReasignadas: reasignadas },
       ...meta,
     });
     return output;
