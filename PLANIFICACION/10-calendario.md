@@ -34,6 +34,7 @@
 - **Estado:** Completada (⚠️ adelantada al módulo 07).
 - **Bitácora de cambios:**
   - **2026-06-06 (rama `feat/modulo-07-aprobaciones`):** Modelo + migración + RLS + CHECK `fin > inicio` adelantados al módulo 07 (T-102 los necesitaba al aprobar eventos). Upsert 1:1 al aprobar; soft delete con `deleted_at`. ⚠️ El trigger de soft-delete automático por cambio de estado de la solicitud NO se implementó (la reversión es solo-BD por superadmin, S-FS-B; decidir en módulo 10 si se añade). El feed `GET /api/v1/calendario` sigue pendiente (T-129).
+  - **2026-06-07 (rama `feat/modulo-10-11-calendario-reportes`):** Cerrado el pendiente (decisión owner): migración `20260607215949_modulo_10_evento_calendario_trigger` con `tg_evento_calendario_soft_delete` (AFTER UPDATE OF estado ON solicitud, SECURITY DEFINER — la reversión solo-BD corre sin contexto RLS): `aprobada → otro estado` soft-deletea el evento; `otro → aprobada` lo restaura (deleted_at = NULL). Verificado con reversión y re-aprobación directas en SQL. T-128 queda 100% completa.
 
 ### T-129 — Implementar GET /api/v1/calendario (feed de eventos para FullCalendar)
 
@@ -54,8 +55,13 @@
   - [ ] RLS probado.
 - **Dependencias:** T-128, T-102, T-103, T-043.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada (2026-06-07).
+- **Bitácora de cambios:**
+  - 2026-06-07 — `GET /api/v1/calendario?from=&to=&localId=&tipo=&inquilinoId=` implementado en `calendario.service.ts` con schemas Zod en `packages/contracts/src/calendario/`. Tres fuentes: `evento_calendario` vivos (join a solicitud para código/local/inquilino), locales `en_mantenimiento` con ventana programada (all-day) y contratos vigentes con `fecha_fin` en los próximos 30 días (si `calendar_mostrar_hitos_contrato`). IDs prefijados `evt-`/`mnt-`/`cto-`.
+  - ⚠️ Desviación: los filtros multi-select aceptan listas separadas por coma (`localId=a,b&tipo=evento,hito_contrato`); los tipos expuestos son `evento|mantenimiento|hito_contrato` — `remodelacion` NO es distinguible en v1 (el local en mantenimiento no guarda qué tipo de solicitud lo originó; aparece como `mantenimiento` naranja, igual que el ejemplo del plan).
+  - Bonus: el feed marca `extendedProps.choque=true` en eventos solapados del mismo local (evita una segunda llamada del frontend; el endpoint T-131 existe igual).
+  - Color hito contractual: `#8b5cf6` (violeta — el plan no definía color para hitos).
+  - Scope verificado: admin ve todo; `inquilino` solo SUS eventos/mantenimientos/hitos (por `inquilino_id` del JWT); superadmin sin plaza → 403 (el calendario es por plaza). Fechas en ISO-8601 UTC (`Z`), equivalentes al offset `-06:00` del ejemplo.
 
 ### T-130 — Implementar GET /api/v1/calendario/export.ics
 
@@ -69,10 +75,12 @@
   - [ ] RLS probado.
 - **Dependencias:** T-128, T-129.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
-
-### T-131 — Implementar detección visual de choques (overlap query)
+- **Estado:** Completada (2026-06-07).
+- **Bitácora de cambios:**
+  - 2026-06-07 — `GET /api/v1/calendario/export.ics` con `Content-Type: text/calendar` y `Content-Disposition: attachment; filename="plazapp-{slug}.ics"`. VEVENT con UID/DTSTAMP/DTSTART/DTEND (UTC básico)/SUMMARY/DESCRIPTION (código + link al detalle según rol)/LOCATION (código del local)/ORGANIZER (nombre comercial + email_contacto de la plaza).
+  - ⚠️ Decisión: generado **inline sin librería** — se evaluó `ics@3.12.0` en npm y se descartó (RFC 5545 es texto plano; cero dependencias nuevas). Incluye escape RFC (coma/punto y coma/saltos), CRLF y folding a 75 octetos (§3.1).
+  - Filtros `?localId=&tipo=` (tipo se acepta pero solo hay VEVENTs de `evento_calendario`, igual que el criterio). Scope inquilino aplicado.
+  - Verificado: descarga con headers correctos y estructura VCALENDAR válida. ⚠️ El import manual en Google/Apple/Outlook queda para QA del owner (no automatizable desde el entorno dev); la estructura sigue RFC 5545 estricto.
 
 - **Descripción:** Implementar el endpoint y la lógica que detecta cuándo hay choques de eventos en el mismo local. Materializa S-Choques y CU-CA-7.
 - **Criterios de aceptación:**
@@ -83,10 +91,11 @@
   - [ ] RLS probado.
 - **Dependencias:** T-128, T-129.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
-
-### T-132 — Implementar creación de solicitud tipo evento desde calendario
+- **Estado:** Completada (2026-06-07).
+- **Bitácora de cambios:**
+  - 2026-06-07 — `GET /api/v1/calendario/choques?localId=&from=&to=` retorna pares `{ localId, localCodigo, eventoAId, eventoBId }` de eventos del mismo local con `[inicio, fin)` intersectados (sweep O(n²) sobre los eventos del rango — suficiente para volúmenes de una plaza). El feed (T-129) además marca `choque=true` en `extendedProps` para que el frontend pinte el borde rojo sin llamada extra.
+  - S-Choques confirmado: solo aviso visual, NO bloquea creación/aprobación.
+  - Verificado: dos eventos solapados en L-SOL-1 → 1 par; al mover uno (drag-and-drop) → 0 pares.
 
 - **Descripción:** Permitir que el `inquilino` o `admin_plaza` haga click en un slot del calendario y se abra el wizard de nueva solicitud pre-rellenado con `tipo=evento` y la fecha/hora del slot. Materializa S-CrearDesdeCalendario.
 - **Criterios de aceptación:**
