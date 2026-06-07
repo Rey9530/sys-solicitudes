@@ -8,6 +8,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { PasswordService } from './services/password.service';
 import { TokenService } from './services/token.service';
 import { MailerService } from './services/mailer.service';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 import { durationToSeconds } from '../../common/utils/duration';
 
 /**
@@ -19,6 +20,8 @@ import { durationToSeconds } from '../../common/utils/duration';
 @Module({
   imports: [
     PassportModule,
+    // T-126: el MailerService legado delega en renderer + cola del módulo 09.
+    NotificacionesModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

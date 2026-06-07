@@ -108,7 +108,12 @@ export class PlazasService {
 
     // Efectos post-commit: email de bienvenida + buckets MinIO + auditoría.
     if (adminEmail && dto.adminPlazaInicial) {
-      await this.mailer.sendBienvenida(adminEmail, dto.adminPlazaInicial.nombre, plaza.nombre_comercial);
+      await this.mailer.sendBienvenida(
+        adminEmail,
+        dto.adminPlazaInicial.nombre,
+        plaza.nombre_comercial,
+        plaza.id,
+      );
     }
     // T-111: crear buckets y lifecycle policy de la nueva plaza (best-effort).
     await this.minio.safeCreateBucketsForPlaza(plaza.id);

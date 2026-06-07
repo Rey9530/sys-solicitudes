@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Ip, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Ip, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateUsuarioSchema,
@@ -43,6 +43,23 @@ export class UsuariosController {
     @Headers('x-request-id') requestId: string | undefined,
   ) {
     return this.service.create(body, user, {
+      ip: ip || null,
+      userAgent: userAgent ?? null,
+      requestId: requestId ?? null,
+    });
+  }
+
+  @Post(':id/reset-email-invalido')
+  @Roles('admin_plaza', 'superadmin')
+  @ApiOperation({ summary: 'Resetear email_invalido tras corregir la dirección (T-124).' })
+  resetEmailInvalido(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+  ) {
+    return this.service.resetEmailInvalido(id, user, {
       ip: ip || null,
       userAgent: userAgent ?? null,
       requestId: requestId ?? null,

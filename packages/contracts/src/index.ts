@@ -22,4 +22,5 @@ export * from './contratos/index.js';
 export * from './categorias/index.js';
 export * from './solicitudes/index.js';
 export * from './adjuntos/index.js';
+export * from './notificaciones/index.js';
 export * from './common/index.js';

@@ -59,7 +59,12 @@ export class AprobacionesService {
     const plazaId = this.requirePlaza(actor);
     const updated = await this.prisma.withTenant(plazaId, async (tx) => {
       const solicitud = await this.assertSolicitud(tx, id);
-      return this.state.tomar(tx, solicitud, actor);
+      const tomada = await this.state.tomar(tx, solicitud, actor);
+      // T-126 (decisión owner 2026-06-07): confirma al INQUILINO creador que
+      // su solicitud está en revisión (el plan decía "admin que tomó", pero
+      // auto-notificar la propia acción no aporta).
+      await this.emailAlCreador(tx, solicitud, 'solicitud-recibida');
+      return tomada;
     });
     await this.audit('solicitud.tomar', id, plazaId, actor, meta, { estado: updated.estado });
     return solicitudToOutput(updated);
@@ -186,7 +191,12 @@ export class AprobacionesService {
           plazaId,
           destinatario: nuevo.email,
           plantilla: 'solicitud-reasignada',
-          variables: { solicitudCodigo: solicitud.codigo, motivo: dto.comentario ?? null },
+          solicitudId: solicitud.id,
+          variables: {
+            solicitudCodigo: solicitud.codigo,
+            solicitudTitulo: solicitud.titulo,
+            motivo: dto.comentario ?? null,
+          },
         });
       }
       return result;
@@ -308,7 +318,11 @@ export class AprobacionesService {
     });
   }
 
-  /** Encola el email de decisión al creador de la solicitud. */
+  /**
+   * Encola el email de decisión al creador de la solicitud. El bloqueo por
+   * email_invalido lo decide EmailService (T-121): las plantillas CRÍTICAS
+   * (aprobada/rechazada/subsanacion) se encolan aunque el flag esté en true.
+   */
   private async emailAlCreador(
     tx: Prisma.TransactionClient,
     solicitud: SolicitudModel,
@@ -317,14 +331,19 @@ export class AprobacionesService {
   ): Promise<void> {
     const creador = await tx.usuario.findFirst({
       where: { id: solicitud.usuario_creador_id },
-      select: { email: true, email_invalido: true },
+      select: { email: true },
     });
-    if (!creador || creador.email_invalido) return;
+    if (!creador) return;
     await this.state.enqueueEmail(tx, {
       plazaId: solicitud.plaza_id,
       destinatario: creador.email,
       plantilla,
-      variables: { solicitudCodigo: solicitud.codigo, comentario: comentario ?? null },
+      solicitudId: solicitud.id,
+      variables: {
+        solicitudCodigo: solicitud.codigo,
+        solicitudTitulo: solicitud.titulo,
+        comentario: comentario ?? null,
+      },
     });
   }
 

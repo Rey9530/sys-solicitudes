@@ -184,7 +184,7 @@ export class AuthService {
       .get<string>('FRONTEND_URL', 'http://localhost:3000')
       .replace(/\/$/, '');
     const resetUrl = `${base}/reset-password/${token}`;
-    await this.mailer.sendPasswordReset(usuario.email, usuario.nombre, resetUrl);
+    await this.mailer.sendPasswordReset(usuario.email, usuario.nombre, resetUrl, usuario.plaza_id);
   }
 
   // ── Reset: confirmación (T-029) ──────────────────────────────────────────────

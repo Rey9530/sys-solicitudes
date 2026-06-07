@@ -2,10 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
 import { PrismaAdminService } from '../../../prisma/prisma-admin.service';
-import { MailerService } from '../../auth/services/mailer.service';
+import { EmailService } from '../../notificaciones/email.service';
 import { toIsoDate } from '../contrato.mapper';
 
-const PLANTILLA = 'contrato_vencimiento_alert';
+// T-126: renombrada de 'contrato_vencimiento_alert' a 'contrato-por-vencer'
+// (nombre del registro de plantillas T-120). Las filas legacy quedan en
+// email_log con el nombre viejo (estado enviado: el worker no las toca).
+const PLANTILLA = 'contrato-por-vencer';
 const VENTANAS = [
   { ventana: 'T-30' as const, dias: 30 },
   { ventana: 'T-7' as const, dias: 7 },
@@ -22,8 +25,10 @@ const VENTANAS = [
  * y recorre todas las plazas; el aislamiento se garantiza agrupando
  * explícitamente por `plaza_id` antes de enviar.
  *
- * Deduplicación: una fila en `email_log` (plantilla + plaza + ventana + día
- * de El Salvador) por destinatario; si ya existe alguna hoy, no se reenvía.
+ * T-126: desde el módulo 09 ENCOLA en `email_log` (EmailService) en vez de
+ * enviar directo; el worker (T-122) envía con reintentos. La deduplicación
+ * diaria se mantiene aquí: una fila (plantilla + plaza + ventana + día de
+ * El Salvador); si ya existe alguna hoy, no se re-encola.
  */
 @Injectable()
 export class VencimientoAlertCron {
@@ -31,7 +36,7 @@ export class VencimientoAlertCron {
 
   constructor(
     private readonly prismaAdmin: PrismaAdminService,
-    private readonly mailer: MailerService,
+    private readonly emails: EmailService,
   ) {}
 
   @Cron('0 9 * * *', { name: 'contrato-vencimiento-alert', timeZone: 'America/El_Salvador' })
@@ -104,44 +109,20 @@ export class VencimientoAlertCron {
         }));
         const variables = {
           ventana,
+          dias,
+          contratos: resumen,
           contratoIds: grupo.map((c) => c.id),
         } satisfies Prisma.InputJsonValue;
 
         for (const admin of admins) {
           try {
-            await this.mailer.sendContratoPorVencer(
-              admin.email,
-              primero.plaza.nombre_comercial,
-              ventana,
-              resumen,
-            );
-            await this.prismaAdmin.email_log.create({
-              data: {
-                plaza_id: plazaId,
-                destinatario: admin.email,
-                plantilla: PLANTILLA,
-                variables,
-                estado: 'enviado',
-                sent_at: new Date(),
-              },
-            });
+            // T-126: encola (estado pendiente); el worker T-122 envía.
+            await this.emails.sendEmail(PLANTILLA, admin.email, variables, { plazaId });
             enviadas++;
           } catch (err) {
             this.logger.error(
-              `Alerta ${ventana} a ${admin.email} (plaza ${plazaId}) falló: ${String(err)}`,
+              `Alerta ${ventana} a ${admin.email} (plaza ${plazaId}) no se pudo encolar: ${String(err)}`,
             );
-            await this.prismaAdmin.email_log
-              .create({
-                data: {
-                  plaza_id: plazaId,
-                  destinatario: admin.email,
-                  plantilla: PLANTILLA,
-                  variables,
-                  estado: 'fallido',
-                  last_error: String(err),
-                },
-              })
-              .catch(() => undefined);
           }
         }
       }
