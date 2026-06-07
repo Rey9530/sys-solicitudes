@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import type { AdjuntoOutput, SolicitudDetailOutput } from '@app/contracts';
+import type { SolicitudDetailOutput } from '@app/contracts';
 import {
   tomarAction,
   liberarAction,
@@ -15,9 +15,12 @@ import {
   cambiarPrioridadAction,
   comentarAdminAction,
   descargarAdjuntoAdminAction,
+  subirAdjuntoAdminAction,
+  eliminarAdjuntoAdminAction,
 } from '@/app/(admin-plaza)/admin/solicitudes/actions';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/client/tabs';
+import { AdjuntoUploader } from '@/components/client/adjunto-uploader';
 import {
   Dialog,
   DialogContent,
@@ -40,6 +43,19 @@ export interface AdminOption {
 }
 
 const selectClass = 'h-9 w-full rounded-md border border-input bg-white px-2 text-sm';
+
+/** MIME permitidos por defecto para adjuntos de solicitud (T-V06, configurable por plaza). */
+const SOLICITUD_MIMES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/dwg',
+];
+const SOLICITUD_MAX_BYTES = 50 * 1024 * 1024; // 50 MB (T-V06)
 
 const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   area_afectada: 'Área afectada',
@@ -111,12 +127,6 @@ export function SolicitudDetailAdmin({
     } else {
       toast.error(r.error ?? 'Error');
     }
-  };
-
-  const onDownload = async (a: AdjuntoOutput) => {
-    const r = await descargarAdjuntoAdminAction(a.id);
-    if (r.ok) window.open(r.url, '_blank', 'noopener');
-    else toast.error(r.error);
   };
 
   return (
@@ -367,27 +377,18 @@ export function SolicitudDetailAdmin({
           {
             key: 'adjuntos',
             label: `Adjuntos (${solicitud.adjuntos.length})`,
-            content:
-              solicitud.adjuntos.length === 0 ? (
-                <p className="text-sm text-gray-500">Sin adjuntos.</p>
-              ) : (
-                <ul className="divide-y rounded-lg border bg-white">
-                  {solicitud.adjuntos.map((a) => (
-                    <li key={a.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                      <div>
-                        <p className="font-medium text-gray-900">{a.nombreOriginal}</p>
-                        <p className="text-xs text-gray-500">
-                          {a.mimeType} · {Math.ceil(a.tamanoBytes / 1024)} KB ·{' '}
-                          {formatDateInPlazaTz(a.createdAt)}
-                        </p>
-                      </div>
-                      <Button variant="ghost" size="sm" onClick={() => void onDownload(a)}>
-                        Descargar
-                      </Button>
-                    </li>
-                  ))}
-                </ul>
-              ),
+            content: (
+              <AdjuntoUploader
+                entidadTipo="solicitud"
+                adjuntosIniciales={solicitud.adjuntos}
+                mimeAllowlist={SOLICITUD_MIMES}
+                maxBytes={SOLICITUD_MAX_BYTES}
+                canDelete
+                subirAction={(fd) => subirAdjuntoAdminAction(solicitud.id, fd)}
+                descargarAction={descargarAdjuntoAdminAction}
+                eliminarAction={(adjId) => eliminarAdjuntoAdminAction(solicitud.id, adjId)}
+              />
+            ),
           },
         ]}
       />

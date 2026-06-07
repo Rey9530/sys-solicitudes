@@ -3,7 +3,6 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
-  PayloadTooLargeException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { adjunto as AdjuntoModel } from '@prisma/client';
@@ -11,6 +10,7 @@ import type { AdjuntoOutput, UploadAdjuntoResponse } from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MinioService } from '../../common/storage/minio.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { AdjuntoValidator } from './validators/adjunto.validator';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
 export interface RequestMeta {
@@ -48,6 +48,7 @@ export class AdjuntosService {
     private readonly prisma: PrismaService,
     private readonly minio: MinioService,
     private readonly auditoria: AuditoriaService,
+    private readonly validator: AdjuntoValidator,
   ) {}
 
   // ── Subir PDF a un contrato ───────────────────────────────────────────────────
@@ -58,13 +59,9 @@ export class AdjuntosService {
     meta: RequestMeta,
   ): Promise<UploadAdjuntoResponse> {
     const plazaId = this.requirePlaza(actor);
-    if (file.mimetype !== 'application/pdf') {
-      throw new BadRequestException({
-        code: 'ADJUNTO_MIME_INVALIDO',
-        title: 'Solicitud inválida',
-        message: 'Solo se permite PDF (application/pdf) para el contrato firmado.',
-      });
-    }
+
+    // T-062: contrato firmado es siempre PDF (lista cerrada, no configurable).
+    const CONTRATO_MIMES = ['application/pdf'] as const;
 
     const { contrato, maxBytes } = await this.prisma.withTenant(plazaId, async (tx) => {
       const contrato = await tx.contrato.findFirst({ where: { id: contratoId } });
@@ -74,13 +71,17 @@ export class AdjuntosService {
     if (!contrato) this.throwNotFound('CONTRATO_NOT_FOUND', 'El contrato no existe.');
     this.assertContratoScope(contrato.inquilino_id, actor);
 
-    if (file.size > maxBytes) {
-      throw new PayloadTooLargeException({
-        code: 'ADJUNTO_DEMASIADO_GRANDE',
-        title: 'Carga demasiado grande',
-        message: `El archivo supera el máximo de ${Math.floor(maxBytes / 1024 / 1024)} MB de la plaza.`,
-      });
-    }
+    // T-115: validador unificado (extensión, MIME, tamaño, magic bytes).
+    this.validator.validateAll(
+      {
+        buffer: file.buffer,
+        mimetype: file.mimetype,
+        size: file.size,
+        originalname: file.originalname,
+      },
+      [...CONTRATO_MIMES],
+      maxBytes,
+    );
 
     const bucket = this.minio.bucketForContratos(plazaId);
     const key = `${plazaId}/contrato/${contratoId}/${randomUUID()}.pdf`;
@@ -138,6 +139,101 @@ export class AdjuntosService {
     if (!result) this.throwNotFound('CONTRATO_NOT_FOUND', 'El contrato no existe.');
     this.assertContratoScope(result.contrato.inquilino_id, actor);
     return result.adjuntos.map((a) => this.toOutput(a));
+  }
+
+  // ── Subir imagen a un local (T-116) ───────────────────────────────────────────
+  /**
+   * Bucket `locales-planos-{plazaId}`, key `{plazaId}/local/{localId}/{uuid}.{ext}`.
+   * Allowlist hard-coded de imágenes (PNG/JPEG/WEBP); el validador rechaza el
+   * resto con `400 ADJUNTO_MIME_INVALIDO`. Tamaño contra `tamanio_max_archivo_mb`.
+   * Permisos: solo admin_plaza / superadmin.
+   */
+  async uploadLocalAdjunto(
+    localId: string,
+    file: UploadedFile,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<UploadAdjuntoResponse> {
+    const plazaId = this.requirePlaza(actor);
+
+    const LOCAL_MIMES = ['image/jpeg', 'image/png', 'image/webp'] as const;
+
+    const { local, maxBytes } = await this.prisma.withTenant(plazaId, async (tx) => {
+      const local = await tx.local.findFirst({ where: { id: localId, deleted_at: null } });
+      const config = await tx.configuracion.findUnique({ where: { plaza_id: plazaId } });
+      return { local, maxBytes: (config?.tamanio_max_archivo_mb ?? 50) * 1024 * 1024 };
+    });
+    if (!local) this.throwNotFound('LOCAL_NOT_FOUND', 'El local no existe.');
+
+    this.validator.validateAll(
+      {
+        buffer: file.buffer,
+        mimetype: file.mimetype,
+        size: file.size,
+        originalname: file.originalname,
+      },
+      [...LOCAL_MIMES],
+      maxBytes,
+    );
+
+    const ext = (file.originalname.split('.').pop() ?? 'bin').toLowerCase().slice(0, 10);
+    const bucket = this.minio.bucketForLocales(plazaId);
+    const key = `${plazaId}/local/${localId}/${randomUUID()}.${ext}`;
+    await this.minio.putObject(bucket, key, file.buffer, file.mimetype);
+
+    const adjunto = await this.prisma.withTenant(plazaId, (tx) =>
+      tx.adjunto.create({
+        data: {
+          plaza_id: plazaId,
+          entidad_tipo: 'local',
+          entidad_id: localId,
+          nombre_original: file.originalname,
+          mime_type: file.mimetype,
+          tamano_bytes: file.size,
+          storage_key: key,
+          usuario_subio_id: actor.sub,
+        },
+      }),
+    );
+
+    await this.auditoria.record({
+      accion: 'adjunto.create',
+      entidadTipo: 'adjunto',
+      entidadId: adjunto.id,
+      plazaId,
+      usuarioId: actor.sub,
+      despues: { ...this.toOutput(adjunto), storageKey: key },
+      ...meta,
+    });
+
+    let url: string | undefined;
+    try {
+      url = await this.minio.presignedGetUrl(bucket, key);
+    } catch {
+      url = undefined;
+    }
+    return { adjunto: this.toOutput(adjunto), url };
+  }
+
+  // ── Listar adjuntos de un local (T-116) ────────────────────────────────────────
+  async listLocalAdjuntos(
+    localId: string,
+    actor: AuthenticatedUser,
+  ): Promise<AdjuntoOutput[]> {
+    const plazaId = this.requirePlaza(actor);
+    if (actor.rol !== 'admin_plaza' && actor.rol !== 'superadmin') {
+      this.throwNotFound('ADJUNTO_NOT_FOUND', 'El adjunto no existe.');
+    }
+    const result = await this.prisma.withTenant(plazaId, async (tx) => {
+      const local = await tx.local.findFirst({ where: { id: localId, deleted_at: null } });
+      if (!local) return null;
+      return tx.adjunto.findMany({
+        where: { entidad_tipo: 'local', entidad_id: localId, deleted_at: null },
+        orderBy: { created_at: 'desc' },
+      });
+    });
+    if (!result) this.throwNotFound('LOCAL_NOT_FOUND', 'El local no existe.');
+    return result.map((a) => this.toOutput(a));
   }
 
   // ── Subir adjunto a una solicitud (T-112) ─────────────────────────────────────
@@ -198,25 +294,22 @@ export class AdjuntosService {
       });
     }
 
-    // MIME permitidos por plaza (T-V06) y tamaño máximo.
+    // T-115: validador unificado (extensión, MIME declarado, tamaño, magic bytes).
+    // MIME permitidos por plaza (T-V06); tamaño máximo de la plaza.
     const mimesPermitidos = Array.isArray(config?.mime_types_permitidos)
       ? (config.mime_types_permitidos as string[])
       : [];
-    if (!mimesPermitidos.includes(file.mimetype)) {
-      throw new BadRequestException({
-        code: 'ADJUNTO_MIME_INVALIDO',
-        title: 'Solicitud inválida',
-        message: `Tipo de archivo no permitido (${file.mimetype}).`,
-      });
-    }
     const maxBytes = (config?.tamanio_max_archivo_mb ?? 50) * 1024 * 1024;
-    if (file.size > maxBytes) {
-      throw new PayloadTooLargeException({
-        code: 'ADJUNTO_DEMASIADO_GRANDE',
-        title: 'Carga demasiado grande',
-        message: `El archivo supera el máximo de ${Math.floor(maxBytes / 1024 / 1024)} MB de la plaza.`,
-      });
-    }
+    this.validator.validateAll(
+      {
+        buffer: file.buffer,
+        mimetype: file.mimetype,
+        size: file.size,
+        originalname: file.originalname,
+      },
+      mimesPermitidos,
+      maxBytes,
+    );
 
     const ext = (file.originalname.split('.').pop() ?? 'bin').toLowerCase().slice(0, 10);
     const bucket = this.minio.bucketForSolicitudes(plazaId);
@@ -353,11 +446,20 @@ export class AdjuntosService {
       } else if (adjunto.entidad_tipo === 'solicitud') {
         const solicitud = await tx.solicitud.findFirst({ where: { id: adjunto.entidad_id } });
         inquilinoId = solicitud?.inquilino_id ?? null;
+      } else if (adjunto.entidad_tipo === 'local') {
+        // Adjuntos de local: solo accesibles a admin_plaza/superadmin. La policy
+        // RLS igual filtra por plaza, así que un inquilino jamás los ve (y si
+        // por bug lo viera, el assertInquilinoNotAllowed más abajo lo bloquea).
+        inquilinoId = null;
       }
       return { adjunto, inquilinoId };
     });
     if (!result) this.throwNotFound('ADJUNTO_NOT_FOUND', 'El adjunto no existe.');
     if (actor.rol === 'inquilino') {
+      // Inquilinos NUNCA tienen acceso a adjuntos de local.
+      if (result.adjunto.entidad_tipo === 'local') {
+        this.throwNotFound('ADJUNTO_NOT_FOUND', 'El adjunto no existe.');
+      }
       this.assertContratoScope(result.inquilinoId, actor);
     }
     return result.adjunto;
@@ -375,10 +477,16 @@ export class AdjuntosService {
   }
 
   private bucketFor(adjunto: AdjuntoModel): string {
-    // contrato (T-062) y solicitud (T-112); locales llegan en T-110+.
-    return adjunto.entidad_tipo === 'solicitud'
-      ? this.minio.bucketForSolicitudes(adjunto.plaza_id)
-      : this.minio.bucketForContratos(adjunto.plaza_id);
+    switch (adjunto.entidad_tipo) {
+      case 'solicitud':
+        return this.minio.bucketForSolicitudes(adjunto.plaza_id);
+      case 'local':
+        return this.minio.bucketForLocales(adjunto.plaza_id);
+      case 'contrato':
+        return this.minio.bucketForContratos(adjunto.plaza_id);
+      default:
+        return this.minio.bucketForContratos(adjunto.plaza_id);
+    }
   }
 
   private requirePlaza(actor: AuthenticatedUser): string {

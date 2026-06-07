@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -11,8 +12,11 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateLocalSchema,
   UpdateLocalSchema,
@@ -26,16 +30,22 @@ import {
   type FueraDeServicioInput,
 } from '@app/contracts';
 import { LocalesService, type RequestMeta } from './locales.service';
+import { AdjuntosService, type UploadedFile as UploadedFileType } from '../adjuntos/adjuntos.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
+const ADJUNTO_HARD_LIMIT_BYTES = 100 * 1024 * 1024;
+
 @ApiTags('locales')
 @ApiBearerAuth()
 @Controller('locales')
 export class LocalesController {
-  constructor(private readonly service: LocalesService) {}
+  constructor(
+    private readonly service: LocalesService,
+    private readonly adjuntos: AdjuntosService,
+  ) {}
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
@@ -127,6 +137,38 @@ export class LocalesController {
     @Headers('x-request-id') requestId: string | undefined,
   ): Promise<void> {
     await this.service.remove(id, user, this.meta(ip, userAgent, requestId));
+  }
+
+  // ── Adjuntos del local (T-116) ────────────────────────────────────────────────
+
+  @Post(':id/adjuntos')
+  @Roles('admin_plaza', 'superadmin')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: ADJUNTO_HARD_LIMIT_BYTES } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Subir plano/foto de local (PNG/JPEG/WEBP).' })
+  uploadAdjunto(
+    @Param('id', ParseUUIDPipe) id: string,
+    @UploadedFile() file: UploadedFileType | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+  ) {
+    if (!file) {
+      throw new BadRequestException({
+        code: 'ADJUNTO_REQUERIDO',
+        title: 'Solicitud inválida',
+        message: 'Falta el archivo (campo "file").',
+      });
+    }
+    return this.adjuntos.uploadLocalAdjunto(id, file, user, this.meta(ip, userAgent, requestId));
+  }
+
+  @Get(':id/adjuntos')
+  @Roles('admin_plaza', 'superadmin')
+  @ApiOperation({ summary: 'Listar adjuntos vivos del local.' })
+  listAdjuntos(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.adjuntos.listLocalAdjuntos(id, user);
   }
 
   private meta(

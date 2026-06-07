@@ -62,3 +62,49 @@ export async function deleteLocalAction(id: string): Promise<ActionResult> {
   revalidatePath('/admin/locales');
   return { ok: true };
 }
+
+// ── Adjuntos del local (T-116, T-117) ─────────────────────────────────────────
+
+/** Sube un archivo al local. El FormData viaja tal cual al backend (multipart). */
+export async function subirAdjuntoLocalAction(
+  localId: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  await assertAdminPlaza();
+  const res = await apiFetch(`/locales/${localId}/adjuntos`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    return { ok: false, error: await errorFrom(res, 'No se pudo subir el archivo.') };
+  }
+  revalidatePath(`/admin/locales/${localId}`);
+  return { ok: true };
+}
+
+/** URL pre-firmada (15 min) para descargar un adjunto. */
+export async function descargarAdjuntoLocalAction(
+  adjuntoId: string,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  await assertAdminPlaza();
+  const res = await apiFetch(`/adjuntos/${adjuntoId}/download`);
+  if (!res.ok) {
+    return { ok: false, error: await errorFrom(res, 'No se pudo descargar.') };
+  }
+  const data = (await res.json()) as { url: string };
+  return { ok: true, url: data.url };
+}
+
+/** Elimina un adjunto del local (soft delete + movimiento a quarantine). */
+export async function eliminarAdjuntoLocalAction(
+  localId: string,
+  adjuntoId: string,
+): Promise<ActionResult> {
+  await assertAdminPlaza();
+  const res = await apiFetch(`/adjuntos/${adjuntoId}`, { method: 'DELETE' });
+  if (!res.ok) {
+    return { ok: false, error: await errorFrom(res, 'No se pudo eliminar.') };
+  }
+  revalidatePath(`/admin/locales/${localId}`);
+  return { ok: true };
+}

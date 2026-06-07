@@ -137,3 +137,28 @@ export async function descargarAdjuntoAdminAction(
   const data = (await res.json()) as { url: string };
   return { ok: true, url: data.url };
 }
+
+/** T-117: subida de adjunto a una solicitud desde el panel admin. */
+export async function subirAdjuntoAdminAction(
+  solicitudId: string,
+  formData: FormData,
+): Promise<ActionResult> {
+  await assertAdminPlaza();
+  const res = await apiFetch(`/solicitudes/${solicitudId}/adjuntos`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) return { ok: false, error: await errorFrom(res, 'No se pudo subir.') };
+  return { ok: true };
+}
+
+/** T-117: eliminar adjunto de una solicitud (admin). */
+export async function eliminarAdjuntoAdminAction(
+  solicitudId: string,
+  adjuntoId: string,
+): Promise<ActionResult> {
+  await assertAdminPlaza();
+  const res = await apiFetch(`/adjuntos/${adjuntoId}`, { method: 'DELETE' });
+  if (!res.ok) return { ok: false, error: await errorFrom(res, 'No se pudo eliminar.') };
+  return { ok: true };
+}

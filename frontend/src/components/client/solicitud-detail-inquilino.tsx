@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import type { AdjuntoOutput, SolicitudDetailOutput } from '@app/contracts';
+import type { SolicitudDetailOutput } from '@app/contracts';
 import {
   enviarSolicitudAction,
   cancelarSolicitudAction,
@@ -17,12 +17,26 @@ import {
 } from '@/app/(inquilino)/inquilino/solicitudes/actions';
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/client/tabs';
+import { AdjuntoUploader } from '@/components/client/adjunto-uploader';
 import {
   SolicitudEstadoBadge,
   PrioridadBadge,
   SOLICITUD_ESTADO_LABEL,
 } from '@/components/estado-badge';
 import { formatDateInPlazaTz } from '@/lib/datetime';
+
+/** MIME permitidos por defecto para adjuntos de solicitud (T-V06). */
+const SOLICITUD_MIMES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/dwg',
+];
+const SOLICITUD_MAX_BYTES = 50 * 1024 * 1024;
 
 const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   area_afectada: 'Área afectada',
@@ -64,7 +78,6 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [comentario, setComentario] = useState('');
-  const fileRef = useRef<HTMLInputElement>(null);
 
   const run = async (fn: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) => {
     setPending(true);
@@ -102,27 +115,6 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
     } else {
       toast.error(r.error);
     }
-  };
-
-  const onUpload = async (file: File) => {
-    setPending(true);
-    const fd = new FormData();
-    fd.set('file', file);
-    const r = await subirAdjuntoSolicitudAction(solicitud.id, fd);
-    setPending(false);
-    if (fileRef.current) fileRef.current.value = '';
-    if (r.ok) {
-      toast.success('Adjunto subido');
-      router.refresh();
-    } else {
-      toast.error(r.error);
-    }
-  };
-
-  const onDownload = async (a: AdjuntoOutput) => {
-    const r = await descargarAdjuntoSolicitudAction(a.id);
-    if (r.ok) window.open(r.url, '_blank', 'noopener');
-    else toast.error(r.error);
   };
 
   const estado = solicitud.estado;
@@ -313,64 +305,16 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
             key: 'adjuntos',
             label: `Adjuntos (${solicitud.adjuntos.length})`,
             content: (
-              <div className="space-y-4">
-                {puedeAdjuntar && (
-                  <div>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      className="text-sm"
-                      disabled={pending || solicitud.adjuntos.length >= 10}
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void onUpload(f);
-                      }}
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      {solicitud.adjuntos.length}/10 adjuntos.
-                    </p>
-                  </div>
-                )}
-                {solicitud.adjuntos.length === 0 ? (
-                  <p className="text-sm text-gray-500">Sin adjuntos.</p>
-                ) : (
-                  <ul className="divide-y rounded-lg border bg-white">
-                    {solicitud.adjuntos.map((a) => (
-                      <li key={a.id} className="flex items-center justify-between px-4 py-3 text-sm">
-                        <div>
-                          <p className="font-medium text-gray-900">{a.nombreOriginal}</p>
-                          <p className="text-xs text-gray-500">
-                            {a.mimeType} · {Math.ceil(a.tamanoBytes / 1024)} KB ·{' '}
-                            {formatDateInPlazaTz(a.createdAt)}
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => void onDownload(a)}>
-                            Descargar
-                          </Button>
-                          {puedeAdjuntar && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:bg-red-50"
-                              disabled={pending}
-                              onClick={() => {
-                                if (!confirm(`¿Eliminar "${a.nombreOriginal}"?`)) return;
-                                void run(
-                                  () => eliminarAdjuntoSolicitudAction(a.id, solicitud.id),
-                                  'Adjunto eliminado',
-                                );
-                              }}
-                            >
-                              Eliminar
-                            </Button>
-                          )}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <AdjuntoUploader
+                entidadTipo="solicitud"
+                adjuntosIniciales={solicitud.adjuntos}
+                mimeAllowlist={SOLICITUD_MIMES}
+                maxBytes={SOLICITUD_MAX_BYTES}
+                canDelete={puedeAdjuntar}
+                subirAction={(fd) => subirAdjuntoSolicitudAction(solicitud.id, fd)}
+                descargarAction={descargarAdjuntoSolicitudAction}
+                eliminarAction={(adjId) => eliminarAdjuntoSolicitudAction(adjId, solicitud.id)}
+              />
             ),
           },
         ]}

@@ -51,35 +51,35 @@ model rol {
 ///   T-V08: tanto superadmin como admin_plaza pueden editar branding.
 /// Detalles: docs/04-modelo-de-datos.md §1.1, PLANIFICACION/03 T-036.
 model plaza {
-  id                 String   @id @default(uuid()) @db.Uuid
-  slug               String   @unique
-  nombre_comercial   String
-  email_contacto     String?
-  telefono_contacto  String?
-  logo_url           String?
-  color_primario     String   @default("#2563eb")
+  id                String    @id @default(uuid()) @db.Uuid
+  slug              String    @unique
+  nombre_comercial  String
+  email_contacto    String?
+  telefono_contacto String?
+  logo_url          String?
+  color_primario    String    @default("#2563eb")
   // T-V08: timezone fija, no editable desde la app
-  timezone           String   @default("America/El_Salvador")
-  created_at         DateTime @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime @updatedAt @db.Timestamptz(6)
-  deleted_at         DateTime? @db.Timestamptz(6)
+  timezone          String    @default("America/El_Salvador")
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at        DateTime? @db.Timestamptz(6)
 
   // Relaciones (se completan en las tareas de cada módulo)
-  configuracion   configuracion?
-  usuarios        usuario[]
-  roles_staff     rol_staff[]
-  auditoria_login auditoria_login[]
-  locales         local[]
-  inquilinos      inquilino[]
-  contratos       contrato[]
-  adjuntos        adjunto[]
-  email_logs      email_log[]
-  categorias      categoria[]
-  subcategorias   subcategoria[]
-  solicitudes     solicitud[]
-  solicitud_historial solicitud_historial[]
-  comentarios     comentario[]
-  eventos_calendario  evento_calendario[]
+  configuracion        configuracion?
+  usuarios             usuario[]
+  roles_staff          rol_staff[]
+  auditoria_login      auditoria_login[]
+  locales              local[]
+  inquilinos           inquilino[]
+  contratos            contrato[]
+  adjuntos             adjunto[]
+  email_logs           email_log[]
+  categorias           categoria[]
+  subcategorias        subcategoria[]
+  solicitudes          solicitud[]
+  solicitud_historial  solicitud_historial[]
+  comentarios          comentario[]
+  eventos_calendario   evento_calendario[]
   solicitud_codigo_seq solicitud_codigo_seq?
 
   @@index([deleted_at])
@@ -88,17 +88,17 @@ model plaza {
 
 /// Configuración 1:1 con plaza. Detalles: PLANIFICACION/03 T-037 y T-044.
 model configuracion {
-  id                                   String   @id @default(uuid()) @db.Uuid
-  plaza_id                             String   @unique @db.Uuid
+  id                                 String   @id @default(uuid()) @db.Uuid
+  plaza_id                           String   @unique @db.Uuid
   // T-V06: 50 MB por defecto (en lugar de 25 MB del plan original)
-  tamanio_max_archivo_mb               Int      @default(50)
-  mime_types_permitidos                Json     @default("[\"application/pdf\",\"image/jpeg\",\"image/png\",\"image/webp\",\"application/vnd.ms-excel\",\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\",\"application/dwg\"]")
-  sla_dias_por_tipo                    Json     @default("{\"mantenimiento\":5,\"evento\":3,\"remodelacion\":15,\"otro\":7}")
-  sla_multiplicador_por_prioridad      Json     @default("{\"A\":0.5,\"B\":1.0,\"C\":1.5,\"D\":2.0,\"F\":3.0}")
-  calendar_mostrar_hitos_contrato      Boolean  @default(true)
+  tamanio_max_archivo_mb             Int      @default(50)
+  mime_types_permitidos              Json     @default("[\"application/pdf\",\"image/jpeg\",\"image/png\",\"image/webp\",\"application/vnd.ms-excel\",\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\",\"application/dwg\"]")
+  sla_dias_por_tipo                  Json     @default("{\"mantenimiento\":5,\"evento\":3,\"remodelacion\":15,\"otro\":7}")
+  sla_multiplicador_por_prioridad    Json     @default("{\"A\":0.5,\"B\":1.0,\"C\":1.5,\"D\":2.0,\"F\":3.0}")
+  calendar_mostrar_hitos_contrato    Boolean  @default(true)
   // T-V05: umbral de aprobación especial para eventos
-  aprobacion_especial_asistentes_min   Int      @default(200)
-  updated_at                           DateTime @updatedAt @db.Timestamptz(6)
+  aprobacion_especial_asistentes_min Int      @default(200)
+  updated_at                         DateTime @updatedAt @db.Timestamptz(6)
 
   plaza plaza @relation(fields: [plaza_id], references: [id], onDelete: Cascade)
 
@@ -133,13 +133,13 @@ model usuario {
   updated_at     DateTime  @updatedAt @db.Timestamptz(6)
   deleted_at     DateTime? @db.Timestamptz(6)
 
-  plaza                 plaza?                @relation(fields: [plaza_id], references: [id])
-  inquilino             inquilino?            @relation(fields: [inquilino_id], references: [id])
-  rol                   rol                   @relation(fields: [rol_id], references: [id])
-  rol_staff             rol_staff?            @relation(fields: [rol_staff_id], references: [id])
-  refresh_tokens        refresh_token[]
-  password_reset_tokens password_reset_token[]
-  auditoria_login       auditoria_login[]
+  plaza                     plaza?                    @relation(fields: [plaza_id], references: [id])
+  inquilino                 inquilino?                @relation(fields: [inquilino_id], references: [id])
+  rol                       rol                       @relation(fields: [rol_id], references: [id])
+  rol_staff                 rol_staff?                @relation(fields: [rol_staff_id], references: [id])
+  refresh_tokens            refresh_token[]
+  password_reset_tokens     password_reset_token[]
+  auditoria_login           auditoria_login[]
   subcategorias_responsable subcategoria[]            @relation("subcategoria_responsable")
   supervisor_de             subcategoria_supervisor[]
   solicitudes_creadas       solicitud[]               @relation("solicitud_creador")
@@ -284,21 +284,21 @@ enum adjunto_entidad_tipo {
 /// `estado='alquilado'` solo se setea automáticamente al crear contrato vigente
 /// (T-054); `disponible` no se permite si hay contrato vigente (RI-2, app).
 model local {
-  id          String       @id @default(uuid()) @db.Uuid
-  plaza_id    String       @db.Uuid
-  codigo      String
-  nombre      String?
-  metraje_m2  Decimal?     @db.Decimal(10, 2)
-  piso        String?
-  sector      String?
-  descripcion String?
-  estado      local_estado @default(disponible)
+  id                         String       @id @default(uuid()) @db.Uuid
+  plaza_id                   String       @db.Uuid
+  codigo                     String
+  nombre                     String?
+  metraje_m2                 Decimal?     @db.Decimal(10, 2)
+  piso                       String?
+  sector                     String?
+  descripcion                String?
+  estado                     local_estado @default(disponible)
   // T-103: ventana de mantenimiento por remodelación aprobada (módulo 07).
-  fecha_inicio_mantenimiento DateTime? @db.Date
-  fecha_fin_mantenimiento    DateTime? @db.Date
-  created_at  DateTime     @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime     @updatedAt @db.Timestamptz(6)
-  deleted_at  DateTime?    @db.Timestamptz(6)
+  fecha_inicio_mantenimiento DateTime?    @db.Date
+  fecha_fin_mantenimiento    DateTime?    @db.Date
+  created_at                 DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime     @updatedAt @db.Timestamptz(6)
+  deleted_at                 DateTime?    @db.Timestamptz(6)
 
   plaza       plaza       @relation(fields: [plaza_id], references: [id])
   contratos   contrato[]
@@ -383,6 +383,8 @@ model adjunto {
   plaza plaza @relation(fields: [plaza_id], references: [id])
 
   @@index([plaza_id, entidad_tipo, entidad_id])
+  @@index([entidad_tipo, entidad_id])
+  @@index([deleted_at])
   @@map("adjunto")
 }
 
@@ -404,13 +406,13 @@ enum solicitud_prioridad {
 /// Categoría de solicitudes, configurable por plaza (T-063, S-Categorias).
 /// Soft delete vía `activo=false` (no deleted_at: se conserva para histórico).
 model categoria {
-  id          String    @id @default(uuid()) @db.Uuid
-  plaza_id    String    @db.Uuid
+  id          String   @id @default(uuid()) @db.Uuid
+  plaza_id    String   @db.Uuid
   nombre      String
   descripcion String?
-  activo      Boolean   @default(true)
-  created_at  DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at  DateTime  @updatedAt @db.Timestamptz(6)
+  activo      Boolean  @default(true)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @updatedAt @db.Timestamptz(6)
 
   plaza         plaza          @relation(fields: [plaza_id], references: [id])
   subcategorias subcategoria[]
@@ -524,40 +526,40 @@ enum comentario_tipo {
 /// secuencia por plaza); el default '' solo satisface el INSERT de Prisma.
 /// `campos_extra` JSONB validado con Zod según `tipo` (T-079).
 model solicitud {
-  id                 String              @id @default(uuid()) @db.Uuid
-  plaza_id           String              @db.Uuid
-  local_id           String              @db.Uuid
-  inquilino_id       String              @db.Uuid
-  usuario_creador_id String              @db.Uuid
-  admin_asignado_id  String?             @db.Uuid
-  categoria_id       String?             @db.Uuid
-  subcategoria_id    String?             @db.Uuid
-  codigo             String              @default("")
-  tipo               solicitud_tipo
-  prioridad          solicitud_prioridad @default(B)
-  titulo             String
-  descripcion        String
-  estado             solicitud_estado    @default(borrador)
-  campos_extra       Json                @default("{}")
-  fecha_evento_inicio DateTime?          @db.Date
-  fecha_evento_fin    DateTime?          @db.Date
-  hora_inicio        String?
-  hora_fin           String?
-  enviada_at         DateTime?           @db.Timestamptz(6)
-  asignada_at        DateTime?           @db.Timestamptz(6)
-  decision_at        DateTime?           @db.Timestamptz(6)
-  created_at         DateTime            @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime            @updatedAt @db.Timestamptz(6)
+  id                  String              @id @default(uuid()) @db.Uuid
+  plaza_id            String              @db.Uuid
+  local_id            String              @db.Uuid
+  inquilino_id        String              @db.Uuid
+  usuario_creador_id  String              @db.Uuid
+  admin_asignado_id   String?             @db.Uuid
+  categoria_id        String?             @db.Uuid
+  subcategoria_id     String?             @db.Uuid
+  codigo              String              @default("")
+  tipo                solicitud_tipo
+  prioridad           solicitud_prioridad @default(B)
+  titulo              String
+  descripcion         String
+  estado              solicitud_estado    @default(borrador)
+  campos_extra        Json                @default("{}")
+  fecha_evento_inicio DateTime?           @db.Date
+  fecha_evento_fin    DateTime?           @db.Date
+  hora_inicio         String?
+  hora_fin            String?
+  enviada_at          DateTime?           @db.Timestamptz(6)
+  asignada_at         DateTime?           @db.Timestamptz(6)
+  decision_at         DateTime?           @db.Timestamptz(6)
+  created_at          DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime            @updatedAt @db.Timestamptz(6)
 
-  plaza          plaza         @relation(fields: [plaza_id], references: [id])
-  local          local         @relation(fields: [local_id], references: [id])
-  inquilino      inquilino     @relation(fields: [inquilino_id], references: [id])
-  usuario_creador usuario      @relation("solicitud_creador", fields: [usuario_creador_id], references: [id])
-  admin_asignado usuario?      @relation("solicitud_admin_asignado", fields: [admin_asignado_id], references: [id])
-  categoria      categoria?    @relation(fields: [categoria_id], references: [id])
-  subcategoria   subcategoria? @relation(fields: [subcategoria_id], references: [id])
-  historial      solicitud_historial[]
-  comentarios    comentario[]
+  plaza             plaza                 @relation(fields: [plaza_id], references: [id])
+  local             local                 @relation(fields: [local_id], references: [id])
+  inquilino         inquilino             @relation(fields: [inquilino_id], references: [id])
+  usuario_creador   usuario               @relation("solicitud_creador", fields: [usuario_creador_id], references: [id])
+  admin_asignado    usuario?              @relation("solicitud_admin_asignado", fields: [admin_asignado_id], references: [id])
+  categoria         categoria?            @relation(fields: [categoria_id], references: [id])
+  subcategoria      subcategoria?         @relation(fields: [subcategoria_id], references: [id])
+  historial         solicitud_historial[]
+  comentarios       comentario[]
   evento_calendario evento_calendario?
 
   @@unique([plaza_id, codigo])

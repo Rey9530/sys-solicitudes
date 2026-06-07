@@ -13,6 +13,7 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { Client as MinioClient } from 'minio';
 import bcrypt from 'bcrypt';
 
 const BCRYPT_COST = 12;
@@ -158,6 +159,48 @@ async function main(): Promise<void> {
     console.log(`✓ Categorías base de la plaza demo (${CATEGORIAS_DEMO.length}).`);
 
     console.log('Seed completado.');
+
+    // ── Buckets de MinIO para la plaza demo (T-111) ─────────────────────────────
+    // Best-effort: si MinIO no está corriendo, la BD queda sembrada y los
+    // buckets se materializarán en el primer `ensureBucket` al subir.
+    try {
+      const minio = new MinioClient({
+        endPoint: process.env.MINIO_ENDPOINT ?? 'localhost',
+        port: Number(process.env.MINIO_PORT ?? '9000'),
+        useSSL: process.env.MINIO_USE_SSL === 'true',
+        accessKey: process.env.MINIO_ACCESS_KEY ?? 'minioadmin',
+        secretKey: process.env.MINIO_SECRET_KEY ?? 'minioadmin',
+        region: process.env.MINIO_REGION ?? 'us-east-1',
+      });
+      const plazaId = plazaDemo.id;
+      const buckets = [
+        `plaza-assets-${plazaId}`,
+        `solicitudes-adjuntos-${plazaId}`,
+        `locales-planos-${plazaId}`,
+        `contratos-${plazaId}`,
+        `quarantine-${plazaId}`,
+      ];
+      for (const b of buckets) {
+        const exists = await minio.bucketExists(b).catch(() => false);
+        if (!exists) {
+          await minio.makeBucket(b, process.env.MINIO_REGION ?? 'us-east-1');
+          console.log(`✓ Bucket MinIO creado: ${b}`);
+        }
+      }
+      await minio.setBucketLifecycle(`quarantine-${plazaId}`, {
+        Rule: [
+          {
+            ID: 'purge-quarantine-30d',
+            Status: 'Enabled',
+            Filter: { Prefix: '' },
+            Expiration: { Days: 30 },
+          },
+        ],
+      });
+      console.log(`✓ Lifecycle policy 30d aplicada a quarantine-${plazaId}.`);
+    } catch (err) {
+      console.warn(`⚠️  MinIO no disponible, buckets no inicializados: ${String(err)}`);
+    }
   } finally {
     await prisma.$disconnect();
   }

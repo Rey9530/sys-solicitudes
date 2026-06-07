@@ -204,6 +204,19 @@ Lista completa en `README.md` §6. Los de mayor impacto:
 5. Para Node.js, preferir LTS (24.x o superior) sobre Current.
 6. Para TypeScript, evitar versiones recién salidas (`.0`) en proyectos largos; preferir la última `.X` de la major anterior LTS.
 
+### Hallazgos de versiones (módulo 08 — adjuntos, 2026-06-07)
+
+Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de instalar:
+
+| Paquete | Versión instalada | Notas de compatibilidad |
+|---|---|---|
+| `react-dropzone` | `15.0.0` | peer dep `react >= 16.8 \|\| 18.0.0` cubre 19.x ✅ |
+| `react-pdf` | `10.4.1` | peer dep `react ^16.8 \|\| ^17 \|\| ^18 \|\| ^19` ✅ |
+| `pdfjs-dist` (transitiva) | `6.0.227` | engine `node >= 22.13 \|\| >= 24` ✅ (Node 24 del proyecto) |
+| `minio` (ya estaba) | `8.0.7` | sin cambios |
+
+**Aplicar este mismo procedimiento a TODAS las tareas futuras** que requieran nuevas dependencias.
+
 ### Documentación de tareas
 
 > **Regla obligatoria:** Al finalizar una tarea técnica de `PLANIFICACION/*.md`, se debe:
