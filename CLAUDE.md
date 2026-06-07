@@ -217,6 +217,17 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de inst
 
 **Aplicar este mismo procedimiento a TODAS las tareas futuras** que requieran nuevas dependencias.
 
+### Hallazgos de versiones (módulo 09 — notificaciones email, 2026-06-07)
+
+Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de instalar:
+
+| Paquete | Versión instalada | Notas de compatibilidad |
+|---|---|---|
+| `handlebars` | `4.7.9` | latest estable; elegido sobre `mustache@4.2.0` (decisión owner: parciales/helpers para branding compartido) |
+| `nodemailer` (ya estaba) | `8.0.10` | confirmada latest; sin cambios |
+| `@nestjs/schedule` (ya estaba) | `6.1.3` | confirmada latest de la serie 6.x; sin cambios |
+| `@nestjs-modules/mailer` | **NO instalado** | v2.3.6 evaluada y descartada: se implementó `MailerModule.forRootAsync` propio en `common/mailer` (acceso al error crudo SMTP para hard bounce T-124, cero deps nuevas) |
+
 ### Documentación de tareas
 
 > **Regla obligatoria:** Al finalizar una tarea técnica de `PLANIFICACION/*.md`, se debe:
@@ -228,6 +239,3 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de inst
 ### Comunicación con el usuario
 
 > **Regla obligatoria:** Si una tarea del plan tiene ambigüedad, conflicto con decisiones previas (T-Vxx), o múltiples interpretaciones razonables, **preguntar al usuario antes de codificar**. No asumir. Las decisiones tomadas en las T-Vxx son vinculantes; si una tarea las contradice, marcar la tarea para revisión.
-5. Crear el monorepo con `frontend/`, `backend/`, `packages/contracts/`.
-6. Levantar entorno de desarrollo con `docker-compose.yml` de `docs/07-arquitectura.md` §7.10.1.
-7. Iniciar implementación por la fase 2 de la cotización: autenticación, locales, solicitudes, aprobaciones.
