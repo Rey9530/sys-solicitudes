@@ -34,10 +34,10 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 | `04-locales-inquilinos-contratos.md` | T-047 … T-062 | 16 | 14 (+2 descartadas T-V07) | 100% |
 | `05-categorias-subcategorias.md` | T-063 … T-073 | 11 | 11 | 100% |
 | `06-solicitudes.md` | T-074 … T-090 | 17 | 16 (+1 descartada T-V05) | 100% |
-| `07-aprobaciones.md` | T-091 … T-108 | 18 | 0 | 0% |
+| `07-aprobaciones.md` | T-091 … T-108 (+T-091b/c) | 20 | 18 (+2 reemplazadas T-V03) | 100% |
 | `08-adjuntos.md` | T-109 … T-117 | 9 | 0 | 0% |
 | `09-notificaciones-email.md` | T-118 … T-127 | 10 | 0 | 0% |
-| `10-calendario.md` | T-128 … T-134 | 7 | 0 | 0% |
+| `10-calendario.md` | T-128 … T-134 | 7 | 1 (T-128 adelantada) | 14% |
 | `11-reportes-panel.md` | T-135 … T-145 | 11 | 0 | 0% |
 | `12-seguridad-auditoria.md` | T-146 … T-152 | 7 | 0 | 0% |
 | `13-observabilidad-despliegue.md` | T-153 … T-160 | 8 | 0 | 0% |
