@@ -9,12 +9,12 @@
 | ID | Título | Prioridad | Estado |
 |---|---|---|---|
 | T-128 | Crear migración Prisma con `evento_calendario` | Alta | Completada (adelantada al módulo 07) |
-| T-129 | Implementar GET /api/v1/calendario (feed de eventos para FullCalendar) | Alta | Pendiente |
-| T-130 | Implementar GET /api/v1/calendario/export.ics | Alta | Pendiente |
-| T-131 | Implementar detección visual de choques (overlap query) | Media | Pendiente |
-| T-132 | Implementar creación de solicitud tipo evento desde calendario | Media | Pendiente |
-| T-133 | Implementar pantalla /calendario con FullCalendar (Client Component) | Alta | Pendiente |
-| T-134 | Implementar filtros por local/inquilino/tipo y TZ de la plaza | Media | Pendiente |
+| T-129 | Implementar GET /api/v1/calendario (feed de eventos para FullCalendar) | Alta | Completada |
+| T-130 | Implementar GET /api/v1/calendario/export.ics | Alta | Completada |
+| T-131 | Implementar detección visual de choques (overlap query) | Media | Completada |
+| T-132 | Implementar creación de solicitud tipo evento desde calendario | Media | Completada |
+| T-133 | Implementar pantalla /calendario con FullCalendar (Client Component) | Alta | Completada |
+| T-134 | Implementar filtros por local/inquilino/tipo y TZ de la plaza | Media | Completada |
 
 ---
 
@@ -82,6 +82,8 @@
   - Filtros `?localId=&tipo=` (tipo se acepta pero solo hay VEVENTs de `evento_calendario`, igual que el criterio). Scope inquilino aplicado.
   - Verificado: descarga con headers correctos y estructura VCALENDAR válida. ⚠️ El import manual en Google/Apple/Outlook queda para QA del owner (no automatizable desde el entorno dev); la estructura sigue RFC 5545 estricto.
 
+### T-131 — Implementar detección visual de choques (overlap query)
+
 - **Descripción:** Implementar el endpoint y la lógica que detecta cuándo hay choques de eventos en el mismo local. Materializa S-Choques y CU-CA-7.
 - **Criterios de aceptación:**
   - [ ] `GET /api/v1/calendario/choques?localId=&from=&to=` retorna los pares de eventos que se solapan en el mismo local.
@@ -105,8 +107,12 @@
   - [ ] RLS probado.
 - **Dependencias:** T-129, T-088 (en `06-solicitudes.md`).
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada (2026-06-07).
+- **Bitácora de cambios:**
+  - 2026-06-07 — Click en slot vacío (solo rol `inquilino`) abre modal "Nueva solicitud de evento en este horario" → link a `/inquilino/solicitudes/nueva?tipo=evento&fecha=YYYY-MM-DD&hora=HH:MM`. El wizard (T-088) ganó prop `prefill` validada server-side (tipo por Zod, fecha/hora por regex, localId contra los locales del inquilino).
+  - "Evitar duplicados obvios": si el slot clickeado ya intersecta un evento aprobado visible, el modal lo avisa y NO ofrece el botón de crear (se valida contra el cache del feed, sin llamada extra).
+  - ⚠️ Desviación: el plan decía "inquilino o admin_plaza" — el click-para-crear quedó SOLO para inquilino: el flujo de creación de solicitudes es del inquilino en toda la app (el admin no tiene wizard propio); el admin sí tiene drag-and-drop (ver T-133).
+  - ⚠️ El prefill `localId={slot}` del plan no aplica en slots de mes/semana (un slot no pertenece a un local); se acepta el param si viene en la URL.
 
 ### T-133 — Implementar pantalla /calendario con FullCalendar (Client Component)
 
@@ -129,8 +135,14 @@
   - [ ] Refrescamiento cada 5 min con `revalidatePath` o re-fetch manual.
 - **Dependencias:** T-129, T-131, T-132, T-130, T-043, T-134.
 - **Prioridad:** Alta.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada (2026-06-07).
+- **Bitácora de cambios:**
+  - 2026-06-07 — **FullCalendar 6.1.20** (latest verificada en npm; peers React 19 ✅) con plugins daygrid/timegrid/list/interaction/luxon3 + `luxon@3.7.2`. Componente `components/client/calendario/calendario-view.tsx` (`"use client"`); vistas mes/semana/día/lista, locale `es`, colores por tipo (evento usa el color de la fila; choque → borde rojo `#dc2626`).
+  - ⚠️ Desviación de ruta (decisión owner): NO existe `/calendario` plano — son **`/admin/calendario`** y **`/inquilino/calendario`** (Server Components por grupo de rol que hidratan el mismo Client Component), consistente con la estructura de la app. Links añadidos a ambos navs.
+  - El feed llega vía server action (`calendario-actions.ts`) — BFF S-ARQ-E/F: el JWT nunca toca el cliente. El export iCal usa un route handler (`/api/calendario/export.ics`) porque la descarga necesita headers de attachment.
+  - Click en evento → modal con fechas/local/tipo + aviso de choque + botón "Ver solicitud" (ruta según rol). Botones "Exportar iCal" (hereda el filtro de locales) y "Nueva solicitud de evento" (inquilino).
+  - Drag-and-drop y resize SOLO admin (decisión owner): `PATCH /api/v1/calendario/eventos/:id/fechas` actualiza evento + `fecha_evento_*`/`hora_*` de la solicitud (fecha civil y hora en TZ de la plaza, UTC-6 fija) SIN tocar el estado, con fila en historial y auditoría; revert visual si el backend falla. Verificado por API (mover deshizo el choque y actualizó la solicitud).
+  - Refresco cada 5 min con `refetchEvents()` (re-fetch manual, no `revalidatePath`: los datos van por server action).
 
 ### T-134 — Implementar filtros por local/inquilino/tipo y TZ de la plaza
 
@@ -147,5 +159,9 @@
   - [ ] RLS probado.
 - **Dependencias:** T-129, T-133.
 - **Prioridad:** Media.
-- **Estado:** Pendiente.
-- **Bitácora de cambios:** *(vacía)*
+- **Estado:** Completada (2026-06-07).
+- **Bitácora de cambios:**
+  - 2026-06-07 — Panel lateral en `calendario-view.tsx`: multi-select de locales (checkboxes), inquilinos (solo admin), tipos (evento/mantenimiento/hito contractual — el checkbox de hitos solo aparece si `calendar_mostrar_hitos_contrato`; además el feed lo re-valida server-side) y switch de TZ "Mi zona horaria" / "Zona de la plaza (GMT-6)" implementado con el plugin `@fullcalendar/luxon3` (`timeZone: 'America/El_Salvador'`).
+  - Todos los filtros y la TZ persisten en la URL (`?localId=a,b&tipo=...&tz=plaza`) → links compartibles; al cambiar cualquier filtro se hace `refetchEvents()`.
+  - ⚠️ `remodelacion` no aparece como tipo filtrable (ver bitácora T-129: no distinguible de mantenimiento en v1).
+  - RLS/scope verificado a nivel API (T-129); la página del inquilino solo lista sus locales (derivados de contratos vigentes).

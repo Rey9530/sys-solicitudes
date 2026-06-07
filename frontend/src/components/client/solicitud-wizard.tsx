@@ -75,29 +75,43 @@ const CAMPOS_EXTRA_INICIAL: CamposExtraState = {
  *   3. Adjuntos (máx 10) y revisión → "Guardar borrador" o "Enviar ahora"
  * En modo edición (`solicitud` presente) hace PATCH y omite adjuntos (tab propia).
  */
+/** T-132: pre-relleno desde el calendario (tipo + slot clickeado). */
+export interface WizardPrefill {
+  tipo?: SolicitudTipo;
+  fecha?: string;
+  hora?: string;
+  localId?: string;
+}
+
 export function SolicitudWizard({
   categorias,
   locales,
   solicitud,
+  prefill,
 }: {
   categorias: CategoriaOption[];
   locales: LocalOption[];
   solicitud?: SolicitudDetailOutput;
+  prefill?: WizardPrefill;
 }) {
   const router = useRouter();
   const editMode = Boolean(solicitud);
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
-  const [tipo, setTipo] = useState<SolicitudTipo>(solicitud?.tipo ?? 'mantenimiento');
+  const [tipo, setTipo] = useState<SolicitudTipo>(
+    solicitud?.tipo ?? prefill?.tipo ?? 'mantenimiento',
+  );
   const [categoriaId, setCategoriaId] = useState(solicitud?.categoriaId ?? '');
   const [subcategoriaId, setSubcategoriaId] = useState(solicitud?.subcategoriaId ?? '');
-  const [localId, setLocalId] = useState(solicitud?.localId ?? '');
+  const [localId, setLocalId] = useState(solicitud?.localId ?? prefill?.localId ?? '');
   const [titulo, setTitulo] = useState(solicitud?.titulo ?? '');
   const [descripcion, setDescripcion] = useState(solicitud?.descripcion ?? '');
-  const [fechaInicio, setFechaInicio] = useState(solicitud?.fechaEventoInicio ?? '');
-  const [fechaFin, setFechaFin] = useState(solicitud?.fechaEventoFin ?? '');
-  const [horaInicio, setHoraInicio] = useState(solicitud?.horaInicio ?? '');
+  const [fechaInicio, setFechaInicio] = useState(
+    solicitud?.fechaEventoInicio ?? prefill?.fecha ?? '',
+  );
+  const [fechaFin, setFechaFin] = useState(solicitud?.fechaEventoFin ?? prefill?.fecha ?? '');
+  const [horaInicio, setHoraInicio] = useState(solicitud?.horaInicio ?? prefill?.hora ?? '');
   const [horaFin, setHoraFin] = useState(solicitud?.horaFin ?? '');
   const [extra, setExtra] = useState<CamposExtraState>({
     ...CAMPOS_EXTRA_INICIAL,

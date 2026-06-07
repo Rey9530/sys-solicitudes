@@ -39,6 +39,9 @@ export default async function AdminPlazaLayout({ children }: { children: React.R
               <Link href="/admin/notificaciones" className="text-gray-600 hover:text-primary">
                 Notificaciones
               </Link>
+              <Link href="/admin/calendario" className="text-gray-600 hover:text-primary">
+                Calendario
+              </Link>
             </nav>
           </div>
           <form action={logoutAction}>

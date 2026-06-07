@@ -23,6 +23,9 @@ export default async function InquilinoLayout({ children }: { children: React.Re
               <Link href="/inquilino/solicitudes" className="text-gray-600 hover:text-primary">
                 Mis solicitudes
               </Link>
+              <Link href="/inquilino/calendario" className="text-gray-600 hover:text-primary">
+                Calendario
+              </Link>
             </nav>
           </div>
           <form action={logoutAction}>
