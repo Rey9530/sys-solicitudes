@@ -79,6 +79,8 @@ model plaza {
   solicitudes     solicitud[]
   solicitud_historial solicitud_historial[]
   comentarios     comentario[]
+  eventos_calendario  evento_calendario[]
+  solicitud_codigo_seq solicitud_codigo_seq?
 
   @@index([deleted_at])
   @@map("plaza")
@@ -291,6 +293,9 @@ model local {
   sector      String?
   descripcion String?
   estado      local_estado @default(disponible)
+  // T-103: ventana de mantenimiento por remodelación aprobada (módulo 07).
+  fecha_inicio_mantenimiento DateTime? @db.Date
+  fecha_fin_mantenimiento    DateTime? @db.Date
   created_at  DateTime     @default(now()) @db.Timestamptz(6)
   updated_at  DateTime     @updatedAt @db.Timestamptz(6)
   deleted_at  DateTime?    @db.Timestamptz(6)
@@ -553,6 +558,7 @@ model solicitud {
   subcategoria   subcategoria? @relation(fields: [subcategoria_id], references: [id])
   historial      solicitud_historial[]
   comentarios    comentario[]
+  evento_calendario evento_calendario?
 
   @@unique([plaza_id, codigo])
   @@index([plaza_id, estado])
@@ -602,6 +608,41 @@ model comentario {
 
   @@index([solicitud_id, created_at])
   @@map("comentario")
+}
+
+/// Contador interno del trigger fn_solicitud_set_codigo (T-074). Lo escribe
+/// SOLO la función SECURITY DEFINER (sin GRANT a syssol_app); se declara aquí
+/// para que prisma migrate no lo detecte como drift. No usar desde la app.
+model solicitud_codigo_seq {
+  plaza_id     String @id @db.Uuid
+  ultimo_valor BigInt @default(0)
+
+  plaza plaza @relation(fields: [plaza_id], references: [id])
+
+  @@map("solicitud_codigo_seq")
+}
+
+/// Evento de calendario 1:1 con solicitud de tipo `evento` aprobada
+/// (T-128, adelantado del módulo 10 por T-102). Soft delete para auditoría.
+/// CHECK (fin > inicio) en SQL manual.
+model evento_calendario {
+  id           String    @id @default(uuid()) @db.Uuid
+  plaza_id     String    @db.Uuid
+  solicitud_id String    @unique @db.Uuid
+  titulo       String
+  inicio       DateTime  @db.Timestamptz(6)
+  fin          DateTime  @db.Timestamptz(6)
+  color        String    @default("#10b981")
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at   DateTime? @db.Timestamptz(6)
+
+  plaza     plaza     @relation(fields: [plaza_id], references: [id])
+  solicitud solicitud @relation(fields: [solicitud_id], references: [id])
+
+  @@index([plaza_id, inicio])
+  @@index([plaza_id, deleted_at])
+  @@map("evento_calendario")
 }
 
 /// Log/cola de emails. Versión MÍNIMA (T-056): registro post-envío para
