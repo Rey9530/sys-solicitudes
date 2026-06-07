@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
@@ -25,6 +25,7 @@ import { HealthModule } from './modules/health/health.module';
 
 import { PrismaModule } from './prisma/prisma.module';
 import { StorageModule } from './common/storage/storage.module';
+import { MailerModule } from './common/mailer/mailer.module';
 import { buildPinoOptions } from './common/logger/pino.config';
 import { ThrottlerBehindProxyGuard } from './common/guards/throttler-behind-proxy.guard';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
@@ -57,6 +58,23 @@ import { RolesGuard } from './common/guards/roles.guard';
 
     // Storage S3-compatible (MinIO)
     StorageModule,
+
+    // Transporter SMTP (T-119): MailHog en dev, SMTP real con TLS en prod
+    MailerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        host: config.get<string>('SMTP_HOST', 'localhost'),
+        port: Number(config.get<string>('SMTP_PORT', '1025')),
+        secure: config.get<string>('SMTP_SECURE', 'false') === 'true',
+        auth: config.get<string>('SMTP_USER')
+          ? {
+              user: config.get<string>('SMTP_USER', ''),
+              pass: config.get<string>('SMTP_PASSWORD', ''),
+            }
+          : undefined,
+        from: config.get<string>('SMTP_FROM', 'Plazapp <noreply@plazapp.com>'),
+      }),
+    }),
 
     // Módulos funcionales
     AuthModule,

@@ -4,7 +4,7 @@
   "private": true,
   "description": "Backend NestJS 11 del sistema Plazapp",
   "scripts": {
-    "build": "tsc -p tsconfig.json --incremental false",
+    "build": "tsc -p tsconfig.json --incremental false && node scripts/copy-templates.mjs",
     "start": "node dist/main.js",
     "start:dev": "tsc -p tsconfig.json --incremental false --watch",
     "start:debug": "nest start --debug --watch",
@@ -37,6 +37,7 @@
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
+    "handlebars": "^4.7.9",
     "helmet": "^8.0.0",
     "minio": "^8.0.7",
     "nestjs-pino": "^4.6.0",

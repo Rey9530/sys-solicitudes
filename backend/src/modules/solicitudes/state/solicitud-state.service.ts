@@ -6,6 +6,7 @@ import type {
   solicitud_historial_evento,
 } from '@prisma/client';
 import type { AuthenticatedUser } from '../../auth/types/jwt-payload';
+import { EmailService } from '../../notificaciones/email.service';
 
 /** Estados terminales (S-FS-A): no admiten más transiciones. */
 const ESTADOS_TERMINALES: solicitud_estado[] = ['aprobada', 'rechazada', 'cancelada'];
@@ -54,6 +55,12 @@ export interface EmailParams {
   destinatario: string;
   plantilla: string;
   variables?: Record<string, unknown>;
+  /** Habilita la deduplicación T-123 (pasar SIEMPRE en emails de transición). */
+  solicitudId?: string;
+  /** Override del flag `critico` del registro de plantillas (T-120). */
+  esCritico?: boolean;
+  /** Default true; false fuerza el insert aunque exista duplicado. */
+  deduplicable?: boolean;
 }
 
 /**
@@ -73,6 +80,8 @@ export interface EmailParams {
  */
 @Injectable()
 export class SolicitudStateService {
+  constructor(private readonly emailService: EmailService) {}
+
   // ── Transiciones del inquilino (rama 2) ───────────────────────────────────────
 
   /** T-081 (ajustada T-V03): borrador → enviada. NO asigna, NO email. */
@@ -406,16 +415,18 @@ export class SolicitudStateService {
     });
   }
 
-  /** Encola un email (INSERT en email_log, estado `pendiente`; envía módulo 09). */
+  /**
+   * Encola un email (INSERT en email_log, estado `pendiente`; envía T-122).
+   * Desde T-121 delega en `EmailService.sendEmail`, que aplica dedup (T-123),
+   * bloqueo por email_invalido (T-124) y desuscripciones (T-125).
+   */
   async enqueueEmail(tx: Prisma.TransactionClient, params: EmailParams): Promise<void> {
-    await tx.email_log.create({
-      data: {
-        plaza_id: params.plazaId,
-        destinatario: params.destinatario,
-        plantilla: params.plantilla,
-        variables: (params.variables ?? {}) as Prisma.InputJsonValue,
-        estado: 'pendiente',
-      },
+    await this.emailService.sendEmail(params.plantilla, params.destinatario, params.variables, {
+      plazaId: params.plazaId,
+      solicitudId: params.solicitudId,
+      esCritico: params.esCritico,
+      deduplicable: params.deduplicable,
+      tx,
     });
   }
 

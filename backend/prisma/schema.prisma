@@ -74,6 +74,7 @@ model plaza {
   contratos            contrato[]
   adjuntos             adjunto[]
   email_logs           email_log[]
+  unsubscribes         unsubscribe[]
   categorias           categoria[]
   subcategorias        subcategoria[]
   solicitudes          solicitud[]
@@ -561,6 +562,7 @@ model solicitud {
   historial         solicitud_historial[]
   comentarios       comentario[]
   evento_calendario evento_calendario?
+  email_logs        email_log[]
 
   @@unique([plaza_id, codigo])
   @@index([plaza_id, estado])
@@ -647,24 +649,57 @@ model evento_calendario {
   @@map("evento_calendario")
 }
 
-/// Log/cola de emails. Versión MÍNIMA (T-056): registro post-envío para
-/// deduplicación de alertas. La cola con reintentos 1m/5m/30m y el worker
-/// son T-115..T-118 (módulo 09). `plantilla` discrimina el evento.
+/// Estados de la cola de emails (T-118). `pendiente` incluye los que esperan
+/// reintento (next_retry_at futura); `fallido` es permanente (3 reintentos
+/// agotados o hard bounce) y solo sale con reintento manual (T-127).
+enum email_log_estado {
+  pendiente
+  enviado
+  fallido
+}
+
+/// Log/cola de emails (T-118, completa el mínimo de T-056). El worker
+/// (T-122) procesa `pendiente` con next_retry_at vencida; reintentos
+/// 1m/5m/30m. CHECK RI-4 en SQL manual: enviado ⇒ sent_at NOT NULL.
+/// `solicitud_id` habilita la deduplicación (T-123).
 model email_log {
-  id           String    @id @default(uuid()) @db.Uuid
-  plaza_id     String    @db.Uuid
-  destinatario String
-  plantilla    String
-  variables    Json?
-  estado       String    @default("pendiente")
-  reintentos   Int       @default(0)
-  last_error   String?
-  sent_at      DateTime? @db.Timestamptz(6)
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  id            String           @id @default(uuid()) @db.Uuid
+  plaza_id      String           @db.Uuid
+  solicitud_id  String?          @db.Uuid
+  destinatario  String
+  plantilla     String
+  variables     Json?
+  estado        email_log_estado @default(pendiente)
+  reintentos    Int              @default(0)
+  last_error    String?
+  next_retry_at DateTime?        @db.Timestamptz(6)
+  sent_at       DateTime?        @db.Timestamptz(6)
+  created_at    DateTime         @default(now()) @db.Timestamptz(6)
+
+  plaza     plaza      @relation(fields: [plaza_id], references: [id])
+  solicitud solicitud? @relation(fields: [solicitud_id], references: [id])
+
+  @@index([plaza_id, estado, created_at])
+  @@index([plaza_id, plantilla, created_at])
+  @@index([destinatario])
+  @@index([estado, reintentos])
+  @@index([solicitud_id, destinatario, plantilla])
+  @@map("email_log")
+}
+
+/// Desuscripción de emails NO críticos (T-125, S-Unsubscribe, RN-NE-4).
+/// Por email + plantilla (no usuario_id): el check de envío opera sobre el
+/// `destinatario` de email_log. El admin la resetea desde /admin/notificaciones.
+model unsubscribe {
+  id         String   @id @default(uuid()) @db.Uuid
+  plaza_id   String   @db.Uuid
+  email      String
+  plantilla  String
+  created_at DateTime @default(now()) @db.Timestamptz(6)
 
   plaza plaza @relation(fields: [plaza_id], references: [id])
 
-  @@index([plaza_id, plantilla, created_at])
-  @@index([estado, reintentos])
-  @@map("email_log")
+  @@unique([plaza_id, email, plantilla])
+  @@index([email])
+  @@map("unsubscribe")
 }

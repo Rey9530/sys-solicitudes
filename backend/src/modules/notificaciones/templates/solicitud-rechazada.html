@@ -1,0 +1,12 @@
+{{> _header}}
+<h2 style="margin:0 0 12px;font-size:18px;color:#b91c1c;">Solicitud rechazada</h2>
+<p>Tu solicitud <strong>{{solicitudCodigo}}</strong>{{#if solicitudTitulo}} — “{{solicitudTitulo}}”{{/if}} fue <strong>rechazada</strong>.</p>
+<div style="border-left:4px solid #b91c1c;background:#fef2f2;padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0;">
+  <p style="margin:0 0 4px;font-weight:600;color:#991b1b;">Motivo del rechazo</p>
+  <p style="margin:0;color:#991b1b;">{{comentario}}</p>
+</div>
+<p>Si tienes dudas, contacta a la administración de la plaza.</p>
+<p style="margin:20px 0;">
+  <a href="{{appUrl}}/inquilino/solicitudes" style="display:inline-block;padding:10px 18px;background:{{plaza.colorPrimario}};color:#fff;text-decoration:none;border-radius:6px;">Ver detalle</a>
+</p>
+{{> _footer}}
