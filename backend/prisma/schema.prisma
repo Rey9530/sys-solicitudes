@@ -75,6 +75,7 @@ model plaza {
   adjuntos             adjunto[]
   email_logs           email_log[]
   unsubscribes         unsubscribe[]
+  kpi_snapshots        kpi_snapshot[]
   categorias           categoria[]
   subcategorias        subcategoria[]
   solicitudes          solicitud[]
@@ -685,6 +686,21 @@ model email_log {
   @@index([estado, reintentos])
   @@index([solicitud_id, destinatario, plantilla])
   @@map("email_log")
+}
+
+/// Snapshot de KPIs del dashboard cada 15 min (T-142, S-PA-B/S-KPI).
+/// `metricas` guarda el JSON completo de KpisOutput. Retención: 90 días
+/// (limpieza en el mismo cron). Histórico para tendencias y debugging.
+model kpi_snapshot {
+  id       String   @id @default(uuid()) @db.Uuid
+  plaza_id String   @db.Uuid
+  fecha    DateTime @default(now()) @db.Timestamptz(6)
+  metricas Json
+
+  plaza plaza @relation(fields: [plaza_id], references: [id])
+
+  @@index([plaza_id, fecha])
+  @@map("kpi_snapshot")
 }
 
 /// Desuscripción de emails NO críticos (T-125, S-Unsubscribe, RN-NE-4).

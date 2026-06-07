@@ -1,0 +1,13 @@
+<table>
+  <tr>
+    <td>Código</td><td>Tipo</td><td>Título</td><td>Local</td><td>Estado</td>
+    <td>Prioridad</td><td>Enviada</td><td>Decisión</td><td>Asignado a</td>
+  </tr>
+  {{#each items}}
+  <tr>
+    <td>{{this.codigo}}</td><td>{{this.tipo}}</td><td>{{this.titulo}}</td>
+    <td>{{this.local}}</td><td>{{this.estado}}</td><td>{{this.prioridad}}</td>
+    <td>{{this.enviadaAt}}</td><td>{{this.decisionAt}}</td><td>{{this.asignadoA}}</td>
+  </tr>
+  {{/each}}
+</table>

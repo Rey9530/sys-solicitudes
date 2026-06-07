@@ -24,6 +24,9 @@ export default async function AdminPlataformLayout({
           <div className="flex items-center gap-6">
             <span className="text-lg font-bold text-primary">Plazapp</span>
             <nav className="flex gap-4 text-sm">
+              <Link href="/superadmin/dashboard" className="text-gray-600 hover:text-primary">
+                Dashboard
+              </Link>
               <Link href="/superadmin/plazas" className="text-gray-600 hover:text-primary">
                 Plazas
               </Link>

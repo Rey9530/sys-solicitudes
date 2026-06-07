@@ -90,8 +90,15 @@ services:
       - "5488:5488"
     environment:
       # Permite ejecutar chrome sin sandbox dentro del contenedor
-      # (requisito de chrome-pdf en Docker).
-      - chrome_launchOptions_args_no_sandbox=true
+      # (requisito de chrome-pdf en Docker). ⚠️ Corregido en T-135: el formato
+      # válido para jsreport 4.13 es la lista de args como string, NO
+      # `..._args_no_sandbox=true` (rompía el schema de config y el contenedor
+      # quedaba en crash-loop).
+      - chrome_launchOptions_args=--no-sandbox,--disable-dev-shm-usage
+      # Auth del API (JSREPORT_USER/PASSWORD del .env del backend).
+      - extensions_authentication_admin_username=admin
+      - extensions_authentication_admin_password=password
+      - extensions_authentication_cookieSession_secret=plazapp-jsreport-dev
     volumes:
       - jsreportdata:/jsreport
     healthcheck:

@@ -228,6 +228,18 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de inst
 | `@nestjs/schedule` (ya estaba) | `6.1.3` | confirmada latest de la serie 6.x; sin cambios |
 | `@nestjs-modules/mailer` | **NO instalado** | v2.3.6 evaluada y descartada: se implementó `MailerModule.forRootAsync` propio en `common/mailer` (acceso al error crudo SMTP para hard bounce T-124, cero deps nuevas) |
 
+### Hallazgos de versiones (módulos 10/11 — calendario y reportes, 2026-06-07)
+
+Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` (y Docker Hub) antes de instalar:
+
+| Paquete | Versión instalada | Notas de compatibilidad |
+|---|---|---|
+| `@fullcalendar/*` (react, core, daygrid, timegrid, list, interaction, luxon3) | `6.1.20` | peers `react ^19` ✅; sin imports de CSS (v6 inyecta estilos) |
+| `luxon` (+`@types/luxon`) | `3.7.2` | requerido por `@fullcalendar/luxon3` para el switch de TZ con zona nombrada |
+| `recharts` | `3.8.1` | peers `react ^19` ✅ |
+| `ics` | **NO instalado** | v3.12.0 evaluada y descartada: el `.ics` se genera inline (RFC 5545 es texto plano; cero deps) |
+| jsreport (Docker) | `4.13.0` | confirmada como latest en npm Y Docker Hub — decisión S-JSReport sin desviación |
+
 ### Documentación de tareas
 
 > **Regla obligatoria:** Al finalizar una tarea técnica de `PLANIFICACION/*.md`, se debe:

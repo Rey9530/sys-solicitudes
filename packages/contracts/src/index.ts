@@ -24,4 +24,5 @@ export * from './solicitudes/index.js';
 export * from './adjuntos/index.js';
 export * from './notificaciones/index.js';
 export * from './calendario/index.js';
+export * from './reportes/index.js';
 export * from './common/index.js';
