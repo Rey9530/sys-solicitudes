@@ -27,6 +27,8 @@ import {
 } from '@app/contracts';
 import { AprobacionesService, type RequestMeta } from './aprobaciones.service';
 import { AutoAsignacionCron } from './cron/auto-asignacion.cron';
+import { SlaRefreshCron } from './cron/sla-refresh.cron';
+import { MantenimientoFinCron } from './cron/mantenimiento-fin.cron';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -44,6 +46,8 @@ export class AprobacionesController {
   constructor(
     private readonly service: AprobacionesService,
     private readonly autoAsignacion: AutoAsignacionCron,
+    private readonly slaRefresh: SlaRefreshCron,
+    private readonly mantenimientoFin: MantenimientoFinCron,
   ) {}
 
   // Ruta estática antes de :id.
@@ -61,6 +65,28 @@ export class AprobacionesController {
   @Roles('admin_plaza', 'superadmin')
   @ApiOperation({ summary: 'Ejecuta la auto-asignación manualmente (solo dev, T-091b).' })
   testAutoAsignacion() {
+    this.assertDev();
+    return this.autoAsignacion.ejecutar();
+  }
+
+  @Post('cron/test-sla-refresh')
+  @Roles('admin_plaza', 'superadmin')
+  @ApiOperation({ summary: 'Refresca la matview SLA manualmente (solo dev, T-101).' })
+  async testSlaRefresh() {
+    this.assertDev();
+    await this.slaRefresh.ejecutar();
+    return { ok: true };
+  }
+
+  @Post('cron/test-mantenimiento-fin')
+  @Roles('admin_plaza', 'superadmin')
+  @ApiOperation({ summary: 'Cierra ventanas de mantenimiento vencidas (solo dev, T-103).' })
+  testMantenimientoFin() {
+    this.assertDev();
+    return this.mantenimientoFin.ejecutar();
+  }
+
+  private assertDev(): void {
     if (process.env.NODE_ENV === 'production') {
       throw new NotFoundException({
         code: 'NOT_FOUND',
@@ -68,7 +94,6 @@ export class AprobacionesController {
         message: 'Ruta no disponible.',
       });
     }
-    return this.autoAsignacion.ejecutar();
   }
 
   @Post(':id/tomar')
