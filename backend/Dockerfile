@@ -26,6 +26,9 @@ WORKDIR /app
 RUN apk add --no-cache openssl
 
 COPY --from=deps /app/node_modules ./node_modules
+# package.json raíz: build:contracts es un script de workspace
+# (`npm run build --workspace=@app/contracts`) y requiere el manifest raíz.
+COPY package.json package-lock.json* ./
 COPY tsconfig.base.json ./
 COPY packages ./packages
 COPY backend ./backend
