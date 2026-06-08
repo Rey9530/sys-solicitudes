@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8" />
+<style>
+  body { font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #18181b; font-size: 11px; line-height: 1.4; }
+  .logo { font-size: 26px; font-weight: 700; letter-spacing: 0.5px; margin: 0 0 14px; }
+  .logo img { height: 44px; }
+  .titulo { text-align: center; margin-bottom: 10px; }
+  .titulo .t1 { font-size: 14px; }
+  .titulo .t1 b { margin-right: 18px; }
+  .titulo .estado { margin-top: 6px; }
+  .badge { display: inline-block; padding: 3px 12px; border: 1px solid #16a34a; border-radius: 3px; background: #4ade80; color: #052e16; font-weight: 600; }
+  .badge.neutro { border-color: #a1a1aa; background: #e4e4e7; color: #27272a; }
+  .badge.rojo { border-color: #dc2626; background: #fca5a5; color: #450a0a; }
+  h2 { font-size: 13px; margin: 18px 0 0; padding-bottom: 6px; border-bottom: 2px solid #18181b; }
+  h2.center { text-align: center; border: 0; padding-bottom: 0; margin-bottom: 0; }
+  .sep { border-bottom: 2px solid #18181b; margin: 4px 0 12px; }
+  .ficha { margin: 10px 0 4px; }
+  .ficha .row { display: flex; gap: 8px; margin-bottom: 4px; }
+  .ficha .row .lbl { min-width: 230px; color: #3f3f46; }
+  .ficha .row .val { font-weight: 600; }
+  .lista .row { display: flex; gap: 12px; margin-bottom: 3px; }
+  .lista .lbl { min-width: 230px; color: #3f3f46; }
+  .clausula p { margin: 8px 0; text-align: justify; }
+  ol.literales { margin: 8px 0; padding-left: 18px; }
+  ol.literales li { margin-bottom: 6px; text-align: justify; }
+  .firma-box { margin-top: 6px; height: 46px; }
+  .autoriza { margin-top: 18px; }
+  .na { color: #71717a; }
+</style></head>
+<body>
+  <div class="logo">
+    {{#if plaza.logoUrl}}<img src="{{{plaza.logoUrl}}}" alt="{{plaza.nombreComercial}}" />{{else}}{{plaza.nombreComercial}}{{/if}}
+  </div>
+
+  <div class="titulo">
+    <div class="t1"><b>Permiso de Trabajos</b> VARIOS-INQUILINOS-SUBCONTRATISTAS</div>
+    <div class="estado">Estado de la solicitud:
+      <span class="badge {{estadoClase}}">{{estadoLabel}}</span>
+    </div>
+  </div>
+
+  <h2 class="center">Datos del solicitante</h2>
+  <div class="sep"></div>
+  <div class="ficha">
+    <div class="row"><span class="lbl">Solicitante:</span><span class="val">{{solicitante}}</span></div>
+    <div class="row"><span class="lbl">Cliente:</span><span class="val">{{cliente}}</span></div>
+    <div class="row"><span class="lbl">Nivel:</span><span class="val">{{nivel}}</span></div>
+    <div class="row"><span class="lbl">Local:</span><span class="val">{{local}}</span></div>
+  </div>
+
+  <h2>Información de la solicitud</h2>
+  <div class="ficha lista">
+    <div class="row"><span class="lbl">Fecha de la solicitud:</span><span>{{fechaSolicitud}}</span></div>
+    <div class="row"><span class="lbl">Fecha de la expiración:</span><span>{{fechaExpiracion}}</span></div>
+    <div class="row"><span class="lbl">Firma del solicitante:</span><span class="na">{{firmaSolicitante}}</span></div>
+  </div>
+
+  <h2>Información de la solicitud</h2>
+  <div class="ficha lista">
+    <div class="row"><span class="lbl">Tipo de trabajo</span><span>{{tipoTrabajo}}</span></div>
+    <div class="row"><span class="lbl">Descripción del trabajo a realizar</span><span>{{descripcion}}</span></div>
+    <div class="row"><span class="lbl">Autorizamos a</span><span>{{autorizamosA}}</span></div>
+    <div class="row"><span class="lbl">Nombre del subcontratista</span><span>{{nombreSubcontratista}}</span></div>
+    <div class="row"><span class="lbl">Teléfono de contacto</span><span>{{telefonoContacto}}</span></div>
+    <div class="row"><span class="lbl">Email</span><span>{{email}}</span></div>
+    {{#each camposExtra}}
+    <div class="row"><span class="lbl">{{this.label}}</span><span>{{this.valor}}</span></div>
+    {{/each}}
+  </div>
+
+  <h2>Personal involucrado</h2>
+  <div class="ficha lista">
+    <div class="row"><span class="lbl">Nombre de la persona 1</span><span class="na">{{personal.nombre1}}</span></div>
+    <div class="row"><span class="lbl">Tipo y número de documento 1</span><span class="na">{{personal.documento1}}</span></div>
+    <div class="row"><span class="lbl">Nombre de la persona 2</span><span class="na">{{personal.nombre2}}</span></div>
+    <div class="row"><span class="lbl">Tipo y número de documento 2</span><span class="na">{{personal.documento2}}</span></div>
+  </div>
+
+  <h2>Cláusula de compromiso</h2>
+  <div class="clausula">
+    <p>Me comprometo a la supervisión y cumplimiento por parte del subcontratista a lo
+      establecido en el Reglamento y Normativa de Centro Comercial, según el decreto
+      <b>254 Ley General de Prevención de riesgos</b> en lugares de trabajo de lo contrario,
+      autorizo la suspensión de sus labores y el cargo económico que corresponda en caso de
+      daño a terceros, así como lo indica los literales de la &ldquo;A&rdquo; a la &ldquo;G&rdquo;.</p>
+    <p class="na">Compromiso del subcontratista (marcar de leído)</p>
+    <ol class="literales" type="A">
+      <li>Todo el personal debe usar su EPP (equipo de protección personal) adecuado para la
+        realización de la obra, casco, chaleco, guantes, taco de ISSS, botas, lentes, arnés,
+        escalera vertical, conos o cinta amarilla para delimitar el área de trabajo.</li>
+      <li>En caso de realizar trabajos críticos en altura superior a 1.50mts, trabajos con
+        fuentes de calor, polvo, olor y sustancias peligrosas; trabajos en espacios confinados
+        y trabajos eléctricos, deben de gestionar los permisos correspondientes en el
+        departamento de seguridad.</li>
+      <li>Deben atender las recomendaciones del delegado de seguridad Industrial y supervisores
+        de seguridad, con el objetivo de recibir la obra bajo normativas de Centro comercial.</li>
+      <li>Deben respetar las normativas NEC, Sanitarias, Códigos de Telefonía, sistemas
+        especiales y los diseños aprobados de equipo de A/A.</li>
+      <li>Atender los procedimientos de seguridad laboral e higiene indicadas por el Centro
+        comercial, durante el día, solamente pueden trabajar en actividades que no generen
+        ruido, polvo u olores fuertes.</li>
+      <li>Entrada y salida por zona de carga determinada.</li>
+      <li>Por normativa de Seguridad e Higiene todos los residuos de pintura, pastas y similares
+        deberán ser retirados del local, por ningún motivo deben dejarse en en lo resumideros.</li>
+    </ol>
+  </div>
+
+  <h2>Locales en Remodelación</h2>
+  <div class="ficha lista">
+    <div class="row"><span class="lbl">Nombre del responsable del proyecto</span><span class="na">{{remodelacion.responsable}}</span></div>
+    <div class="row"><span class="lbl">Sello del responsable del proyecto</span><span class="na">{{remodelacion.sello}}</span></div>
+    <div class="row"><span class="lbl">Firma del responsable del proyecto</span><span class="na">{{remodelacion.firma}}</span></div>
+  </div>
+
+  <h2>Datos del subcontratista</h2>
+  <div class="ficha lista">
+    <div class="row"><span class="lbl">En caso de accidente llamar a</span><span class="na">{{subcontratista.contacto}}</span></div>
+    <div class="row"><span class="lbl">Teléfono</span><span class="na">{{subcontratista.telefono}}</span></div>
+    <div class="row"><span class="lbl">Equipos que utilizaremos</span><span class="na">{{subcontratista.equipos}}</span></div>
+    <div class="row"><span class="lbl">Escalera</span><span class="na">{{subcontratista.escalera}}</span></div>
+    <div class="row"><span class="lbl">Otro</span><span class="na">{{subcontratista.otro}}</span></div>
+  </div>
+
+  <div class="autoriza">
+    <h2>Autorizado por {{plaza.nombreComercial}}</h2>
+    <div class="ficha lista">
+      <div class="row"><span class="lbl">Jefe de Plaza:</span><span class="val">{{jefePlaza}}</span></div>
+    </div>
+    <div class="row"><span class="lbl">Firma:</span></div>
+    <div class="firma-box"></div>
+    <div class="row"><span class="lbl">Sello:</span></div>
+  </div>
+</body>
+</html>

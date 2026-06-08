@@ -22,6 +22,7 @@ export const REPORT_TEMPLATES: Record<string, { archivo: string; recipe: string 
   'inquilinos-xlsx': { archivo: 'inquilinos-xlsx', recipe: 'html-to-xlsx' },
   'local-detalle-pdf': { archivo: 'local-detalle-pdf', recipe: 'chrome-pdf' },
   'inquilino-detalle-pdf': { archivo: 'inquilino-detalle-pdf', recipe: 'chrome-pdf' },
+  'solicitud-permiso-pdf': { archivo: 'solicitud-permiso-pdf', recipe: 'chrome-pdf' },
 };
 
 const CHROME_PDF_OPTIONS = {

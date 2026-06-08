@@ -27,6 +27,58 @@ const MAX_RANGO_MESES = 12;
 /** Offset fijo de la plaza (T-V08). */
 const PLAZA_UTC_OFFSET_MS = 6 * 3_600_000;
 
+/** Etiquetas de estado para el PDF "Permiso de Trabajos". */
+const ESTADO_LABEL: Record<string, string> = {
+  borrador: 'Borrador',
+  enviada: 'Enviada',
+  asignado: 'Asignada',
+  en_revision: 'En revisión',
+  requerida_subsanacion: 'Requiere subsanación',
+  aprobada: 'Aprobada',
+  rechazada: 'Rechazada',
+  cancelada: 'Cancelada',
+};
+/** Clase CSS del badge de estado (verde aprobada / rojo terminal negativo / neutro). */
+const ESTADO_CLASE: Record<string, string> = {
+  aprobada: '',
+  rechazada: 'rojo',
+  cancelada: 'rojo',
+};
+const MESES_ABREV = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+/** Etiquetas legibles de campos_extra (espejo de solicitud-detail-inquilino.tsx). */
+const CAMPOS_EXTRA_LABEL: Record<string, string> = {
+  area_afectada: 'Área afectada',
+  requiere_ingreso_a_local: 'Requiere ingreso al local',
+  asistentes_estimados: 'Asistentes estimados',
+  requiere_corte_calle: 'Requiere corte de calle',
+  requiere_amplificacion: 'Requiere amplificación',
+  fecha_inicio_estimada: 'Fecha de inicio estimada',
+  duracion_dias: 'Duración (días)',
+  empresa_constructora: 'Empresa constructora',
+  monto_presupuesto: 'Monto presupuesto',
+  categoria_libre: 'Categoría libre',
+  descripcion_larga: 'Descripción larga',
+};
+
+/** Formatea un valor de campos_extra para el PDF (booleanos → Sí/No). */
+function formatCampoExtra(v: unknown): string {
+  if (typeof v === 'boolean') return v ? 'Sí' : 'No';
+  return String(v ?? 'n/a');
+}
+
 interface FilaSolicitud {
   codigo: string;
   tipo: string;
@@ -390,6 +442,102 @@ export class ReportesService {
     });
     const buffer = await this.jsreport.renderPdf('inquilino-detalle-pdf', data);
     return { filename: `inquilino-${id.slice(0, 8)}.pdf`, buffer };
+  }
+
+  /**
+   * PDF "Permiso de Trabajos" de una sola solicitud (formato del cliente).
+   * Accesible por admin_plaza/superadmin de la plaza e inquilino DUEÑO de la
+   * solicitud (scope replicado de SolicitudesService.assertInquilinoScope).
+   * Los campos que el modelo no captura (firma, personal involucrado, datos del
+   * subcontratista, autorizante) se renderizan como "n/a" (decisión del cliente).
+   */
+  async exportSolicitudPermisoPdf(
+    id: string,
+    actor: AuthenticatedUser,
+  ): Promise<{ filename: string; buffer: Buffer }> {
+    const plazaId = this.requirePlaza(actor);
+    const data = await this.prisma.withTenant(plazaId, async (tx) => {
+      const solicitud = await tx.solicitud.findFirst({
+        where: { id },
+        include: {
+          local: { select: { codigo: true, piso: true } },
+          inquilino: { select: { razon_social: true, contacto_email: true } },
+          categoria: { select: { nombre: true } },
+          subcategoria: { select: { nombre: true } },
+          usuario_creador: { select: { nombre: true, email: true } },
+          admin_asignado: { select: { nombre: true } },
+        },
+      });
+      if (!solicitud) {
+        throw new NotFoundException({
+          code: 'SOLICITUD_NOT_FOUND',
+          title: 'Recurso no encontrado',
+          message: 'La solicitud no existe.',
+        });
+      }
+      // Scope inquilino: solo el dueño puede generar su permiso.
+      if (actor.rol === 'inquilino' && solicitud.inquilino_id !== actor.inquilinoId) {
+        throw new NotFoundException({
+          code: 'SOLICITUD_NOT_FOUND',
+          title: 'Recurso no encontrado',
+          message: 'La solicitud no existe.',
+        });
+      }
+
+      const camposExtra = (solicitud.campos_extra ?? {}) as Record<string, unknown>;
+      const empresa =
+        typeof camposExtra.empresa_constructora === 'string'
+          ? camposExtra.empresa_constructora
+          : null;
+
+      return {
+        plaza: await this.plazaBranding(tx, plazaId),
+        codigo: solicitud.codigo,
+        estadoLabel: ESTADO_LABEL[solicitud.estado] ?? solicitud.estado,
+        estadoClase: ESTADO_CLASE[solicitud.estado] ?? 'neutro',
+        solicitante: solicitud.usuario_creador?.nombre ?? 'n/a',
+        cliente: solicitud.inquilino?.razon_social ?? 'n/a',
+        nivel: solicitud.local?.piso ?? 'n/a',
+        local: solicitud.local?.codigo ?? 'n/a',
+        fechaSolicitud: this.fechaPermiso(solicitud.enviada_at ?? solicitud.created_at),
+        fechaExpiracion: 'n/a',
+        firmaSolicitante: 'n/a',
+        tipoTrabajo: solicitud.subcategoria?.nombre ?? solicitud.tipo,
+        descripcion: solicitud.descripcion,
+        autorizamosA: empresa ?? 'n/a',
+        nombreSubcontratista: 'n/a',
+        telefonoContacto: 'n/a',
+        email: solicitud.usuario_creador?.email ?? solicitud.inquilino?.contacto_email ?? 'n/a',
+        camposExtra: Object.entries(camposExtra)
+          .filter(([k]) => k !== 'empresa_constructora')
+          .map(([k, v]) => ({ label: CAMPOS_EXTRA_LABEL[k] ?? k, valor: formatCampoExtra(v) })),
+        personal: { nombre1: 'n/a', documento1: 'n/a', nombre2: 'n/a', documento2: 'n/a' },
+        remodelacion: { responsable: 'n/a', sello: 'n/a', firma: 'n/a' },
+        subcontratista: {
+          contacto: 'n/a',
+          telefono: 'n/a',
+          equipos: 'n/a',
+          escalera: 'n/a',
+          otro: 'n/a',
+        },
+        jefePlaza: solicitud.admin_asignado?.nombre ?? 'n/a',
+      };
+    });
+    const buffer = await this.jsreport.renderPdf('solicitud-permiso-pdf', data);
+    return { filename: `permiso-${data.codigo}.pdf`, buffer };
+  }
+
+  /** Fecha estilo formato del cliente: "28/Dec/2024 10:00:00" en TZ de la plaza. */
+  private fechaPermiso(date: Date | null): string {
+    if (!date) return 'n/a';
+    const d = new Date(date.getTime() - PLAZA_UTC_OFFSET_MS);
+    const dia = String(d.getUTCDate()).padStart(2, '0');
+    const mes = MESES_ABREV[d.getUTCMonth()];
+    const anio = d.getUTCFullYear();
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    const ss = String(d.getUTCSeconds()).padStart(2, '0');
+    return `${dia}/${mes}/${anio} ${hh}:${mm}:${ss}`;
   }
 
   /** T-144: primeros 10 registros para la previsualización (sin descarga). */

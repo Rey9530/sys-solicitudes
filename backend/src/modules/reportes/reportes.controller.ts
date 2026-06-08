@@ -69,6 +69,20 @@ export class ReportesController {
     enviarArchivo(res, filename, buffer, 'application/pdf');
   }
 
+  @Get('solicitudes/:id/permiso.pdf')
+  @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @ApiOperation({
+    summary: 'PDF "Permiso de Trabajos" de una solicitud; inquilino solo la suya.',
+  })
+  async solicitudPermisoPdf(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { filename, buffer } = await this.service.exportSolicitudPermisoPdf(id, user);
+    enviarArchivo(res, filename, buffer, 'application/pdf');
+  }
+
   @Get(':entidad/preview')
   @Roles('admin_plaza', 'superadmin')
   @ApiOperation({ summary: 'Primeros 10 registros del reporte (T-144, sin descarga).' })

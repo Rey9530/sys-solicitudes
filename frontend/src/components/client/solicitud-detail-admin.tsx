@@ -141,6 +141,13 @@ export function SolicitudDetailAdmin({
             {solicitud.adminAsignado ? ` · Asignada a ${solicitud.adminAsignado.nombre}` : ''}
           </p>
         </div>
+        <div className="ph-actions">
+          <Button asChild variant="outline" size="sm">
+            <a href={`/api/solicitudes/${solicitud.id}/permiso-pdf`} target="_blank" rel="noopener">
+              Descargar permiso (PDF)
+            </a>
+          </Button>
+        </div>
       </div>
 
       {soyCreador && !esTerminal && (
