@@ -47,6 +47,11 @@ services:
     restart: unless-stopped
     env_file:
       - .env.prod
+    # .env.prod trae PORT=4000 (del backend); Next.js lo leería y se bindearía
+    # a 4000. Forzamos 3000 aquí (environment tiene prioridad sobre env_file).
+    environment:
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
     # Solo loopback del host → lo alcanza nginx, no internet.
     ports:
       - "127.0.0.1:3000:3000"
