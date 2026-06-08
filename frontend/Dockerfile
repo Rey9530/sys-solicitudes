@@ -34,6 +34,11 @@ COPY tsconfig.base.json ./
 COPY packages ./packages
 COPY frontend ./frontend
 
+# Restaurar el node_modules del workspace frontend (paquetes NO hoisteados al
+# raíz, p.ej. next-auth/Auth.js v5 beta por su rango de peer deps). El COPY del
+# source no lo incluye, así que se trae desde la etapa deps DESPUÉS del source.
+COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
+
 # Importante: compilar @app/contracts primero
 WORKDIR /app
 RUN npm run build:contracts
