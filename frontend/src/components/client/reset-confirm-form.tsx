@@ -55,8 +55,8 @@ export function ResetConfirmForm({ token }: { token: string }) {
   if (invalidToken) {
     return (
       <div className="space-y-4 text-center">
-        <p className="text-sm text-gray-600">El enlace es inválido o ha expirado.</p>
-        <Link href="/reset-password" className="inline-block text-sm text-primary hover:underline">
+        <div className="banner banner-danger">El enlace es inválido o ha expirado.</div>
+        <Link href="/reset-password" className="inline-block text-sm" style={{ color: 'var(--primary)' }}>
           Solicitar un enlace nuevo
         </Link>
       </div>
@@ -64,44 +64,34 @@ export function ResetConfirmForm({ token }: { token: string }) {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      <div className="space-y-1.5">
-        <label htmlFor="newPassword" className="text-sm font-medium text-gray-700">
-          Nueva contraseña
-        </label>
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+      <div className="field">
+        <label htmlFor="newPassword">Nueva contraseña</label>
         <input
           id="newPassword"
           type="password"
           autoComplete="new-password"
           {...register('newPassword')}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+          className="input"
           placeholder="••••••••"
         />
-        {errors.newPassword && <p className="text-xs text-red-600">{errors.newPassword.message}</p>}
+        {errors.newPassword && <p className="err">{errors.newPassword.message}</p>}
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
-          Confirmar contraseña
-        </label>
+      <div className="field">
+        <label htmlFor="confirmPassword">Confirmar contraseña</label>
         <input
           id="confirmPassword"
           type="password"
           autoComplete="new-password"
           {...register('confirmPassword')}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+          className="input"
           placeholder="••••••••"
         />
-        {errors.confirmPassword && (
-          <p className="text-xs text-red-600">{errors.confirmPassword.message}</p>
-        )}
+        {errors.confirmPassword && <p className="err">{errors.confirmPassword.message}</p>}
       </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-      >
+      <button type="submit" disabled={submitting} className="btn btn-primary btn-block btn-lg">
         {submitting ? 'Guardando…' : 'Restablecer contraseña'}
       </button>
     </form>

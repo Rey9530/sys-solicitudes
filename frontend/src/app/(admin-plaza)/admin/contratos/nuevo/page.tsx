@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { LocalOutput, InquilinoOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
 import { NuevoContratoForm } from '@/components/client/nuevo-contrato-form';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Nuevo contrato' };
 
@@ -19,13 +20,12 @@ export default async function NuevoContratoPage() {
     : [];
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Nuevo contrato</h1>
-        <p className="text-sm text-gray-500">
-          El local pasa a «alquilado» automáticamente. Sin fecha de fin = indefinido.
-        </p>
-      </div>
+    <div className="page narrow">
+      <PageHeader
+        title="Nuevo contrato"
+        subtitle="El local pasa a «alquilado» automáticamente. Sin fecha de fin = indefinido."
+        breadcrumb={[{ label: 'Contratos', href: '/admin/contratos' }, { label: 'Nuevo' }]}
+      />
       <NuevoContratoForm
         locales={locales.map((l) => ({ id: l.id, codigo: l.codigo, nombre: l.nombre }))}
         inquilinos={inquilinos.map((i) => ({ id: i.id, razonSocial: i.razonSocial }))}

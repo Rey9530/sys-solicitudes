@@ -71,12 +71,12 @@ export function ReportesGenerator({
     ...filtros,
   }).toString()}`;
 
-  const selectClass = 'h-9 rounded-md border border-input bg-white px-2 text-sm';
-  const labelClass = 'text-xs font-medium text-gray-500';
+  const selectClass = 'select';
+  const labelClass = 'muted text-xs font-medium uppercase tracking-wide';
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-4">
+      <div className="card filters">
         <div className="grid gap-1">
           <label className={labelClass}>Entidad</label>
           <select
@@ -230,24 +230,20 @@ export function ReportesGenerator({
         </div>
       </div>
 
-      {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
+      {error && <div className="banner banner-danger">{error}</div>}
 
       {preview !== null && (
-        <div className="rounded-lg border bg-white p-4">
-          <h3 className="mb-2 text-sm font-semibold text-gray-700">
+        <div className="card card-pad">
+          <h3 className="mb-2 text-sm font-semibold">
             Previsualización — primeros {preview.length} de {total} registros
           </h3>
           {preview.length === 0 ? (
-            <p className="text-sm text-gray-500">No hay registros con esos filtros.</p>
+            <p className="muted text-sm">No hay registros con esos filtros.</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs report-preview">
                 <thead>
-                  <tr className="border-b text-left text-gray-500">
+                  <tr className="border-b text-left muted">
                     {Object.keys(preview[0] ?? {}).map((h) => (
                       <th key={h} className="px-2 py-1.5 font-medium">
                         {h}
@@ -272,11 +268,11 @@ export function ReportesGenerator({
         </div>
       )}
 
-      <div className="rounded-lg border border-dashed bg-white p-4 text-sm text-gray-500">
-        <h3 className="mb-1 font-semibold text-gray-700">Historial de reportes</h3>
-        <p>
-          Los reportes programados y el historial de generación quedan fuera de v1 (placeholder).
-        </p>
+      <div className="card card-pad text-sm muted">
+        <h3 className="mb-1 font-semibold" style={{ color: 'var(--text-2)' }}>
+          Historial de reportes
+        </h3>
+        <p>Los reportes programados y el historial de generación quedan fuera de v1 (placeholder).</p>
       </div>
     </div>
   );

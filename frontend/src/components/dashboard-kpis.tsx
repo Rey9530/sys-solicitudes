@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import { CalendarCheck, CheckCircle2, FileClock, Inbox, XCircle } from 'lucide-react';
 import type { DashboardChartsOutput, KpisOutput } from '@app/contracts';
 import { DashboardCharts } from '@/components/client/dashboard-charts';
+import { Card, CardBody, CardHead } from '@/components/ui/card';
+import { KpiCard } from '@/components/ui/kpi-card';
 
 /**
  * T-143: contenido compartido del dashboard (Server Component) — lo usan
@@ -15,97 +18,124 @@ export function DashboardContenido({
   charts: DashboardChartsOutput;
   detalleHref: string | null;
 }) {
-  const cards = [
-    { label: 'Pendientes', valor: kpis.pendientes, color: 'text-amber-600' },
-    { label: 'Aprobadas hoy', valor: kpis.aprobadasHoy, color: 'text-green-600' },
-    { label: 'Rechazadas hoy', valor: kpis.rechazadasHoy, color: 'text-red-600' },
-    { label: 'Eventos próximos (7d)', valor: kpis.eventosProximos7d, color: 'text-blue-600' },
-    {
-      label: 'Contratos por vencer (30d)',
-      valor: kpis.contratosPorVencer30d,
-      color: 'text-violet-600',
-    },
-  ];
+  const tasaPct = kpis.tasaAprobacion !== null ? Math.round(kpis.tasaAprobacion * 100) : null;
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        {cards.map((c) => (
-          <div key={c.label} className="rounded-lg border bg-white p-4">
-            <p className={`text-3xl font-bold ${c.color}`}>{c.valor}</p>
-            <p className="text-xs text-gray-500">{c.label}</p>
-          </div>
-        ))}
+    <div className="stack" style={{ gap: 16 }}>
+      <div className="kpi-grid">
+        <KpiCard label="Pendientes" value={kpis.pendientes} icon={Inbox} tint="warn" />
+        <KpiCard label="Aprobadas hoy" value={kpis.aprobadasHoy} icon={CheckCircle2} tint="ok" />
+        <KpiCard label="Rechazadas hoy" value={kpis.rechazadasHoy} icon={XCircle} tint="danger" />
+        <KpiCard
+          label="Eventos próximos (7d)"
+          value={kpis.eventosProximos7d}
+          icon={CalendarCheck}
+          tint="info"
+        />
+        <KpiCard
+          label="Contratos por vencer (30d)"
+          value={kpis.contratosPorVencer30d}
+          icon={FileClock}
+          tint="violet"
+        />
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-lg border bg-white p-4">
-          <p className="text-2xl font-semibold">
-            {kpis.tasaAprobacion !== null ? `${Math.round(kpis.tasaAprobacion * 100)}%` : '—'}
+      <div className="kpi-grid c3">
+        <Card pad>
+          <p className="kpi-label">Tasa de aprobación</p>
+          <p className="kpi-val" style={{ fontSize: 26, marginTop: 8 }}>
+            {tasaPct !== null ? `${tasaPct}%` : '—'}
           </p>
-          <p className="text-xs text-gray-500">Tasa de aprobación</p>
-        </div>
-        <div className="rounded-lg border bg-white p-4">
-          <p className="text-2xl font-semibold">
+          {tasaPct !== null && (
+            <div
+              style={{
+                marginTop: 12,
+                height: 7,
+                borderRadius: 999,
+                background: 'var(--surface-3)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  width: `${tasaPct}%`,
+                  height: '100%',
+                  borderRadius: 999,
+                  background: 'var(--ok-fg)',
+                }}
+              />
+            </div>
+          )}
+        </Card>
+        <Card pad>
+          <p className="kpi-label">Tiempo medio de respuesta</p>
+          <p className="kpi-val" style={{ fontSize: 26, marginTop: 8 }}>
             {kpis.tiempoMedioRespuestaHoras !== null ? `${kpis.tiempoMedioRespuestaHoras} h` : '—'}
           </p>
-          <p className="text-xs text-gray-500">Tiempo medio de respuesta</p>
-        </div>
-        <div className="rounded-lg border bg-white p-4">
-          <p className="text-2xl font-semibold">{kpis.solicitudesConSubsanacion}</p>
-          <p className="text-xs text-gray-500">Solicitudes con subsanación</p>
-        </div>
+        </Card>
+        <Card pad>
+          <p className="kpi-label">Solicitudes con subsanación</p>
+          <p className="kpi-val" style={{ fontSize: 26, marginTop: 8 }}>
+            {kpis.solicitudesConSubsanacion}
+          </p>
+        </Card>
       </div>
 
       <DashboardCharts data={charts} />
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-lg border bg-white p-4">
-          <h3 className="mb-2 text-sm font-semibold text-gray-700">Top 5 por antigüedad</h3>
-          {kpis.top5Antiguedad.length === 0 ? (
-            <p className="text-sm text-gray-500">Sin solicitudes pendientes.</p>
-          ) : (
-            <ul className="divide-y text-sm">
-              {kpis.top5Antiguedad.map((s) => (
-                <li key={s.id} className="flex items-center justify-between py-2">
-                  <span>
+      <div className="grid-two">
+        <Card>
+          <CardHead>
+            <h3>Top 5 por antigüedad</h3>
+          </CardHead>
+          <CardBody style={{ paddingTop: 4, paddingBottom: 4 }}>
+            {kpis.top5Antiguedad.length === 0 ? (
+              <p className="muted" style={{ fontSize: 13, padding: '8px 0' }}>
+                Sin solicitudes pendientes.
+              </p>
+            ) : (
+              kpis.top5Antiguedad.map((s) => (
+                <div className="list-row" key={s.id}>
+                  <div className="flex-1 min-w-0">
                     {detalleHref ? (
-                      <Link href={`${detalleHref}/${s.id}`} className="text-primary hover:underline">
+                      <Link href={`${detalleHref}/${s.id}`} className="cellcode">
                         {s.codigo}
                       </Link>
                     ) : (
-                      <span className="font-medium">{s.codigo}</span>
+                      <span className="cellcode">{s.codigo}</span>
                     )}{' '}
-                    <span className="text-gray-600">{s.titulo}</span>
-                  </span>
-                  <span className="text-xs text-gray-400">{s.enviadaAt.slice(0, 10)}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+                    <span style={{ color: 'var(--text-2)', fontSize: 13 }}>{s.titulo}</span>
+                  </div>
+                  <span className="tl-time">{s.enviadaAt.slice(0, 10)}</span>
+                </div>
+              ))
+            )}
+          </CardBody>
+        </Card>
 
-        <section className="rounded-lg border bg-white p-4">
-          <h3 className="mb-2 text-sm font-semibold text-gray-700">Actividad reciente</h3>
-          {charts.actividadReciente.length === 0 ? (
-            <p className="text-sm text-gray-500">Sin actividad registrada.</p>
-          ) : (
-            <ul className="divide-y text-sm">
-              {charts.actividadReciente.map((a) => (
-                <li key={a.id} className="flex items-center justify-between py-2">
-                  <span>
-                    <span className="font-medium">{a.solicitudCodigo}</span>{' '}
-                    <span className="text-gray-600">{a.evento.replace(/_/g, ' ')}</span>
-                    {a.usuario && <span className="text-gray-400"> · {a.usuario}</span>}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    {a.createdAt.slice(0, 16).replace('T', ' ')}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <Card>
+          <CardHead>
+            <h3>Actividad reciente</h3>
+          </CardHead>
+          <CardBody style={{ paddingTop: 4, paddingBottom: 4 }}>
+            {charts.actividadReciente.length === 0 ? (
+              <p className="muted" style={{ fontSize: 13, padding: '8px 0' }}>
+                Sin actividad registrada.
+              </p>
+            ) : (
+              charts.actividadReciente.map((a) => (
+                <div className="list-row" key={a.id}>
+                  <div className="flex-1 min-w-0" style={{ fontSize: 13 }}>
+                    <span className="cellcode">{a.solicitudCodigo}</span>{' '}
+                    <span style={{ color: 'var(--text-2)' }}>{a.evento.replace(/_/g, ' ')}</span>
+                    {a.usuario && <span className="muted"> · {a.usuario}</span>}
+                  </div>
+                  <span className="tl-time">{a.createdAt.slice(0, 16).replace('T', ' ')}</span>
+                </div>
+              ))
+            )}
+          </CardBody>
+        </Card>
       </div>
     </div>
   );

@@ -30,92 +30,98 @@ export function NotificacionesFiltros({
     router.push(`/admin/notificaciones?${params.toString()}`);
   };
 
-  const selectClass = 'h-9 rounded-md border border-input bg-white px-2 text-sm';
   const hayFiltros = estado || plantilla || destinatario || fechaDesde || fechaHasta;
 
   return (
-    <div className="flex flex-wrap items-end gap-3 rounded-lg border bg-white p-3">
-      <div className="grid gap-1">
-        <label className="text-xs font-medium text-gray-500">Estado</label>
-        <select
-          className={selectClass}
-          value={estado ?? ''}
-          onChange={(e) => apply({ estado: e.target.value || undefined })}
+    <div className="card">
+      <div className="filters">
+        <div className="field">
+          <label htmlFor="nf-estado">Estado</label>
+          <select
+            id="nf-estado"
+            className="select"
+            value={estado ?? ''}
+            onChange={(e) => apply({ estado: e.target.value || undefined })}
+          >
+            <option value="">Todos</option>
+            {EmailLogEstadoSchema.options.map((e) => (
+              <option key={e} value={e}>
+                {e}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="nf-plantilla">Plantilla</label>
+          <select
+            id="nf-plantilla"
+            className="select"
+            value={plantilla ?? ''}
+            onChange={(e) => apply({ plantilla: e.target.value || undefined })}
+          >
+            <option value="">Todas</option>
+            {EMAIL_PLANTILLAS.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+        <form
+          className="field"
+          onSubmit={(e) => {
+            e.preventDefault();
+            apply({ destinatario: busqueda.trim() || undefined });
+          }}
         >
-          <option value="">Todos</option>
-          {EmailLogEstadoSchema.options.map((e) => (
-            <option key={e} value={e}>
-              {e}
-            </option>
-          ))}
-        </select>
+          <label htmlFor="nf-dest">Destinatario</label>
+          <input
+            id="nf-dest"
+            className="input"
+            placeholder="email@…"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            onBlur={() => apply({ destinatario: busqueda.trim() || undefined })}
+          />
+        </form>
+        <div className="field">
+          <label htmlFor="nf-desde">Desde</label>
+          <input
+            id="nf-desde"
+            type="date"
+            className="input"
+            value={fechaDesde ?? ''}
+            onChange={(e) => apply({ fechaDesde: e.target.value || undefined })}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="nf-hasta">Hasta</label>
+          <input
+            id="nf-hasta"
+            type="date"
+            className="input"
+            value={fechaHasta ?? ''}
+            onChange={(e) => apply({ fechaHasta: e.target.value || undefined })}
+          />
+        </div>
+        {hayFiltros && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() =>
+              apply({
+                estado: undefined,
+                plantilla: undefined,
+                destinatario: undefined,
+                fechaDesde: undefined,
+                fechaHasta: undefined,
+              })
+            }
+          >
+            Limpiar
+          </button>
+        )}
       </div>
-      <div className="grid gap-1">
-        <label className="text-xs font-medium text-gray-500">Plantilla</label>
-        <select
-          className={selectClass}
-          value={plantilla ?? ''}
-          onChange={(e) => apply({ plantilla: e.target.value || undefined })}
-        >
-          <option value="">Todas</option>
-          {EMAIL_PLANTILLAS.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-      </div>
-      <form
-        className="grid gap-1"
-        onSubmit={(e) => {
-          e.preventDefault();
-          apply({ destinatario: busqueda.trim() || undefined });
-        }}
-      >
-        <label className="text-xs font-medium text-gray-500">Destinatario</label>
-        <input
-          className="h-9 rounded-md border border-input bg-white px-2 text-sm"
-          placeholder="email@…"
-          value={busqueda}
-          onChange={(e) => setBusqueda(e.target.value)}
-          onBlur={() => apply({ destinatario: busqueda.trim() || undefined })}
-        />
-      </form>
-      <div className="grid gap-1">
-        <label className="text-xs font-medium text-gray-500">Desde</label>
-        <input
-          type="date"
-          className={selectClass}
-          value={fechaDesde ?? ''}
-          onChange={(e) => apply({ fechaDesde: e.target.value || undefined })}
-        />
-      </div>
-      <div className="grid gap-1">
-        <label className="text-xs font-medium text-gray-500">Hasta</label>
-        <input
-          type="date"
-          className={selectClass}
-          value={fechaHasta ?? ''}
-          onChange={(e) => apply({ fechaHasta: e.target.value || undefined })}
-        />
-      </div>
-      {hayFiltros && (
-        <button
-          type="button"
-          className="h-9 rounded-md px-3 text-sm text-gray-500 hover:bg-gray-100"
-          onClick={() =>
-            apply({
-              estado: undefined,
-              plantilla: undefined,
-              destinatario: undefined,
-              fechaDesde: undefined,
-              fechaHasta: undefined,
-            })
-          }
-        >
-          Limpiar
-        </button>
-      )}
     </div>
   );
 }

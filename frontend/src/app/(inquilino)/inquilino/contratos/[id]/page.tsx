@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { ContratoDetailOutput, AdjuntoOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
 import { ContratoEstadoBadge } from '@/components/estado-badge';
 import { AdjuntosContrato } from '@/components/client/adjuntos-contrato';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card } from '@/components/ui/card';
 
 export const metadata: Metadata = { title: 'Mi contrato' };
 
@@ -23,51 +24,48 @@ export default async function InquilinoContratoDetailPage({
   const adjuntos = adjuntosRes.ok ? ((await adjuntosRes.json()) as AdjuntoOutput[]) : [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm text-gray-500">
-          <Link href="/inquilino/contratos" className="hover:underline">
-            Mis contratos
-          </Link>{' '}
-          / {contrato.localCodigo}
-        </p>
-        <h1 className="flex items-center gap-3 text-2xl font-bold text-gray-900">
-          Local {contrato.localCodigo}
-          <ContratoEstadoBadge estado={contrato.estado} />
-        </h1>
-      </div>
+    <div className="page">
+      <PageHeader
+        breadcrumb={[{ label: 'Mis contratos', href: '/inquilino/contratos' }, { label: contrato.localCodigo ?? '' }]}
+        title={
+          <>
+            Local <span className="mono">{contrato.localCodigo}</span>
+          </>
+        }
+        badges={<ContratoEstadoBadge estado={contrato.estado} />}
+      />
 
-      <div className="grid grid-cols-2 gap-4 rounded-lg border bg-white p-6 text-sm md:grid-cols-4">
-        <div>
-          <p className="text-xs text-gray-500">Inicio</p>
-          <p className="font-medium">{contrato.fechaInicio}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Fin</p>
-          <p className="font-medium">{contrato.fechaFin ?? 'Indefinido'}</p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Monto mensual</p>
-          <p className="font-medium">
-            {contrato.montoMensual !== null
-              ? `${contrato.moneda} ${contrato.montoMensual}`
-              : '—'}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs text-gray-500">Moneda</p>
-          <p className="font-medium">{contrato.moneda}</p>
-        </div>
-        {contrato.condiciones && (
-          <div className="col-span-2 md:col-span-4">
-            <p className="text-xs text-gray-500">Condiciones</p>
-            <p className="whitespace-pre-wrap">{contrato.condiciones}</p>
+      <Card pad>
+        <dl className="dl">
+          <div>
+            <div className="dt">Inicio</div>
+            <div className="dd">{contrato.fechaInicio}</div>
           </div>
-        )}
-      </div>
+          <div>
+            <div className="dt">Fin</div>
+            <div className="dd">{contrato.fechaFin ?? 'Indefinido'}</div>
+          </div>
+          <div>
+            <div className="dt">Monto mensual</div>
+            <div className="dd">
+              {contrato.montoMensual !== null ? `${contrato.moneda} ${contrato.montoMensual}` : '—'}
+            </div>
+          </div>
+          <div>
+            <div className="dt">Moneda</div>
+            <div className="dd">{contrato.moneda}</div>
+          </div>
+          {contrato.condiciones && (
+            <div className="full">
+              <div className="dt">Condiciones</div>
+              <div className="dd whitespace-pre-wrap">{contrato.condiciones}</div>
+            </div>
+          )}
+        </dl>
+      </Card>
 
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900">Contrato firmado (PDF)</h2>
+      <div className="stack" style={{ marginTop: 20, gap: 12 }}>
+        <h2 className="text-[15px] font-semibold">Contrato firmado (PDF)</h2>
         {/* El inquilino puede subir/descargar; solo borra lo que subió (backend valida). */}
         <AdjuntosContrato contratoId={contrato.id} adjuntos={adjuntos} canDelete />
       </div>

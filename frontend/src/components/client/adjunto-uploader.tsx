@@ -169,32 +169,33 @@ export function AdjuntoUploader({
     <div className="space-y-3">
       <div
         {...getRootProps()}
-        className={`rounded-lg border border-dashed bg-white p-6 text-sm transition ${
-          isDragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
-        }`}
+        className={`dropzone${isDragActive ? ' drag' : ''}`}
         aria-label={`Zona de arrastre para subir adjuntos de ${entidadTipo}`}
       >
         <input {...getInputProps()} />
         {isDragActive ? (
-          <p className="text-center text-blue-700">Suelta los archivos aquí…</p>
+          <p className="text-center" style={{ color: 'var(--primary)' }}>
+            Suelta los archivos aquí…
+          </p>
         ) : (
           <div className="flex flex-col items-center gap-2">
-            <p className="text-center text-gray-500">
+            <p className="muted text-center">
               Arrastra archivos aquí o haz click en{' '}
               <button
                 type="button"
                 onClick={open}
-                className="font-medium text-blue-600 underline"
+                className="font-medium underline"
+                style={{ color: 'var(--primary)' }}
               >
                 Subir archivos
               </button>
               .
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
               Máx. {maxMb} MB por archivo · {mimeAllowlist.length} tipos permitidos
             </p>
             {uploadingCount > 0 && (
-              <p className="flex items-center gap-2 text-xs text-blue-600">
+              <p className="flex items-center gap-2 text-xs" style={{ color: 'var(--primary)' }}>
                 <Loader2 className="h-3 w-3 animate-spin" /> Subiendo {uploadingCount} archivo(s)…
               </p>
             )}
@@ -203,16 +204,16 @@ export function AdjuntoUploader({
       </div>
 
       {adjuntos.length === 0 ? (
-        <p className="text-sm text-gray-500">Sin adjuntos todavía.</p>
+        <p className="muted text-sm">Sin adjuntos todavía.</p>
       ) : (
-        <ul className="divide-y rounded-lg border bg-white">
+        <ul className="card divide-y">
           {adjuntos.map((a) => (
             <li key={a.id} className="flex items-center justify-between gap-3 p-3 text-sm">
               <div className="flex min-w-0 items-center gap-3">
                 <AdjuntoIcon mime={a.mimeType} />
                 <div className="min-w-0">
                   <p className="truncate font-medium">{a.nombreOriginal}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="muted text-xs">
                     {formatBytes(a.tamanoBytes)} · {a.mimeType} ·{' '}
                     {formatDateInPlazaTz(a.createdAt)}
                   </p>

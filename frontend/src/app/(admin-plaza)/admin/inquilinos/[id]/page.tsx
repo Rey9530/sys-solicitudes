@@ -7,6 +7,7 @@ import { Tabs } from '@/components/client/tabs';
 import { EditarInquilinoForm } from '@/components/client/editar-inquilino-form';
 import { AltaUsuarioInquilinoDialog } from '@/components/client/alta-usuario-inquilino-dialog';
 import { ContratoEstadoBadge } from '@/components/estado-badge';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Detalle de inquilino' };
 
@@ -27,27 +28,20 @@ export default async function InquilinoDetailPage({
   const tieneVigente = inquilino.contratosVigentes.length > 0;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-500">
-            <Link href="/admin/inquilinos" className="hover:underline">
-              Inquilinos
-            </Link>{' '}
-            / {inquilino.razonSocial}
-          </p>
-          <h1 className="text-2xl font-bold text-gray-900">{inquilino.razonSocial}</h1>
-          {inquilino.identificacion && (
-            <p className="text-sm text-gray-500">ID: {inquilino.identificacion}</p>
-          )}
-        </div>
-        <AltaUsuarioInquilinoDialog
-          inquilinoId={inquilino.id}
-          razonSocial={inquilino.razonSocial}
-          contactoEmail={inquilino.contactoEmail}
-          contactoNombre={inquilino.contactoNombre}
-        />
-      </div>
+    <div className="page">
+      <PageHeader
+        breadcrumb={[{ label: 'Inquilinos', href: '/admin/inquilinos' }, { label: inquilino.razonSocial }]}
+        title={inquilino.razonSocial}
+        subtitle={inquilino.identificacion ? `ID: ${inquilino.identificacion}` : undefined}
+        actions={
+          <AltaUsuarioInquilinoDialog
+            inquilinoId={inquilino.id}
+            razonSocial={inquilino.razonSocial}
+            contactoEmail={inquilino.contactoEmail}
+            contactoNombre={inquilino.contactoNombre}
+          />
+        }
+      />
 
       <Tabs
         tabs={[
@@ -63,27 +57,26 @@ export default async function InquilinoDetailPage({
           },
           {
             key: 'contratos',
-            label: `Contratos (${inquilino.historicoContratos.length})`,
+            label: 'Contratos',
+            count: inquilino.historicoContratos.length,
             content: (
-              <div className="space-y-2">
+              <div className="stack" style={{ gap: 10 }}>
                 {inquilino.historicoContratos.length === 0 && (
-                  <p className="text-sm text-gray-500">Sin contratos todavía.</p>
+                  <p className="muted text-sm">Sin contratos todavía.</p>
                 )}
                 {inquilino.historicoContratos.map((c) => (
                   <Link
                     key={c.id}
                     href={`/admin/contratos/${c.id}`}
-                    className={`flex items-center justify-between rounded-lg border bg-white p-4 hover:border-primary ${
-                      c.estado === 'vigente' ? 'border-green-300 ring-1 ring-green-200' : ''
-                    }`}
+                    className={`mini-card${c.estado === 'vigente' ? ' vigente' : ''}`}
                   >
-                    <div>
-                      <p className="text-sm font-medium">
+                    <div className="mc-main">
+                      <b>
                         {c.fechaInicio} → {c.fechaFin ?? 'indefinido'}
-                      </p>
-                      <p className="text-xs text-gray-500">
+                      </b>
+                      <span>
                         {c.moneda} {c.montoMensual ?? '—'} / mes
-                      </p>
+                      </span>
                     </div>
                     <ContratoEstadoBadge estado={c.estado} />
                   </Link>
@@ -94,11 +87,7 @@ export default async function InquilinoDetailPage({
           {
             key: 'solicitudes',
             label: 'Solicitudes',
-            content: (
-              <p className="text-sm text-gray-500">
-                Las solicitudes del inquilino llegan con el módulo 06.
-              </p>
-            ),
+            content: <p className="muted text-sm">Las solicitudes del inquilino llegan con el módulo 06.</p>,
           },
         ]}
       />

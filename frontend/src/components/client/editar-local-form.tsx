@@ -71,23 +71,18 @@ export function EditarLocalForm({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="grid max-w-lg gap-4 rounded-lg border bg-white p-6"
+      className="card card-pad grid max-w-lg gap-4"
       noValidate
     >
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
           <Label>Código</Label>
-          <Input value={local.codigo} disabled className="bg-gray-50" />
+          <Input value={local.codigo} disabled />
           <p className="text-xs text-gray-400">El código es inmutable.</p>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="estado">Estado</Label>
-          <select
-            id="estado"
-            disabled={tieneContratoVigente}
-            className="h-9 rounded-md border border-input bg-white px-2 text-sm disabled:bg-gray-50 disabled:text-gray-500"
-            {...register('estado')}
-          >
+          <select id="estado" disabled={tieneContratoVigente} className="select" {...register('estado')}>
             {tieneContratoVigente ? (
               <option value="alquilado">alquilado</option>
             ) : (

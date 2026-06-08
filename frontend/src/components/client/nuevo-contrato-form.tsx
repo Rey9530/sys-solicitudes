@@ -48,15 +48,10 @@ export function NuevoContratoForm({
     }
   };
 
-  const selectClass =
-    'h-9 rounded-md border border-input bg-white px-2 text-sm w-full';
+  const selectClass = 'select';
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="grid gap-4 rounded-lg border bg-white p-6"
-      noValidate
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="card card-pad grid gap-4" noValidate>
       <div className="grid gap-1.5">
         <Label htmlFor="localId">Local (solo disponibles) *</Label>
         <select id="localId" className={selectClass} {...register('localId')}>
@@ -112,12 +107,7 @@ export function NuevoContratoForm({
       </div>
       <div className="grid gap-1.5">
         <Label htmlFor="condiciones">Condiciones</Label>
-        <textarea
-          id="condiciones"
-          rows={3}
-          className="rounded-md border border-input bg-white px-3 py-2 text-sm"
-          {...register('condiciones')}
-        />
+        <textarea id="condiciones" rows={3} className="textarea" {...register('condiciones')} />
       </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={() => router.back()}>

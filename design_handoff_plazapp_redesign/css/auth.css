@@ -1,0 +1,73 @@
+/* ============================================================
+   Plazapp — Auth & home layouts
+   ============================================================ */
+.auth { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 100vh; }
+
+.auth-brand {
+  position: relative; overflow: hidden;
+  background: var(--side-grad);
+  color: #fff;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: 38px 46px;
+}
+.auth-brand::before {
+  content:""; position:absolute; inset:0;
+  background:
+    radial-gradient(600px 400px at 85% 10%, color-mix(in srgb,var(--primary) 40%,transparent), transparent 60%),
+    radial-gradient(500px 380px at 10% 100%, color-mix(in srgb,var(--primary) 26%,transparent), transparent 60%);
+  pointer-events:none;
+}
+.auth-brand::after {
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(circle at 50% 40%, #000 30%, transparent 80%);
+}
+.auth-brand > * { position: relative; z-index: 1; }
+.auth-brand-top { display: flex; align-items: center; justify-content: space-between; }
+.auth-logo { display: flex; align-items: center; gap: 12px; }
+.auth-logo b { font-size: 18px; font-weight: 600; letter-spacing: -.01em; }
+.auth-brand-mid h2 { font-size: 34px; font-weight: 600; letter-spacing: -.025em; line-height: 1.15; }
+.auth-brand-mid p { color: rgba(255,255,255,.66); font-size: 15px; margin-top: 16px; max-width: 400px; line-height: 1.6; }
+.auth-feats { display: flex; flex-direction: column; gap: 13px; margin-top: 32px; }
+.auth-feats span { display: flex; align-items: center; gap: 11px; font-size: 14px; color: rgba(255,255,255,.82); }
+.auth-feats svg { width: 18px; height: 18px; color: var(--primary-200); }
+.auth-brand-foot { display: flex; align-items: center; gap: 9px; font-size: 13px; color: rgba(255,255,255,.55); }
+.auth-brand-foot .dot { width: 9px; height: 9px; border-radius: 99px; }
+
+.auth-form-col { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px; gap: 18px; }
+.auth-card { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-xl); box-shadow: var(--shadow-lg); padding: 34px; }
+.auth-head { margin-bottom: 24px; }
+.auth-head h1 { font-size: 25px; font-weight: 600; letter-spacing: -.02em; }
+.auth-head p { color: var(--text-3); font-size: 14px; margin-top: 6px; }
+.auth-legal { font-size: 12.5px; color: var(--text-muted); }
+.auth-legal a { color: var(--text-3); }
+.auth-legal a:hover { color: var(--primary); }
+.auth-roles { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 22px; padding-top: 20px; border-top: 1px solid var(--border); }
+.auth-roles .muted { font-size: 12.5px; margin-right: 2px; }
+
+@media (max-width: 860px){
+  .auth { grid-template-columns: 1fr; }
+  .auth-brand { display: none; }
+}
+
+/* Home entry */
+.home-entry { position: relative; display: grid; place-items: center; min-height: 100vh; padding: 30px; }
+.home-theme { position: fixed; top: 22px; right: 22px; }
+.home-card { max-width: 460px; }
+.home-plaza { display: flex; align-items: center; gap: 14px; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.home-plaza b { display: block; font-size: 16px; font-weight: 600; }
+.home-plaza span { font-size: 12.5px; color: var(--text-muted); }
+.home-greet { font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+.home-dest { display: flex; flex-direction: column; gap: 10px; }
+.home-dest-card {
+  display: flex; align-items: center; gap: 14px; padding: 14px;
+  border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2);
+  transition: border-color .15s, background .15s, transform .12s;
+}
+.home-dest-card:hover { border-color: var(--primary); background: var(--primary-soft); transform: translateX(2px); }
+.home-dest-card .kpi-ic { flex: none; }
+.home-dest-card > div { flex: 1; }
+.home-dest-card b { display: block; font-size: 14px; font-weight: 600; }
+.home-dest-card span { font-size: 12.5px; color: var(--text-3); }
+.home-dest-card > svg { width: 18px; height: 18px; color: var(--text-muted); }

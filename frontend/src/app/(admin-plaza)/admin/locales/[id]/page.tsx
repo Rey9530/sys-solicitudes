@@ -7,6 +7,7 @@ import { Tabs } from '@/components/client/tabs';
 import { EditarLocalForm } from '@/components/client/editar-local-form';
 import { AdjuntoUploader } from '@/components/client/adjunto-uploader';
 import { LocalEstadoBadge, ContratoEstadoBadge } from '@/components/estado-badge';
+import { PageHeader } from '@/components/ui/page-header';
 import { formatDateInPlazaTz } from '@/lib/datetime';
 import {
   subirAdjuntoLocalAction,
@@ -36,21 +37,17 @@ export default async function LocalDetailPage({
   const tieneVigente = local.contratoVigente !== null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-gray-500">
-            <Link href="/admin/locales" className="hover:underline">
-              Locales
-            </Link>{' '}
-            / {local.codigo}
-          </p>
-          <h1 className="flex items-center gap-3 text-2xl font-bold text-gray-900">
-            {local.codigo} {local.nombre ? `· ${local.nombre}` : ''}
-            <LocalEstadoBadge estado={local.estado} />
-          </h1>
-        </div>
-      </div>
+    <div className="page">
+      <PageHeader
+        breadcrumb={[{ label: 'Locales', href: '/admin/locales' }, { label: local.codigo }]}
+        title={
+          <>
+            <span className="mono">{local.codigo}</span>
+            {local.nombre ? ` · ${local.nombre}` : ''}
+          </>
+        }
+        badges={<LocalEstadoBadge estado={local.estado} />}
+      />
 
       <Tabs
         tabs={[
@@ -61,27 +58,26 @@ export default async function LocalDetailPage({
           },
           {
             key: 'contratos',
-            label: `Contratos (${local.historicoContratos.length})`,
+            label: 'Contratos',
+            count: local.historicoContratos.length,
             content: (
-              <div className="space-y-2">
+              <div className="stack" style={{ gap: 10 }}>
                 {local.historicoContratos.length === 0 && (
-                  <p className="text-sm text-gray-500">Sin contratos todavía.</p>
+                  <p className="muted text-sm">Sin contratos todavía.</p>
                 )}
                 {local.historicoContratos.map((c) => (
                   <Link
                     key={c.id}
                     href={`/admin/contratos/${c.id}`}
-                    className={`flex items-center justify-between rounded-lg border bg-white p-4 hover:border-primary ${
-                      c.estado === 'vigente' ? 'border-green-300 ring-1 ring-green-200' : ''
-                    }`}
+                    className={`mini-card${c.estado === 'vigente' ? ' vigente' : ''}`}
                   >
-                    <div>
-                      <p className="text-sm font-medium">
+                    <div className="mc-main">
+                      <b>
                         {c.fechaInicio} → {c.fechaFin ?? 'indefinido'}
-                      </p>
-                      <p className="text-xs text-gray-500">
+                      </b>
+                      <span>
                         {c.moneda} {c.montoMensual ?? '—'} / mes
-                      </p>
+                      </span>
                     </div>
                     <ContratoEstadoBadge estado={c.estado} />
                   </Link>
@@ -99,28 +95,28 @@ export default async function LocalDetailPage({
                 mimeAllowlist={LOCAL_MIMES}
                 maxBytes={LOCAL_MAX_BYTES}
                 canDelete
-                subirAction={(fd) => subirAdjuntoLocalAction(id, fd)}
+                subirAction={subirAdjuntoLocalAction.bind(null, id)}
                 descargarAction={descargarAdjuntoLocalAction}
-                eliminarAction={(adjId) => eliminarAdjuntoLocalAction(id, adjId)}
+                eliminarAction={eliminarAdjuntoLocalAction.bind(null, id)}
               />
             ),
           },
           {
             key: 'solicitudes',
             label: 'Solicitudes',
-            content: (
-              <p className="text-sm text-gray-500">
-                Las solicitudes relacionadas llegan con el módulo 06.
-              </p>
-            ),
+            content: <p className="muted text-sm">Las solicitudes relacionadas llegan con el módulo 06.</p>,
           },
         ]}
       />
 
-      <p className="text-xs text-gray-400">
-        Creado: {formatDateInPlazaTz(local.createdAt)} · Actualizado:{' '}
-        {formatDateInPlazaTz(local.updatedAt)}
-      </p>
+      <div className="meta-foot">
+        <span>
+          <b>Creado:</b> {formatDateInPlazaTz(local.createdAt)}
+        </span>
+        <span>
+          <b>Actualizado:</b> {formatDateInPlazaTz(local.updatedAt)}
+        </span>
+      </div>
     </div>
   );
 }

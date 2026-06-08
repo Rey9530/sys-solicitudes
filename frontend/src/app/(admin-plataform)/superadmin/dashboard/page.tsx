@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
 import type { DashboardChartsOutput, KpisOutput } from '@app/contracts';
+import { RefreshCw } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { AutoRefresh } from '@/components/client/auto-refresh';
 import { DashboardContenido } from '@/components/dashboard-kpis';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Dashboard global' };
 
@@ -17,18 +19,28 @@ export default async function SuperadminDashboardPage() {
     apiFetch('/reportes/dashboard'),
   ]);
   if (!kpisRes.ok || !chartsRes.ok) {
-    return <p className="text-sm text-red-600">No se pudieron cargar los KPIs.</p>;
+    return (
+      <div className="page wide">
+        <div className="banner banner-danger">No se pudieron cargar los KPIs.</div>
+      </div>
+    );
   }
   const kpis = (await kpisRes.json()) as KpisOutput;
   const charts = (await chartsRes.json()) as DashboardChartsOutput;
 
   return (
-    <div className="space-y-6">
+    <div className="page wide">
       <AutoRefresh intervalMs={5 * 60_000} />
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard global</h1>
-        <p className="text-sm text-gray-500">Métricas agregadas de todas las plazas.</p>
-      </div>
+      <PageHeader
+        title="Dashboard global"
+        subtitle="Métricas agregadas de todas las plazas."
+        actions={
+          <span className="badge b-neutral">
+            <RefreshCw className="h-3 w-3" />
+            Auto-refresh 5 min
+          </span>
+        }
+      />
       <DashboardContenido kpis={kpis} charts={charts} detalleHref={null} />
     </div>
   );

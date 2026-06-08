@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Check } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SolicitudDetailOutput, SolicitudListItem, SolicitudTipo } from '@app/contracts';
 import {
@@ -33,8 +34,9 @@ const TIPOS: Array<{ value: SolicitudTipo; label: string }> = [
   { value: 'otro', label: 'Otro' },
 ];
 
-const selectClass = 'h-9 w-full rounded-md border border-input bg-white px-2 text-sm';
+const selectClass = 'select';
 const MAX_ADJUNTOS = 10;
+const PASOS = ['Tipo y categoría', 'Detalles', 'Adjuntos y revisión'];
 
 interface CamposExtraState {
   // mantenimiento
@@ -287,28 +289,36 @@ export function SolicitudWizard({
 
   return (
     <div className="space-y-6">
-      {/* Indicador de pasos */}
-      <ol className="flex gap-2 text-sm">
-        {['Tipo y categoría', 'Detalles', 'Adjuntos y revisión'].map((label, i) => (
-          <li
-            key={label}
-            className={`rounded-full px-3 py-1 ${
-              step === i + 1 ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'
-            }`}
-          >
-            {i + 1}. {label}
-          </li>
-        ))}
-      </ol>
+      {/* Indicador de pasos (stepper) */}
+      <div className="stepper">
+        {PASOS.map((label, i) => {
+          const n = i + 1;
+          const cls = step === n ? 'step active' : step > n ? 'step done' : 'step';
+          return (
+            <Fragment key={label}>
+              <div className={cls}>
+                <div className="num">{step > n ? <Check className="h-4 w-4" /> : n}</div>
+                <div className="lab">
+                  <b>{label}</b>
+                  <span>Paso {n}</span>
+                </div>
+              </div>
+              {i < PASOS.length - 1 && (
+                <div className={`step-line${step > n ? ' done-line' : ''}`} />
+              )}
+            </Fragment>
+          );
+        })}
+      </div>
 
       {duplicados.length > 0 && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Ya existe una solicitud reciente similar:{' '}
-          {duplicados.map((d) => d.codigo).join(', ')}. Puedes continuar de todas formas.
+        <div className="banner banner-warn">
+          Ya existe una solicitud reciente similar: {duplicados.map((d) => d.codigo).join(', ')}.
+          Puedes continuar de todas formas.
         </div>
       )}
 
-      <div className="rounded-lg border bg-white p-6">
+      <div className="card card-pad">
         {step === 1 && (
           <div className="grid gap-4">
             <div className="grid gap-1.5">
@@ -400,7 +410,7 @@ export function SolicitudWizard({
               <textarea
                 rows={4}
                 maxLength={4000}
-                className="rounded-md border border-input bg-white px-3 py-2 text-sm"
+                className="textarea"
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
               />
@@ -441,7 +451,7 @@ export function SolicitudWizard({
 
             {/* Campos extra dinámicos por tipo (T-079) */}
             {tipo === 'mantenimiento' && (
-              <div className="grid gap-3 rounded-md border bg-gray-50 p-4">
+              <div className="wz-extra">
                 <div className="grid gap-1.5">
                   <Label>Área afectada *</Label>
                   <Input
@@ -461,7 +471,7 @@ export function SolicitudWizard({
               </div>
             )}
             {tipo === 'evento' && (
-              <div className="grid gap-3 rounded-md border bg-gray-50 p-4">
+              <div className="wz-extra">
                 <div className="grid gap-1.5">
                   <Label>Asistentes estimados *</Label>
                   <Input
@@ -491,7 +501,7 @@ export function SolicitudWizard({
               </div>
             )}
             {tipo === 'remodelacion' && (
-              <div className="grid gap-3 rounded-md border bg-gray-50 p-4">
+              <div className="wz-extra">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="grid gap-1.5">
                     <Label>Fecha inicio estimada *</Label>
@@ -533,7 +543,7 @@ export function SolicitudWizard({
               </div>
             )}
             {tipo === 'otro' && (
-              <div className="grid gap-3 rounded-md border bg-gray-50 p-4">
+              <div className="wz-extra">
                 <div className="grid gap-1.5">
                   <Label>Categoría libre *</Label>
                   <Input
@@ -547,7 +557,7 @@ export function SolicitudWizard({
                   <textarea
                     rows={4}
                     maxLength={4000}
-                    className="rounded-md border border-input bg-white px-3 py-2 text-sm"
+                    className="textarea"
                     value={extra.descripcion_larga}
                     onChange={(e) => setX('descripcion_larga', e.target.value)}
                   />
@@ -591,9 +601,11 @@ export function SolicitudWizard({
                 )}
               </div>
             )}
-            <div className="rounded-md border bg-gray-50 p-4 text-sm">
-              <p className="mb-2 font-medium text-gray-900">Revisión</p>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-gray-600">
+            <div className="wz-extra text-sm">
+              <p className="mb-1 font-semibold" style={{ color: 'var(--text)' }}>
+                Revisión
+              </p>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-1" style={{ color: 'var(--text-2)' }}>
                 <dt>Tipo</dt>
                 <dd>{TIPOS.find((t) => t.value === tipo)?.label}</dd>
                 <dt>Local</dt>

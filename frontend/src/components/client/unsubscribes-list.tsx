@@ -13,7 +13,7 @@ export function UnsubscribesList({ unsubscribes }: { unsubscribes: UnsubscribeOu
   const [error, setError] = useState<string | null>(null);
 
   if (unsubscribes.length === 0) {
-    return <p className="text-sm text-gray-500">No hay desuscripciones registradas.</p>;
+    return <p className="muted text-sm">No hay desuscripciones registradas.</p>;
   }
 
   const reset = (id: string) =>
@@ -26,25 +26,21 @@ export function UnsubscribesList({ unsubscribes }: { unsubscribes: UnsubscribeOu
 
   return (
     <div className="space-y-2">
-      {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
-      <ul className="divide-y rounded-lg border bg-white">
+      {error && <div className="banner banner-danger">{error}</div>}
+      <div className="card">
         {unsubscribes.map((u) => (
-          <li key={u.id} className="flex items-center justify-between px-4 py-2 text-sm">
-            <span>
+          <div key={u.id} className="list-row" style={{ padding: '10px 16px' }}>
+            <span className="flex-1 text-sm">
               <span className="font-medium">{u.email}</span>{' '}
-              <span className="text-gray-500">· {u.plantilla}</span>{' '}
-              <span className="text-xs text-gray-400">({u.createdAt.slice(0, 10)})</span>
+              <span className="muted">· {u.plantilla}</span>{' '}
+              <span className="tl-time">({u.createdAt.slice(0, 10)})</span>
             </span>
-            <Button variant="outline" size="sm" disabled={pending} onClick={() => reset(u.id)}>
+            <Button variant="secondary" size="sm" disabled={pending} onClick={() => reset(u.id)}>
               Resetear
             </Button>
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

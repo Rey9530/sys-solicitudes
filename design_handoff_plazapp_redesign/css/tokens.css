@@ -1,0 +1,154 @@
+/* ============================================================
+   Plazapp — Design Tokens
+   Institutional / trustworthy. Light + Dark. Tenant accent.
+   ============================================================ */
+
+:root {
+  /* ---- Tenant accent (dynamic per plaza) ---- */
+  --primary:        #2f62e6;
+  --primary-contrast:#ffffff;
+  /* derived scale via color-mix on white/black */
+  --primary-50:  color-mix(in srgb, var(--primary) 8%,  white);
+  --primary-100: color-mix(in srgb, var(--primary) 14%, white);
+  --primary-200: color-mix(in srgb, var(--primary) 26%, white);
+  --primary-300: color-mix(in srgb, var(--primary) 42%, white);
+  --primary-500: var(--primary);
+  --primary-600: color-mix(in srgb, var(--primary) 84%, black);
+  --primary-700: color-mix(in srgb, var(--primary) 68%, black);
+  --primary-soft: color-mix(in srgb, var(--primary) 12%, white);
+  --primary-ring: color-mix(in srgb, var(--primary) 38%, transparent);
+
+  /* ---- Radii ---- */
+  --r-xs: 5px;
+  --r-sm: 7px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-pill: 999px;
+
+  /* ---- Spacing base ---- */
+  --gutter: 28px;
+
+  /* ---- Typography ---- */
+  --font-sans: "General Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* ---- Z ---- */
+  --z-side: 40;
+  --z-top: 45;
+  --z-dialog: 80;
+  --z-toast: 90;
+}
+
+/* ===================== LIGHT (default) ===================== */
+:root, [data-theme="light"] {
+  color-scheme: light;
+
+  --bg:          #f4f6f9;
+  --bg-grad:     radial-gradient(1200px 600px at 80% -10%, #eef2fb 0%, transparent 60%);
+  --surface:     #ffffff;
+  --surface-2:   #fafbfc;
+  --surface-3:   #f1f3f6;
+  --surface-inset:#f6f8fa;
+
+  --border:      #e6e8ee;
+  --border-2:    #eef0f4;
+  --border-strong:#d6dae2;
+
+  --text:        #131a26;
+  --text-2:      #475063;
+  --text-3:      #6b7486;
+  --text-muted:  #98a0b0;
+  --text-inverse:#ffffff;
+
+  --shadow-xs: 0 1px 2px rgba(16,24,40,.05);
+  --shadow-sm: 0 1px 3px rgba(16,24,40,.07), 0 1px 2px rgba(16,24,40,.04);
+  --shadow-md: 0 4px 12px -2px rgba(16,24,40,.10), 0 2px 6px -2px rgba(16,24,40,.06);
+  --shadow-lg: 0 18px 40px -12px rgba(16,24,40,.22), 0 6px 14px -6px rgba(16,24,40,.10);
+  --shadow-pop:0 12px 32px -8px rgba(16,24,40,.20);
+
+  /* Sidebar — permanently deep navy for the institutional feel */
+  --side-bg:        #0d1521;
+  --side-bg-2:      #111c2c;
+  --side-grad:      linear-gradient(180deg, #101a28 0%, #0b131e 100%);
+  --side-border:    rgba(255,255,255,.07);
+  --side-text:      #9aa7ba;
+  --side-text-dim:  #6b7791;
+  --side-text-strong:#ffffff;
+  --side-active-bg: color-mix(in srgb, var(--primary) 22%, transparent);
+  --side-active-bar:var(--primary-300);
+  --side-hover-bg:  rgba(255,255,255,.05);
+  --side-section:   #5d6a82;
+
+  /* Semantic — fg / bg(tint) / border */
+  --ok-fg:#0a6b46;     --ok-bg:#e7f6ee;     --ok-bd:#bce6cf;
+  --info-fg:#0b5cab;   --info-bg:#e6f1fd;   --info-bd:#bcdcf6;
+  --warn-fg:#9a6206;   --warn-bg:#fdf3e2;   --warn-bd:#f3dcab;
+  --orange-fg:#b14a08; --orange-bg:#fdeee2; --orange-bd:#f6cba6;
+  --indigo-fg:#3f3fb0; --indigo-bg:#ebebfb; --indigo-bd:#cfcff3;
+  --cyan-fg:#0a6a78;   --cyan-bg:#e2f5f8;   --cyan-bd:#a9e2ea;
+  --danger-fg:#b42318; --danger-bg:#fdeceb; --danger-bd:#f5c4c0;
+  --violet-fg:#6b35c2; --violet-bg:#f1e9fc; --violet-bd:#dcc8f4;
+  --neutral-fg:#5a6678; --neutral-bg:#eef0f3; --neutral-bd:#dde1e8;
+
+  --sla-green:#16a34a;
+  --sla-amber:#e0a106;
+  --sla-red:#e0463a;
+}
+
+/* ===================== DARK ===================== */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* accent derivations tuned for dark surfaces */
+  --primary-soft: color-mix(in srgb, var(--primary) 22%, #0d1420);
+  --primary-700: color-mix(in srgb, var(--primary) 52%, white);
+
+  --bg:          #080b11;
+  --bg-grad:     radial-gradient(1200px 600px at 80% -10%, #0e1726 0%, transparent 55%);
+  --surface:     #10151e;
+  --surface-2:   #0c111a;
+  --surface-3:   #18202c;
+  --surface-inset:#0c121b;
+
+  --border:      #222b39;
+  --border-2:    #1a2230;
+  --border-strong:#2d3848;
+
+  --text:        #e9edf4;
+  --text-2:      #a4afc0;
+  --text-3:      #818c9f;
+  --text-muted:  #5f6a7d;
+  --text-inverse:#0b1118;
+
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.5);
+  --shadow-md: 0 6px 16px -4px rgba(0,0,0,.55);
+  --shadow-lg: 0 22px 48px -16px rgba(0,0,0,.7);
+  --shadow-pop:0 14px 36px -10px rgba(0,0,0,.7);
+
+  --side-bg:        #0a1019;
+  --side-bg-2:      #0e1622;
+  --side-grad:      linear-gradient(180deg, #0c131e 0%, #080d15 100%);
+  --side-border:    rgba(255,255,255,.06);
+  --side-text:      #97a3b6;
+  --side-text-dim:  #636f83;
+  --side-text-strong:#ffffff;
+  --side-active-bg: color-mix(in srgb, var(--primary) 26%, transparent);
+  --side-active-bar:var(--primary-300);
+  --side-hover-bg:  rgba(255,255,255,.045);
+
+  --ok-fg:#5fd6a0;     --ok-bg:#0e2920;     --ok-bd:#1d4838;
+  --info-fg:#6fb4f4;   --info-bg:#0e2436;   --info-bd:#1d3f5c;
+  --warn-fg:#f0bd5a;   --warn-bg:#2c2210;   --warn-bd:#4d3c18;
+  --orange-fg:#f3a164; --orange-bg:#2e1d10; --orange-bd:#523619;
+  --indigo-fg:#9a9af0; --indigo-bg:#1b1b38; --indigo-bd:#33336a;
+  --cyan-fg:#54c6d6;   --cyan-bg:#0c2a30;   --cyan-bd:#19474f;
+  --danger-fg:#f3837a; --danger-bg:#2e1414; --danger-bd:#562525;
+  --violet-fg:#b794f0; --violet-bg:#241734; --violet-bd:#412b5e;
+  --neutral-fg:#9aa6b8; --neutral-bg:#1a2230; --neutral-bd:#2a3543;
+
+  --sla-green:#34c77b;
+  --sla-amber:#edb43c;
+  --sla-red:#ef6258;
+}

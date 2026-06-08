@@ -133,8 +133,10 @@ export function NuevaPlazaDialog() {
             </div>
           </div>
 
-          <div className="mt-2 border-t pt-3">
-            <p className="mb-2 text-sm font-semibold text-gray-700">Administrador inicial</p>
+          <div className="mt-2 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+            <p className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-2)' }}>
+              Administrador inicial
+            </p>
             <div className="grid gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
@@ -146,11 +148,7 @@ export function NuevaPlazaDialog() {
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="adminRolStaffCodigo">Rol de staff</Label>
-                  <select
-                    id="adminRolStaffCodigo"
-                    {...register('adminRolStaffCodigo')}
-                    className="h-9 rounded-md border border-gray-300 bg-white px-3 text-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  >
+                  <select id="adminRolStaffCodigo" {...register('adminRolStaffCodigo')} className="select">
                     <option value="supervisor">Supervisor</option>
                     <option value="ingeniero">Ingeniero</option>
                     <option value="tecnico">Técnico</option>

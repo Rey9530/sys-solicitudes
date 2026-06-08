@@ -98,13 +98,16 @@ export function RenovarContratoDialog({ contrato }: { contrato: ContratoOutput }
             />
           </div>
           {nuevaInicio && (
-            <div className="rounded-md bg-gray-50 p-3 text-sm">
-              <p className="text-xs font-medium uppercase text-gray-400">
+            <div
+              className="text-sm"
+              style={{ background: 'var(--surface-3)', borderRadius: 'var(--r-md)', padding: 12 }}
+            >
+              <p className="muted text-xs font-medium uppercase tracking-wide">
                 Preview del nuevo contrato
               </p>
-              <p>
-                {nuevaInicio} → {nuevaFin || 'indefinido'} ·{' '}
-                {contrato.moneda} {String(nuevoMonto ?? contrato.montoMensual ?? '—')} / mes
+              <p style={{ color: 'var(--text)' }}>
+                {nuevaInicio} → {nuevaFin || 'indefinido'} · {contrato.moneda}{' '}
+                {String(nuevoMonto ?? contrato.montoMensual ?? '—')} / mes
               </p>
             </div>
           )}

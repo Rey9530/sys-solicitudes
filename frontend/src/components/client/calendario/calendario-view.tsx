@@ -196,7 +196,7 @@ export function CalendarioView({
   return (
     <div className="grid gap-4 lg:grid-cols-[230px_1fr]">
       {/* ── Panel lateral de filtros (T-134) ── */}
-      <aside className="space-y-4 rounded-lg border bg-white p-4 text-sm">
+      <aside className="card card-pad space-y-4 text-sm">
         <div>
           <p className="mb-1 font-medium text-gray-700">Tipo</p>
           {TIPOS.filter((t) => t.value !== 'hito_contrato' || mostrarHitosConfig).map((t) => (
@@ -284,9 +284,9 @@ export function CalendarioView({
       </aside>
 
       {/* ── Calendario ── */}
-      <div className="rounded-lg border bg-white p-4">
+      <div className="card card-pad">
         {error && (
-          <p className="mb-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <p className="banner banner-danger mb-2">
             {error}
           </p>
         )}

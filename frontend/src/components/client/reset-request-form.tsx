@@ -29,11 +29,11 @@ export function ResetRequestForm() {
   if (sent) {
     return (
       <div className="space-y-4 text-center">
-        <p className="text-sm text-gray-600">
-          Si el email existe, recibirás un enlace para restablecer tu contraseña.
-          El enlace expira en 30 minutos.
-        </p>
-        <Link href="/login" className="inline-block text-sm text-primary hover:underline">
+        <div className="banner banner-ok">
+          Si el email existe, recibirás un enlace para restablecer tu contraseña. Expira en 30
+          minutos.
+        </div>
+        <Link href="/login" className="inline-block text-sm" style={{ color: 'var(--primary)' }}>
           Volver a iniciar sesión
         </Link>
       </div>
@@ -41,32 +41,26 @@ export function ResetRequestForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      <div className="space-y-1.5">
-        <label htmlFor="email" className="text-sm font-medium text-gray-700">
-          Email
-        </label>
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+      <div className="field">
+        <label htmlFor="email">Email</label>
         <input
           id="email"
           type="email"
           autoComplete="email"
           {...register('email')}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+          className="input"
           placeholder="tucorreo@plazapp.com"
         />
-        {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
+        {errors.email && <p className="err">{errors.email.message}</p>}
       </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
-      >
+      <button type="submit" disabled={submitting} className="btn btn-primary btn-block btn-lg">
         {submitting ? 'Enviando…' : 'Enviar enlace'}
       </button>
 
       <div className="text-center">
-        <Link href="/login" className="text-sm text-primary hover:underline">
+        <Link href="/login" className="text-sm" style={{ color: 'var(--primary)' }}>
           Volver a iniciar sesión
         </Link>
       </div>

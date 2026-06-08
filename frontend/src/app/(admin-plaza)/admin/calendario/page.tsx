@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { Configuracion, InquilinoOutput, LocalOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
 import { CalendarioView } from '@/components/client/calendario/calendario-view';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Calendario' };
 
@@ -21,13 +22,11 @@ export default async function AdminCalendarioPage() {
   const config = configRes.ok ? ((await configRes.json()) as Configuracion) : null;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Calendario</h1>
-        <p className="text-sm text-gray-500">
-          Eventos aprobados, mantenimientos programados e hitos contractuales de la plaza.
-        </p>
-      </div>
+    <div className="page wide">
+      <PageHeader
+        title="Calendario"
+        subtitle="Eventos aprobados, mantenimientos programados e hitos contractuales de la plaza."
+      />
       <CalendarioView
         rol="admin"
         locales={locales.map((l) => ({ id: l.id, label: l.codigo }))}

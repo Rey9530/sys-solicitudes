@@ -4,17 +4,13 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Tags } from 'lucide-react';
 import type { CategoriaOutput } from '@app/contracts';
 import { deleteCategoriaAction } from '@/app/(admin-plaza)/admin/categorias/actions';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export function CategoriasTable({ categorias }: { categorias: CategoriaOutput[] }) {
   const router = useRouter();
@@ -36,53 +32,47 @@ export function CategoriasTable({ categorias }: { categorias: CategoriaOutput[] 
 
   if (categorias.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-sm text-gray-500">
-        No hay categorías con esos criterios.
-      </p>
+      <Card>
+        <EmptyState icon={Tags} title="Sin categorías" body="No hay categorías con esos criterios." />
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-lg border bg-white">
+    <Card>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Nombre</TableHead>
             <TableHead>Descripción</TableHead>
             <TableHead>Estado</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+            <TableHead className="actions">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {categorias.map((c) => (
             <TableRow key={c.id}>
-              <TableCell className="font-medium">
-                <Link href={`/admin/categorias/${c.id}`} className="text-primary hover:underline">
+              <TableCell>
+                <Link href={`/admin/categorias/${c.id}`} className="lead" style={{ color: 'var(--text)' }}>
                   {c.nombre}
                 </Link>
               </TableCell>
-              <TableCell className="max-w-sm truncate text-gray-500">
-                {c.descripcion ?? '—'}
-              </TableCell>
+              <TableCell className="muted max-w-sm truncate">{c.descripcion ?? '—'}</TableCell>
               <TableCell>
-                <span
-                  className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                    c.activo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
+                <span className={`badge ${c.activo ? 'b-ok' : 'b-neutral'}`}>
+                  <span className="bdot" />
                   {c.activo ? 'Activa' : 'Inactiva'}
                 </span>
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="actions">
                 <div className="flex justify-end gap-2">
-                  <Button asChild variant="ghost" size="sm">
-                    <Link href={`/admin/categorias/${c.id}/subcategorias`}>Subcategorías</Link>
-                  </Button>
+                  <Link href={`/admin/categorias/${c.id}/subcategorias`} className="btn btn-ghost btn-sm">
+                    Subcategorías
+                  </Link>
                   {c.activo && (
                     <Button
-                      variant="ghost"
+                      variant="danger"
                       size="sm"
-                      className="text-red-600 hover:bg-red-50"
                       disabled={pendingId === c.id}
                       onClick={() => onDelete(c)}
                     >
@@ -95,6 +85,6 @@ export function CategoriasTable({ categorias }: { categorias: CategoriaOutput[] 
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Card>
   );
 }

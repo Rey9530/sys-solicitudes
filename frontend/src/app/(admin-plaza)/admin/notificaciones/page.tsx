@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import type { EmailLogOutput, UnsubscribeOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
 import { NotificacionesFiltros } from '@/components/client/notificaciones-filtros';
 import { NotificacionesTable } from '@/components/client/notificaciones-table';
 import { UnsubscribesList } from '@/components/client/unsubscribes-list';
+import { PageHeader } from '@/components/ui/page-header';
+import { Pager } from '@/components/ui/pager';
 
 export const metadata: Metadata = { title: 'Notificaciones' };
 
@@ -47,38 +48,31 @@ export default async function AdminNotificacionesPage({
     ? ((await unsubRes.json()) as Paginated<UnsubscribeOutput>).items
     : [];
 
+  const hrefFor = (page: number) =>
+    `/admin/notificaciones?${new URLSearchParams({ ...sp, page: String(page) }).toString()}`;
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Notificaciones</h1>
-        <p className="text-sm text-gray-500">
-          {data.total} emails en el log. Los fallidos se pueden reintentar manualmente.
-        </p>
-      </div>
-      <NotificacionesFiltros
-        estado={sp.estado}
-        plantilla={sp.plantilla}
-        destinatario={sp.destinatario}
-        fechaDesde={sp.fechaDesde}
-        fechaHasta={sp.fechaHasta}
+    <div className="page wide">
+      <PageHeader
+        title="Notificaciones"
+        subtitle={`${data.total} emails en el log. Los fallidos se pueden reintentar manualmente.`}
       />
+      <div className="mb-4">
+        <NotificacionesFiltros
+          estado={sp.estado}
+          plantilla={sp.plantilla}
+          destinatario={sp.destinatario}
+          fechaDesde={sp.fechaDesde}
+          fechaHasta={sp.fechaHasta}
+        />
+      </div>
       <NotificacionesTable emails={data.items} />
-      {data.totalPages > 1 && (
-        <div className="flex justify-center gap-2 text-sm">
-          {Array.from({ length: data.totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`/admin/notificaciones?${new URLSearchParams({ ...sp, page: String(p) }).toString()}`}
-              className={`rounded px-3 py-1 ${p === data.page ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              {p}
-            </Link>
-          ))}
-        </div>
-      )}
-      <section className="space-y-2">
-        <h2 className="text-lg font-semibold text-gray-900">Desuscripciones</h2>
-        <p className="text-sm text-gray-500">
+      <div className="mt-4">
+        <Pager page={data.page} totalPages={data.totalPages} hrefFor={hrefFor} />
+      </div>
+      <section className="mt-8 space-y-2">
+        <h2 className="text-[15px] font-semibold">Desuscripciones</h2>
+        <p className="muted text-sm">
           Direcciones que pidieron no recibir un tipo de email. Resetear vuelve a habilitarlo.
         </p>
         <UnsubscribesList unsubscribes={unsubscribes} />
