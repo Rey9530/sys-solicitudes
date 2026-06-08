@@ -70,6 +70,10 @@ COPY --from=builder --chown=nestjs:nestjs /app/backend/package.json ./package.js
 # DATABASE_ADMIN_URL (la URL vive en prisma.config.ts en Prisma 7).
 COPY --from=builder --chown=nestjs:nestjs /app/backend/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=nestjs:nestjs /app/backend/tsconfig.json ./tsconfig.json
+# tsconfig.json hace `extends: "../tsconfig.base.json"`. Con tsconfig.json en
+# /app, eso resuelve a /tsconfig.base.json → debe existir para que ts-node
+# (seed) compile. Sin él: error TS5083 Cannot read file '/tsconfig.base.json'.
+COPY --from=builder --chown=nestjs:nestjs /app/tsconfig.base.json /tsconfig.base.json
 COPY --from=builder --chown=nestjs:nestjs /app/packages/contracts/dist /app/packages/contracts/dist
 COPY --from=builder --chown=nestjs:nestjs /app/packages/contracts/package.json /app/packages/contracts/package.json
 
