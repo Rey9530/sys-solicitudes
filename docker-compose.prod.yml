@@ -25,28 +25,14 @@ name: plazapp-prod
 services:
   # ───────────────────────────────────────────────────────────────────────────
   # Caddy · reverse proxy + TLS automático (único servicio con puertos públicos)
-  caddy:
-    image: caddy:2-alpine
-    container_name: plazapp-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    environment:
-      DOMAIN: ${DOMAIN}
-      ACME_EMAIL: ${ACME_EMAIL}
-    volumes:
-      - ./infrastructure/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-      - backend
-    networks:
-      - plazapp_net
+  # NOTA: el reverse proxy + TLS lo provee el NGINX del host (con certbot), que
+  # ya sirve otros dominios en 80/443. Por eso aquí NO hay servicio caddy y los
+  # contenedores se publican solo en 127.0.0.1 (loopback): únicamente nginx del
+  # host los alcanza; no quedan expuestos a internet. Ver infrastructure/
+  # nginx-plazapp.conf para el vhost del subdominio.
 
   # ───────────────────────────────────────────────────────────────────────────
-  # Frontend · Next.js (standalone). Sin puertos públicos (lo sirve Caddy).
+  # Frontend · Next.js (standalone). Publicado en loopback; lo sirve nginx host.
   frontend:
     build:
       context: .
@@ -61,8 +47,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env.prod
-    expose:
-      - "3000"
+    # Solo loopback del host → lo alcanza nginx, no internet.
+    ports:
+      - "127.0.0.1:3000:3000"
     depends_on:
       - backend
     networks:
@@ -81,8 +68,9 @@ services:
       - .env.prod
     # migrate deploy (usa DATABASE_ADMIN_URL vía prisma.config.ts) y arranque.
     command: sh -c "npx prisma migrate deploy && node dist/main.js"
-    expose:
-      - "4000"
+    # Solo loopback del host → lo alcanza nginx (proxy de /api), no internet.
+    ports:
+      - "127.0.0.1:4000:4000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -166,5 +154,3 @@ volumes:
   pgdata:
   miniodata:
   jsreportdata:
-  caddy_data:
-  caddy_config:
