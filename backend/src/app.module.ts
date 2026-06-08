@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
 
 import { AuthModule } from './modules/auth/auth.module';
@@ -29,6 +29,7 @@ import { StorageModule } from './common/storage/storage.module';
 import { MailerModule } from './common/mailer/mailer.module';
 import { buildPinoOptions } from './common/logger/pino.config';
 import { ThrottlerBehindProxyGuard } from './common/guards/throttler-behind-proxy.guard';
+import { AuditoriaInterceptor } from './common/interceptors/auditoria.interceptor';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PlazaScopeGuard } from './modules/auth/guards/plaza-scope.guard';
 import { RolesGuard } from './common/guards/roles.guard';
@@ -53,7 +54,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     // Rate limit global: 100 req/min por IP
     ThrottlerModule.forRoot([
       {
-        name: 'global',
+        name: 'default',
         ttl: 60_000,
         limit: 100,
       },
@@ -113,6 +114,8 @@ import { RolesGuard } from './common/guards/roles.guard';
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PlazaScopeGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // T-150: captura automática de auditoría (opt-in vía @Auditable).
+    { provide: APP_INTERCEPTOR, useClass: AuditoriaInterceptor },
   ],
 })
 export class AppModule {}

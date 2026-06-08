@@ -20,6 +20,7 @@ import type {
   SolicitudTipo,
 } from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
+import { sanitizeHtml, sanitizePlainText } from '../../common/sanitizers/html-sanitizer';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { SolicitudStateService } from './state/solicitud-state.service';
 import { StaffForSubcategoriaValidator } from '../categorias/validators/staff-for-subcategoria.validator';
@@ -102,8 +103,9 @@ export class SolicitudesService {
           subcategoria_id: dto.subcategoriaId ?? null,
           tipo: dto.tipo,
           prioridad,
-          titulo: dto.titulo,
-          descripcion: dto.descripcion,
+          // T-151 (SEC-6): sanitización server-side contra XSS.
+          titulo: sanitizePlainText(dto.titulo),
+          descripcion: sanitizeHtml(dto.descripcion),
           campos_extra: camposExtra as Prisma.InputJsonValue,
           fecha_evento_inicio: dto.fechaEventoInicio ? new Date(dto.fechaEventoInicio) : null,
           fecha_evento_fin: dto.fechaEventoFin ? new Date(dto.fechaEventoFin) : null,
@@ -303,8 +305,9 @@ export class SolicitudesService {
         data: {
           ...(dto.localId !== undefined ? { local_id: dto.localId } : {}),
           ...(dto.tipo !== undefined ? { tipo: dto.tipo } : {}),
-          ...(dto.titulo !== undefined ? { titulo: dto.titulo } : {}),
-          ...(dto.descripcion !== undefined ? { descripcion: dto.descripcion } : {}),
+          // T-151 (SEC-6): sanitización server-side contra XSS.
+          ...(dto.titulo !== undefined ? { titulo: sanitizePlainText(dto.titulo) } : {}),
+          ...(dto.descripcion !== undefined ? { descripcion: sanitizeHtml(dto.descripcion) } : {}),
           ...(dto.categoriaId !== undefined ? { categoria_id: dto.categoriaId } : {}),
           ...(dto.subcategoriaId !== undefined
             ? { subcategoria_id: dto.subcategoriaId, prioridad }
@@ -588,7 +591,7 @@ export class SolicitudesService {
           solicitud_id: id,
           usuario_id: actor.sub,
           tipo: dto.tipo,
-          cuerpo: dto.cuerpo,
+          cuerpo: sanitizeHtml(dto.cuerpo), // T-151 (SEC-6)
         },
         include: { usuario: { select: { id: true, nombre: true, email: true } } },
       });

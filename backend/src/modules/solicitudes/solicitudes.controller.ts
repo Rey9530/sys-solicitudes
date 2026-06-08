@@ -14,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   CreateSolicitudSchema,
@@ -115,6 +116,8 @@ export class SolicitudesController {
 
   @Post(':id/enviar')
   @Roles('inquilino')
+  // T-149: 10 req/min — frena ráfagas de envíos (cada envío encola emails).
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiOperation({
     summary: 'Enviar: borrador → enviada (T-V03: el cron asigna a los 15 min).',
   })

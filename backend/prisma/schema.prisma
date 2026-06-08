@@ -252,7 +252,9 @@ model auditoria {
   created_at   DateTime @default(now()) @db.Timestamptz(6)
 
   @@index([plaza_id, created_at])
+  @@index([usuario_id, created_at])
   @@index([entidad_tipo, entidad_id])
+  @@index([accion])
   @@map("auditoria")
 }
 

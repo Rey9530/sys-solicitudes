@@ -24,6 +24,7 @@ import {
 } from '@app/contracts';
 import { AuthService } from './auth.service';
 import { Public } from '../../common/decorators/public.decorator';
+import { Auditable } from '../../common/decorators/auditable.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from './types/jwt-payload';
@@ -38,7 +39,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   // Rate limit más estricto en login: 5 req/min por IP (T-014, override del 'global').
-  @Throttle({ global: { limit: 5, ttl: 60_000 } })
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @ApiOperation({ summary: 'Login con email y password. Devuelve access + refresh.' })
   login(
     @Body(new ZodValidationPipe(LoginSchema)) body: LoginInput,
@@ -71,6 +72,8 @@ export class AuthController {
   @Public()
   @Post('reset-password')
   @HttpCode(200)
+  // T-149: 3 req/min — el reset dispara emails; evita abuso de enumeración/spam.
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @ApiOperation({ summary: 'Solicita reset de contraseña. Responde 200 exista o no el email.' })
   async resetPassword(
     @Body(new ZodValidationPipe(ResetPasswordRequestSchema)) body: ResetPasswordRequest,
@@ -82,6 +85,10 @@ export class AuthController {
   @Public()
   @Post('reset-password/confirm')
   @HttpCode(200)
+  // T-150: hueco de auditoría detectado en el survey — el cambio de contraseña
+  // queda registrado. omitirBody: el body trae token + password (se redactan
+  // igual, pero ni siquiera se persisten).
+  @Auditable({ accion: 'auth.password_reset_confirm', entidadTipo: 'usuario', omitirBody: true })
   @ApiOperation({ summary: 'Confirma el reset con token + nueva contraseña.' })
   async confirmReset(
     @Body(new ZodValidationPipe(ResetPasswordConfirmSchema)) body: ResetPasswordConfirm,
