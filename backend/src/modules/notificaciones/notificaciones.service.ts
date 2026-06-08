@@ -56,7 +56,7 @@ export class NotificacionesService {
     const where = this.buildWhere(query);
 
     const { items, total } =
-      actor.rol === 'superadmin'
+      actor.rol === 'superadmin' && !actor.plazaId
         ? await this.queryLog(this.prismaAdmin, where, page, pageSize)
         : await this.prisma.withTenant(this.requirePlaza(actor), (tx) =>
             this.queryLog(tx, where, page, pageSize),
@@ -105,7 +105,7 @@ export class NotificacionesService {
         data: { estado: 'pendiente', reintentos: 0, next_retry_at: new Date() },
       });
     const updated =
-      actor.rol === 'superadmin'
+      actor.rol === 'superadmin' && !actor.plazaId
         ? await actualizar(this.prismaAdmin)
         : await this.prisma.withTenant(this.requirePlaza(actor), (tx) => actualizar(tx));
 
@@ -172,7 +172,7 @@ export class NotificacionesService {
       return { items, total };
     };
     const { items, total } =
-      actor.rol === 'superadmin'
+      actor.rol === 'superadmin' && !actor.plazaId
         ? await consultar(this.prismaAdmin)
         : await this.prisma.withTenant(this.requirePlaza(actor), (tx) => consultar(tx));
 
@@ -210,7 +210,7 @@ export class NotificacionesService {
       return row;
     };
     const row =
-      actor.rol === 'superadmin'
+      actor.rol === 'superadmin' && !actor.plazaId
         ? await eliminar(this.prismaAdmin)
         : await this.prisma.withTenant(this.requirePlaza(actor), (tx) => eliminar(tx));
 
@@ -261,7 +261,7 @@ export class NotificacionesService {
 
   private async findScoped(id: string, actor: AuthenticatedUser): Promise<email_log> {
     const email =
-      actor.rol === 'superadmin'
+      actor.rol === 'superadmin' && !actor.plazaId
         ? await this.prismaAdmin.email_log.findFirst({ where: { id } })
         : await this.prisma.withTenant(this.requirePlaza(actor), (tx) =>
             tx.email_log.findFirst({ where: { id } }),

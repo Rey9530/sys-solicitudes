@@ -43,6 +43,7 @@ export class MailerService {
     resetUrl: string,
     plazaId?: string | null,
   ): Promise<void> {
+    console.log("Paso 1")
     const contexto = await this.contextoPlaza(plazaId);
     const { subject, html } = this.renderer.render('reset-password', {
       nombre,

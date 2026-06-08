@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { PlazaOutput } from '@app/contracts';
-import { deactivatePlazaAction } from '@/app/(admin-plataform)/superadmin/plazas/actions';
+import { deactivatePlazaAction, selectPlazaAction } from '@/app/(admin-plataform)/superadmin/plazas/actions';
 import { Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -27,6 +27,12 @@ export function PlazasTable({ plazas }: { plazas: PlazaOutput[] }) {
     } else {
       toast.error('No se pudo desactivar la plaza');
     }
+  };
+
+  const onEntrar = async (plaza: PlazaOutput) => {
+    await selectPlazaAction(plaza.id);
+    router.push('/admin/dashboard');
+    router.refresh();
   };
 
   if (plazas.length === 0) {
@@ -62,14 +68,19 @@ export function PlazasTable({ plazas }: { plazas: PlazaOutput[] }) {
               <TableCell className="muted">{p.emailContacto ?? '—'}</TableCell>
               <TableCell className="muted">{formatDateInPlazaTz(p.createdAt)}</TableCell>
               <TableCell className="actions">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  disabled={pendingId === p.id}
-                  onClick={() => onDeactivate(p)}
-                >
-                  {pendingId === p.id ? 'Desactivando…' : 'Desactivar'}
-                </Button>
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => onEntrar(p)}>
+                    Entrar
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={pendingId === p.id}
+                    onClick={() => onDeactivate(p)}
+                  >
+                    {pendingId === p.id ? 'Desactivando…' : 'Desactivar'}
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}

@@ -2,6 +2,7 @@ import 'server-only';
 import { decode } from 'next-auth/jwt';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { getSelectedPlazaId } from '@/lib/selected-plaza';
 
 /**
  * BFF ligero (T-033, S-ARQ-E/F). Helper server-only para llamar al backend
@@ -22,6 +23,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 interface AuthTokens {
   accessToken?: string;
   refreshToken?: string;
+  rol?: string;
 }
 
 async function readTokens(): Promise<AuthTokens> {
@@ -40,6 +42,7 @@ async function readTokens(): Promise<AuthTokens> {
     return {
       accessToken: token?.accessToken,
       refreshToken: token?.refreshToken,
+      rol: token?.rol as string | undefined,
     };
   } catch {
     return {};
@@ -47,8 +50,14 @@ async function readTokens(): Promise<AuthTokens> {
 }
 
 export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const { accessToken, refreshToken } = await readTokens();
+  const { accessToken, refreshToken, rol } = await readTokens();
   const url = `${API_URL}/api/v1${path.startsWith('/') ? path : `/${path}`}`;
+
+  // Impersonación de plaza: SOLO un superadmin reenvía la plaza elegida como
+  // header `x-plaza-id`. Defensa en profundidad: el backend además lo ignora
+  // para cualquier otro rol (ver PlazaScopeGuard).
+  const plazaHeader =
+    rol === 'superadmin' ? ((await getSelectedPlazaId()) ?? undefined) : undefined;
 
   // T-062: con FormData NO se fija Content-Type — fetch agrega el boundary
   // multipart correcto; forzar application/json rompería la subida.
@@ -59,6 +68,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
       headers: {
         ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
         ...(bearer ? { Authorization: `Bearer ${bearer}` } : {}),
+        ...(plazaHeader ? { 'x-plaza-id': plazaHeader } : {}),
         ...init.headers,
       },
       cache: 'no-store',

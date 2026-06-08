@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   CanActivate,
   ExecutionContext,
   ForbiddenException,
@@ -8,6 +9,9 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../../../common/decorators/public.decorator';
 import type { AuthenticatedUser } from '../types/jwt-payload';
+
+/** UUID v1-v5 (formato; la existencia real la garantiza RLS, fail-closed). */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
  * Segundo guard del triple guard. Verifica que el `plazaId` de un recurso
@@ -42,10 +46,30 @@ export class PlazaScopeGuard implements CanActivate {
       return true;
     }
 
-    // superadmin no tiene scope de plaza.
+    // superadmin no tiene scope de plaza. Puede, opcionalmente, "actuar como"
+    // una plaza concreta enviando el header `x-plaza-id` (impersonación). SOLO
+    // se lee aquí, dentro del branch superadmin: ningún otro rol puede usarlo.
+    // Al fijar `user.plazaId`, los services que usan `requirePlaza`/`withTenant`
+    // scopean automáticamente a esa plaza (RLS como última línea de defensa).
     if (user.rol === 'superadmin') {
+      const headerPlazaId = request.headers['x-plaza-id'];
+      if (typeof headerPlazaId === 'string' && headerPlazaId.length > 0) {
+        if (!UUID_RE.test(headerPlazaId)) {
+          throw new BadRequestException({
+            code: 'PLAZA_ID_INVALIDO',
+            title: 'Plaza inválida',
+            message: 'El identificador de plaza (x-plaza-id) no es un UUID válido.',
+          });
+        }
+        user.plazaId = headerPlazaId;
+        user.actingAsPlaza = true;
+      }
       return true;
     }
+
+    // Defensa: para roles no-superadmin, el header `x-plaza-id` se IGNORA por
+    // completo (nunca se lee). Su tenant proviene solo del JWT (T-V01) y la
+    // comparación de abajo lo sigue enforzando.
 
     // Defensa de segundo nivel: SOLO se compara un plazaId presente en la
     // RUTA o la QUERY (identificadores explícitos del recurso). NUNCA se lee

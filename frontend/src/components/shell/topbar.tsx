@@ -3,17 +3,28 @@
 import { Bell, Globe, PanelLeft, Search } from 'lucide-react';
 import { ThemeToggle } from '@/components/client/theme-toggle';
 import { type AppRole, initials, SHELL_META } from './nav-config';
+import { PlazaSelector, type PlazaLite } from './plaza-selector';
 import type { ShellPlaza, ShellUser } from './sidebar';
 
 interface TopbarProps {
   role: AppRole;
   user: ShellUser;
   plaza: ShellPlaza | null;
+  plazas?: PlazaLite[];
+  selectedPlazaId?: string | null;
   onToggleCollapse: () => void;
   onToggleMobile: () => void;
 }
 
-export function Topbar({ role, user, plaza, onToggleCollapse, onToggleMobile }: TopbarProps) {
+export function Topbar({
+  role,
+  user,
+  plaza,
+  plazas,
+  selectedPlazaId,
+  onToggleCollapse,
+  onToggleMobile,
+}: TopbarProps) {
   const meta = SHELL_META[role];
 
   function handleToggle() {
@@ -38,7 +49,9 @@ export function Topbar({ role, user, plaza, onToggleCollapse, onToggleMobile }: 
       </div>
 
       <div className="top-right">
-        {meta.tenant ? (
+        {role === 'superadmin' && plazas ? (
+          <PlazaSelector plazas={plazas} selectedPlazaId={selectedPlazaId ?? null} />
+        ) : meta.tenant ? (
           <div className="top-tenant" title={plaza?.nombreComercial ?? 'Plaza'}>
             <span
               className="dot"

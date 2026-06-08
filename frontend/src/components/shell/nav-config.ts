@@ -63,6 +63,32 @@ export const NAV: Record<AppRole, NavGroup[]> = {
       label: 'Plataforma',
       items: [{ key: 'plazas', label: 'Plazas', icon: Building2, href: '/superadmin/plazas' }],
     },
+    // El superadmin también puede operar la consola de plaza (el guard de
+    // /admin/* lo permite). Estas secciones son plaza-scoped en el backend.
+    {
+      label: 'Operación',
+      items: [
+        { key: 'solicitudes', label: 'Solicitudes', icon: Inbox, href: '/admin/solicitudes' },
+        { key: 'calendario', label: 'Calendario', icon: CalendarDays, href: '/admin/calendario' },
+      ],
+    },
+    {
+      label: 'Catálogo',
+      items: [
+        { key: 'locales', label: 'Locales', icon: Store, href: '/admin/locales' },
+        { key: 'inquilinos', label: 'Inquilinos', icon: UsersRound, href: '/admin/inquilinos' },
+        { key: 'contratos', label: 'Contratos', icon: FileText, href: '/admin/contratos' },
+        { key: 'categorias', label: 'Categorías', icon: Tags, href: '/admin/categorias' },
+      ],
+    },
+    {
+      label: 'Gestión',
+      items: [
+        { key: 'reportes', label: 'Reportes', icon: BarChart3, href: '/admin/reportes' },
+        { key: 'notificaciones', label: 'Notificaciones', icon: Bell, href: '/admin/notificaciones' },
+        { key: 'config', label: 'Configuración', icon: Settings, href: '/admin/configuracion' },
+      ],
+    },
   ],
   inquilino: [
     {

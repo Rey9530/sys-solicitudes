@@ -3,6 +3,7 @@ import type { Configuracion, PlazaOutput } from '@app/contracts';
 import { auth } from '@/auth';
 import { apiFetch } from '@/lib/api';
 import { ConfiguracionForm } from '@/components/client/configuracion-form';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Configuración' };
 
@@ -11,7 +12,11 @@ export default async function AdminConfiguracionPage() {
   const session = await auth();
   const plazaId = session?.user?.plazaId;
   if (!plazaId) {
-    return <p className="text-sm text-red-600">Esta pantalla requiere una plaza asignada.</p>;
+    return (
+      <div className="page wide">
+        <div className="banner banner-danger">Esta pantalla requiere una plaza asignada.</div>
+      </div>
+    );
   }
 
   const [plazaRes, configRes] = await Promise.all([
@@ -19,19 +24,21 @@ export default async function AdminConfiguracionPage() {
     apiFetch('/configuracion'),
   ]);
   if (!plazaRes.ok || !configRes.ok) {
-    return <p className="text-sm text-red-600">No se pudo cargar la configuración.</p>;
+    return (
+      <div className="page wide">
+        <div className="banner banner-danger">No se pudo cargar la configuración.</div>
+      </div>
+    );
   }
   const plaza = (await plazaRes.json()) as PlazaOutput;
   const configuracion = (await configRes.json()) as Configuracion;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Configuración</h1>
-        <p className="text-sm text-gray-500">
-          Datos generales, branding, SLA, adjuntos y calendario de {plaza.nombreComercial}.
-        </p>
-      </div>
+    <div className="page wide">
+      <PageHeader
+        title="Configuración"
+        subtitle={`Datos generales, branding, SLA, adjuntos y calendario de ${plaza.nombreComercial}.`}
+      />
       <ConfiguracionForm plaza={plaza} configuracion={configuracion} />
     </div>
   );

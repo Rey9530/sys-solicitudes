@@ -1,0 +1,41 @@
+# =============================================================================
+# Plazapp · Caddyfile (T-157) — reverse proxy + TLS automático (Let's Encrypt)
+# =============================================================================
+# DOMAIN y ACME_EMAIL se inyectan como variables de entorno desde
+# docker-compose.prod.yml. Caddy obtiene y renueva el certificado solo.
+#
+# Enrutado (T-V01: single subdomain, sin wildcard):
+#   /api/*  → backend:4000   (NestJS)
+#   /*      → frontend:3000  (Next.js)
+# =============================================================================
+
+{
+	email {$ACME_EMAIL}
+	# Para emitir certificados de staging de Let's Encrypt (pruebas sin gastar
+	# cuota de rate limit), descomentar la línea siguiente:
+	# acme_ca https://acme-staging-v02.api.letsencrypt.org/directory
+}
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Cabeceras de seguridad básicas (HSTS, anti-sniff, anti-clickjacking).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# API → backend NestJS
+	@api path /api/*
+	handle @api {
+		reverse_proxy backend:4000
+	}
+
+	# Todo lo demás → frontend Next.js
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

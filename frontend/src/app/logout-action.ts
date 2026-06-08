@@ -32,5 +32,7 @@ export async function logoutAction(): Promise<void> {
   } catch {
     // Aunque falle la revocación remota, cerramos la sesión local igualmente.
   }
+  // Limpia la plaza seleccionada por un superadmin (no arrastrar entre sesiones).
+  (await cookies()).delete('sa_plaza');
   await signOut({ redirectTo: '/login' });
 }

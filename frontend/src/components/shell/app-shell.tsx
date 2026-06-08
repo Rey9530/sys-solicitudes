@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import type { AppRole } from './nav-config';
+import type { PlazaLite } from './plaza-selector';
 import { Sidebar, type ShellPlaza, type ShellUser } from './sidebar';
 import { Topbar } from './topbar';
 
@@ -10,6 +11,9 @@ interface AppShellProps {
   role: AppRole;
   user: ShellUser;
   plaza: ShellPlaza | null;
+  /** Solo superadmin: lista de plazas y selección actual para el selector. */
+  plazas?: PlazaLite[];
+  selectedPlazaId?: string | null;
   children: React.ReactNode;
 }
 
@@ -20,7 +24,7 @@ const COLLAPSE_KEY = 'sidebar-collapsed';
  * (colapsado/persistido y drawer móvil). Los datos llegan ya resueltos por el
  * layout servidor; aquí solo vive la interacción (decisión BFF del proyecto).
  */
-export function AppShell({ role, user, plaza, children }: AppShellProps) {
+export function AppShell({ role, user, plaza, plazas, selectedPlazaId, children }: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -63,6 +67,8 @@ export function AppShell({ role, user, plaza, children }: AppShellProps) {
           role={role}
           user={user}
           plaza={plaza}
+          plazas={plazas}
+          selectedPlazaId={selectedPlazaId ?? null}
           onToggleCollapse={toggleCollapse}
           onToggleMobile={() => setMobileOpen((p) => !p)}
         />

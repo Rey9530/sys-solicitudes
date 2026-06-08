@@ -8,12 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { LoginSchema, type LoginInput } from '@app/contracts';
 import { loginAction } from '@/app/(public)/login/actions';
-
-/** Destino post-login por rol. Los dashboards llegan en módulos posteriores;
- *  por ahora todos van a la home autenticada. */
-function redirectTarget(_rol: string): string {
-  return '/';
-}
+import { homeForRole } from '@/lib/home-redirect';
 
 export function LoginForm() {
   const router = useRouter();
@@ -33,7 +28,7 @@ export function LoginForm() {
       const result = await loginAction(values);
       if (result.ok) {
         toast.success('Sesión iniciada');
-        router.push(redirectTarget(result.rol));
+        router.push(homeForRole(result.rol));
         router.refresh();
         return;
       }

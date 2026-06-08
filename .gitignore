@@ -15,7 +15,12 @@ out/
 .env
 .env.local
 .env.*.local
+.env.prod
+.env.staging
+.env.production
 !.env.example
+# Permitir los .example de infraestructura (env.prod.example, etc.)
+!infrastructure/*.example
 
 # Logs
 logs/

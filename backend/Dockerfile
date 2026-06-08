@@ -59,6 +59,11 @@ COPY --from=builder --chown=nestjs:nestjs /app/backend/dist ./dist
 COPY --from=builder --chown=nestjs:nestjs /app/backend/prisma ./prisma
 COPY --from=builder --chown=nestjs:nestjs /app/backend/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nestjs /app/backend/package.json ./package.json
+# prisma.config.ts + tsconfig: necesarios para `prisma migrate deploy` y el seed
+# (ts-node) dentro del contenedor en producción. Sin ellos, migrate no resuelve
+# DATABASE_ADMIN_URL (la URL vive en prisma.config.ts en Prisma 7).
+COPY --from=builder --chown=nestjs:nestjs /app/backend/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=nestjs:nestjs /app/backend/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=nestjs:nestjs /app/packages/contracts/dist /app/packages/contracts/dist
 COPY --from=builder --chown=nestjs:nestjs /app/packages/contracts/package.json /app/packages/contracts/package.json
 

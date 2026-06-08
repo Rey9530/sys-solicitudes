@@ -66,20 +66,15 @@ import { RolesGuard } from './common/guards/roles.guard';
     // Storage S3-compatible (MinIO)
     StorageModule,
 
-    // Transporter SMTP (T-119): MailHog en dev, SMTP real con TLS en prod
+    // Transporte de correo (T-119): Mailgun API HTTP. Sin MAILGUN_API_KEY en
+    // dev → modo log-only (no envía). En prod/staging usa la API real.
     MailerModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        host: config.get<string>('SMTP_HOST', 'localhost'),
-        port: Number(config.get<string>('SMTP_PORT', '1025')),
-        secure: config.get<string>('SMTP_SECURE', 'false') === 'true',
-        auth: config.get<string>('SMTP_USER')
-          ? {
-              user: config.get<string>('SMTP_USER', ''),
-              pass: config.get<string>('SMTP_PASSWORD', ''),
-            }
-          : undefined,
-        from: config.get<string>('SMTP_FROM', 'Plazapp <noreply@plazapp.com>'),
+        apiKey: config.get<string>('MAILGUN_API_KEY', ''),
+        domain: config.get<string>('MAILGUN_DOMAIN', ''),
+        from: config.get<string>('MAILGUN_FROM', 'Plazapp <noreply@plazapp.com>'),
+        apiUrl: config.get<string>('MAILGUN_API_URL', 'https://api.mailgun.net'),
       }),
     }),
 

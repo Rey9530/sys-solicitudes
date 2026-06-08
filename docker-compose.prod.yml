@@ -1,0 +1,170 @@
+# =============================================================================
+# Plazapp · docker-compose de PRODUCCIÓN / STAGING (T-157)
+# =============================================================================
+# Topología:
+#   internet ──▶ caddy (80/443, TLS automático Let's Encrypt)
+#                  ├─ /api/*  ──▶ backend:4000   (NestJS)
+#                  └─ /*      ──▶ frontend:3000  (Next.js standalone)
+#   backend ──▶ postgres:5432 · minio:9000 · jsreport:5488  (red interna)
+#
+# Decisiones aplicadas:
+#   - T-V01: single subdomain (app.<dominio>), la plaza NO va en la URL.
+#   - Reverse proxy = Caddy (TLS auto). DB = contenedor. Email = Mailgun.
+#   - jsreport y minio NO se exponen públicamente (solo red interna).
+#
+# Uso:
+#   1) Copiar infrastructure/env.prod.example → .env.prod y completarlo.
+#   2) docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#   3) Seed inicial (solo la 1ª vez):
+#      docker compose -f docker-compose.prod.yml --env-file .env.prod \
+#        exec backend npx prisma db seed
+# =============================================================================
+
+name: plazapp-prod
+
+services:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Caddy · reverse proxy + TLS automático (único servicio con puertos públicos)
+  caddy:
+    image: caddy:2-alpine
+    container_name: plazapp-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./infrastructure/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - plazapp_net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Frontend · Next.js (standalone). Sin puertos públicos (lo sirve Caddy).
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        # NEXT_PUBLIC_* se hornean en build-time → van como build args.
+        NEXT_PUBLIC_API_URL: https://${DOMAIN}
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-Plazapp}
+        NEXT_PUBLIC_SENTRY_DSN: ${NEXT_PUBLIC_SENTRY_DSN:-}
+    image: plazapp-frontend:staging
+    container_name: plazapp-frontend
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    expose:
+      - "3000"
+    depends_on:
+      - backend
+    networks:
+      - plazapp_net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Backend · NestJS. Corre `prisma migrate deploy` y luego arranca.
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: plazapp-backend:staging
+    container_name: plazapp-backend
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    # migrate deploy (usa DATABASE_ADMIN_URL vía prisma.config.ts) y arranque.
+    command: sh -c "npx prisma migrate deploy && node dist/main.js"
+    expose:
+      - "4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      jsreport:
+        condition: service_started
+    networks:
+      - plazapp_net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # PostgreSQL 16 · interno (sin puertos publicados).
+  postgres:
+    image: postgres:16-alpine
+    container_name: plazapp-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-syssol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-syssol}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-syssol} -d ${POSTGRES_DB:-syssol}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - plazapp_net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # MinIO · interno. Console (9001) opcional, NO publicar en prod real.
+  minio:
+    image: minio/minio:latest
+    container_name: plazapp-minio
+    restart: unless-stopped
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - miniodata:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - plazapp_net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # jsreport · interno (solo lo consume el backend).
+  jsreport:
+    image: jsreport/jsreport:4.13.0
+    container_name: plazapp-jsreport
+    restart: unless-stopped
+    environment:
+      - chrome_launchOptions_args=--no-sandbox,--disable-dev-shm-usage
+      - extensions_authentication_admin_username=${JSREPORT_USER:-admin}
+      - extensions_authentication_admin_password=${JSREPORT_PASSWORD}
+      - extensions_authentication_cookieSession_secret=${JSREPORT_COOKIE_SECRET}
+    volumes:
+      - jsreportdata:/jsreport
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5488/api/ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - plazapp_net
+
+networks:
+  plazapp_net:
+    driver: bridge
+
+volumes:
+  pgdata:
+  miniodata:
+  jsreportdata:
+  caddy_data:
+  caddy_config:

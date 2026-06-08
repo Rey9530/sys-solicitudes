@@ -30,7 +30,7 @@ async function bootstrap() {
     origin: corsOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-plaza-slug', 'x-request-id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-plaza-slug', 'x-request-id', 'x-plaza-id'],
     exposedHeaders: ['x-request-id', 'Retry-After'],
     maxAge: 86_400, // 24h cache del preflight
   });
