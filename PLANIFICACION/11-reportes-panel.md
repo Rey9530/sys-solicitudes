@@ -61,6 +61,7 @@
   - ⚠️ Desviación de API: las plantillas se crean/actualizan vía **`/odata/templates`** — el `/api/templates` del plan no existe en jsreport 4.x. `ensureTemplate` además ACTUALIZA (PATCH) si el contenido difiere (el plan decía "solo si no existe"); mantiene dev iterable sin tocar el nombre versionado.
   - Errores de jsreport → `502 JSREPORT_ERROR` (RFC 7807) con log del detalle; si jsreport está caído al arranque, el backend inicia igual y reintenta en el primer render.
   - Plantillas chrome-pdf llevan opciones de página (márgenes + footer con paginación/fecha vía `displayHeaderFooter`).
+  - ⚠️ actualización 2026-06-07 (fix licencia jsreport) — Se eliminó el render **por nombre de plantilla persistida** y se cambió a render **INLINE**: `render()` ahora envía `template: { content, engine, recipe, chrome }` (contenido leído de disco y cacheado en memoria) en cada `/api/report`. Motivo: la licencia gratuita de jsreport limita a **5 plantillas persistidas** y el registro tiene 8 → al entrar al portal mostraba "Free license is limited to maximum 5 templates" y activaba el trial de 1 mes. El render inline NO cuenta contra ese límite. Se eliminaron los métodos `ensureTemplate`/`ensureTemplates`/`uploadTemplate`/`jsreportName`, el `OnModuleInit` y el flujo `/odata/templates`. La interfaz pública (`renderPdf`/`renderXlsx`) no cambió; `reportes.service.ts` intacto. Las plantillas `.html` en `templates/` siguen siendo la única fuente de verdad (ya estaban en git).
 
 ### T-137 — Crear 6 plantillas inline (solicitudes/locales/inquilinos × PDF/XLSX)
 
@@ -85,6 +86,7 @@
   - 2026-06-07 — **8 plantillas** (no 6 — decisión owner: + `local-detalle-pdf` y `inquilino-detalle-pdf` para los reportes por :id de T-140) en `backend/src/modules/reportes/templates/`, Handlebars `{{#each items}}`, header con branding (`{{plaza.nombreComercial}}`/logo/color) y footer chrome con paginación + fecha.
   - ⚠️ Desviación de recipe: los XLSX usan **`html-to-xlsx`** (tabla HTML → xlsx), no `xlsx` como decía el plan — la recipe `xlsx` de jsreport es para plantillas .xlsx binarias con macros, incompatible con "tabla con rows" del criterio. Verificado con render real (PK zip válido). ⚠️ El `htmlEngine: cheerio` no está en la imagen oficial (error 400 al renderizar): se usa el default (chrome).
   - Subida al arranque (`JsreportService.onModuleInit`), idempotente, nombres versionados `plazapp-{key}-v1`. Verificado: las 8 aparecen en `/odata/templates` tras el boot.
+  - ⚠️ actualización 2026-06-07 (fix licencia jsreport) — Las 8 plantillas YA NO se persisten en jsreport (se renderizan inline; ver T-136). Se borraron las 8 `plazapp-*-v1` del store del contenedor (`DELETE /odata/templates(...)`, 204 c/u) para que el conteo vuelva a 0 y desaparezca el aviso de trial/licencia. El criterio "subir al arranque" queda derogado por este fix.
   - `scripts/copy-templates.mjs` extendido para copiar también estas plantillas al `dist/`.
 
 ### T-138 — Implementar GET /api/v1/reportes/{entidad}/export.csv (inline)

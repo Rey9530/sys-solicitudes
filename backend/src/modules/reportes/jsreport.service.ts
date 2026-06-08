@@ -1,18 +1,17 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import {
-  BadGatewayException,
-  Injectable,
-  Logger,
-  type OnModuleInit,
-} from '@nestjs/common';
+import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 /**
- * Registro de plantillas jsreport (T-137). Nombres VERSIONADOS (decisión del
- * plan): si una plantilla cambia de forma incompatible se sube como `-v2` y
- * el registro apunta al nombre nuevo (el volumen de jsreport persiste las
- * anteriores sin romper renders en vuelo).
+ * Registro de plantillas jsreport. El `archivo` apunta al `.html` en disco
+ * (`templates/`), que es la ÚNICA fuente de verdad (versionada en git).
+ *
+ * ⚠️ T-137 originalmente PERSISTÍA estas plantillas en el store de jsreport
+ * (`/odata/templates`). Se eliminó: la licencia gratuita de jsreport limita a
+ * 5 plantillas persistidas y el registro tiene 8 → activaba el trial de 1 mes.
+ * Ahora se renderiza INLINE (se envía el contenido en cada `/api/report`), lo
+ * que NO cuenta contra ese límite. Ver bitácora del fix.
  */
 export const REPORT_TEMPLATES: Record<string, { archivo: string; recipe: string }> = {
   'solicitudes-pdf': { archivo: 'solicitudes-pdf', recipe: 'chrome-pdf' },
@@ -24,9 +23,6 @@ export const REPORT_TEMPLATES: Record<string, { archivo: string; recipe: string 
   'local-detalle-pdf': { archivo: 'local-detalle-pdf', recipe: 'chrome-pdf' },
   'inquilino-detalle-pdf': { archivo: 'inquilino-detalle-pdf', recipe: 'chrome-pdf' },
 };
-
-/** Versión de las plantillas en jsreport: `plazapp-{key}-v1`. */
-const TEMPLATE_VERSION = 'v1';
 
 const CHROME_PDF_OPTIONS = {
   marginTop: '1.5cm',
@@ -46,17 +42,18 @@ const CHROME_PDF_OPTIONS = {
  * Node 24 — NO se instala `@jsreport/nodejs-client` ni ninguna librería de
  * generación (puppeteer/exceljs/pdfkit). Basic Auth con JSREPORT_USER/PASSWORD.
  *
- * `onModuleInit` sube las plantillas del registro (idempotente, best-effort:
- * si jsreport está caído el backend arranca igual y se reintenta en el
- * primer render).
+ * Render INLINE: el contenido `.html` se lee de disco (cacheado en memoria al
+ * primer uso) y se envía en cada `/api/report`. NO se persiste ninguna
+ * plantilla en jsreport → no aplica el límite de 5 de la licencia gratuita.
  */
 @Injectable()
-export class JsreportService implements OnModuleInit {
+export class JsreportService {
   private readonly logger = new Logger(JsreportService.name);
   private readonly baseUrl: string;
   private readonly authHeader: string;
   private readonly templatesDir: string;
-  private templatesListas = false;
+  /** Cache en memoria del contenido de cada `.html` (key del registro → html). */
+  private readonly contentCache = new Map<string, string>();
 
   constructor(config: ConfigService) {
     this.baseUrl = config.get<string>('JSREPORT_URL', 'http://localhost:5488').replace(/\/$/, '');
@@ -70,19 +67,6 @@ export class JsreportService implements OnModuleInit {
     this.templatesDir = candidatos.find((c) => existsSync(c)) ?? candidatos[0]!;
   }
 
-  async onModuleInit(): Promise<void> {
-    await this.ensureTemplates().catch((err: unknown) => {
-      this.logger.warn(
-        `jsreport no disponible al arranque (${String(err)}); se reintenta en el primer render.`,
-      );
-    });
-  }
-
-  /** Nombre versionado en jsreport para una key del registro. */
-  jsreportName(key: string): string {
-    return `plazapp-${key}-${TEMPLATE_VERSION}`;
-  }
-
   async renderPdf(templateKey: string, data: Record<string, unknown>): Promise<Buffer> {
     return this.render(templateKey, data);
   }
@@ -91,20 +75,41 @@ export class JsreportService implements OnModuleInit {
     return this.render(templateKey, data);
   }
 
-  /** Render por NOMBRE de plantilla persistida (la recipe vive en la plantilla). */
+  /** Lee el `.html` del registro (cacheado en memoria tras el primer acceso). */
+  private templateContent(templateKey: string): string {
+    const cached = this.contentCache.get(templateKey);
+    if (cached !== undefined) return cached;
+    const def = REPORT_TEMPLATES[templateKey]!;
+    const content = readFileSync(join(this.templatesDir, `${def.archivo}.html`), 'utf8');
+    this.contentCache.set(templateKey, content);
+    return content;
+  }
+
+  /**
+   * Render INLINE: envía `template: { content, engine, recipe }` directamente
+   * (sin nombre persistido). `chrome-pdf` lleva las opciones de márgenes/footer;
+   * `html-to-xlsx` usa el htmlEngine default (la imagen oficial no trae cheerio).
+   */
   private async render(templateKey: string, data: Record<string, unknown>): Promise<Buffer> {
-    if (!REPORT_TEMPLATES[templateKey]) {
+    const def = REPORT_TEMPLATES[templateKey];
+    if (!def) {
       throw new BadGatewayException({
         code: 'JSREPORT_ERROR',
         title: 'Error del servicio de reportes',
         message: `La plantilla "${templateKey}" no existe en el registro.`,
       });
     }
-    if (!this.templatesListas) await this.ensureTemplates();
+
+    const template = {
+      content: this.templateContent(templateKey),
+      engine: 'handlebars',
+      recipe: def.recipe,
+      ...(def.recipe === 'chrome-pdf' ? { chrome: CHROME_PDF_OPTIONS } : {}),
+    };
 
     const res = await this.doFetch('/api/report', {
       method: 'POST',
-      body: JSON.stringify({ template: { name: this.jsreportName(templateKey) }, data }),
+      body: JSON.stringify({ template, data }),
     });
     if (!res.ok) {
       const detalle = await res.text().catch(() => '');
@@ -118,63 +123,6 @@ export class JsreportService implements OnModuleInit {
       });
     }
     return Buffer.from(await res.arrayBuffer());
-  }
-
-  /** Sube cada plantilla del registro si no existe (idempotente, T-137). */
-  async ensureTemplates(): Promise<void> {
-    for (const [key, def] of Object.entries(REPORT_TEMPLATES)) {
-      const content = readFileSync(join(this.templatesDir, `${def.archivo}.html`), 'utf8');
-      await this.ensureTemplate(this.jsreportName(key), content, def.recipe);
-    }
-    this.templatesListas = true;
-    this.logger.log(`plantillas jsreport verificadas (${Object.keys(REPORT_TEMPLATES).length})`);
-  }
-
-  /**
-   * Crea la plantilla si no existe; si existe con contenido distinto la
-   * ACTUALIZA (PATCH) — mantiene dev iterable sin tocar el nombre versionado.
-   * ⚠️ API real de jsreport 4.x: `/odata/templates` (el plan decía
-   * `/api/templates`, que no existe — ver bitácora T-136).
-   */
-  async ensureTemplate(name: string, content: string, recipe: string): Promise<void> {
-    const buscar = await this.doFetch(
-      `/odata/templates?$filter=${encodeURIComponent(`name eq '${name}'`)}`,
-      { method: 'GET' },
-    );
-    if (!buscar.ok) throw new Error(`jsreport odata ${buscar.status}`);
-    const lista = (await buscar.json()) as { value: Array<{ _id: string; content: string }> };
-    const existente = lista.value[0];
-
-    const body = {
-      name,
-      content,
-      engine: 'handlebars',
-      recipe,
-      // html-to-xlsx usa el htmlEngine default (chrome) — la imagen oficial
-      // no incluye cheerio (verificado: 400 "htmlEngine cheerio not found").
-      ...(recipe === 'chrome-pdf' ? { chrome: CHROME_PDF_OPTIONS } : {}),
-    };
-
-    if (!existente) {
-      const res = await this.doFetch('/odata/templates', {
-        method: 'POST',
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(`jsreport crear plantilla "${name}" -> ${res.status}`);
-      this.logger.log(`plantilla "${name}" creada en jsreport`);
-    } else if (existente.content !== content) {
-      const res = await this.doFetch(`/odata/templates('${existente._id}')`, {
-        method: 'PATCH',
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error(`jsreport actualizar plantilla "${name}" -> ${res.status}`);
-      this.logger.log(`plantilla "${name}" actualizada en jsreport`);
-    }
-  }
-
-  /** Subida directa (API del plan); delega en ensureTemplate. */
-  async uploadTemplate(name: string, content: string, recipe = 'chrome-pdf'): Promise<void> {
-    await this.ensureTemplate(name, content, recipe);
   }
 
   private async doFetch(path: string, init: RequestInit): Promise<Response> {
