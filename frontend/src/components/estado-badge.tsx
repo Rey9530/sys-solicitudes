@@ -6,13 +6,26 @@ import type {
   SlaStatus,
 } from '@app/contracts';
 
-/** Badges de estado (módulos 04 y 06). Presentacional puro. */
+/**
+ * Badges de estado (módulos 04 y 06). Presentacional puro. Usa el set unificado
+ * del sistema de diseño (handoff): pill `.badge .b-*` con punto, chip `.prio` y
+ * semáforo `.sla`. Es la pieza central del lenguaje visual de estados.
+ */
 
-const LOCAL_ESTADO_STYLE: Record<LocalEstado, string> = {
-  disponible: 'bg-green-50 text-green-700 ring-green-600/20',
-  alquilado: 'bg-blue-50 text-blue-700 ring-blue-600/20',
-  en_mantenimiento: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  fuera_de_servicio: 'bg-gray-100 text-gray-600 ring-gray-500/20',
+function Badge({ tone, children }: { tone: string; children: React.ReactNode }) {
+  return (
+    <span className={`badge ${tone}`}>
+      <span className="bdot" />
+      {children}
+    </span>
+  );
+}
+
+const LOCAL_ESTADO_TONE: Record<LocalEstado, string> = {
+  disponible: 'b-ok',
+  alquilado: 'b-info',
+  en_mantenimiento: 'b-warn',
+  fuera_de_servicio: 'b-neutral',
 };
 
 const LOCAL_ESTADO_LABEL: Record<LocalEstado, string> = {
@@ -22,10 +35,10 @@ const LOCAL_ESTADO_LABEL: Record<LocalEstado, string> = {
   fuera_de_servicio: 'Fuera de servicio',
 };
 
-const CONTRATO_ESTADO_STYLE: Record<ContratoEstado, string> = {
-  vigente: 'bg-green-50 text-green-700 ring-green-600/20',
-  finalizado: 'bg-gray-100 text-gray-600 ring-gray-500/20',
-  cancelado: 'bg-red-50 text-red-700 ring-red-600/20',
+const CONTRATO_ESTADO_TONE: Record<ContratoEstado, string> = {
+  vigente: 'b-ok',
+  finalizado: 'b-neutral',
+  cancelado: 'b-danger',
 };
 
 const CONTRATO_ESTADO_LABEL: Record<ContratoEstado, string> = {
@@ -34,35 +47,25 @@ const CONTRATO_ESTADO_LABEL: Record<ContratoEstado, string> = {
   cancelado: 'Cancelado',
 };
 
-function Badge({ className, children }: { className: string; children: React.ReactNode }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${className}`}
-    >
-      {children}
-    </span>
-  );
-}
-
 export function LocalEstadoBadge({ estado }: { estado: LocalEstado }) {
-  return <Badge className={LOCAL_ESTADO_STYLE[estado]}>{LOCAL_ESTADO_LABEL[estado]}</Badge>;
+  return <Badge tone={LOCAL_ESTADO_TONE[estado]}>{LOCAL_ESTADO_LABEL[estado]}</Badge>;
 }
 
 export function ContratoEstadoBadge({ estado }: { estado: ContratoEstado }) {
-  return <Badge className={CONTRATO_ESTADO_STYLE[estado]}>{CONTRATO_ESTADO_LABEL[estado]}</Badge>;
+  return <Badge tone={CONTRATO_ESTADO_TONE[estado]}>{CONTRATO_ESTADO_LABEL[estado]}</Badge>;
 }
 
 // ── Solicitudes (módulo 06, flujo T-V03) ──────────────────────────────────────
 
-const SOLICITUD_ESTADO_STYLE: Record<SolicitudEstado, string> = {
-  borrador: 'bg-gray-100 text-gray-600 ring-gray-500/20',
-  enviada: 'bg-sky-50 text-sky-700 ring-sky-600/20',
-  asignado: 'bg-indigo-50 text-indigo-700 ring-indigo-600/20',
-  en_revision: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  requerida_subsanacion: 'bg-orange-50 text-orange-700 ring-orange-600/20',
-  aprobada: 'bg-green-50 text-green-700 ring-green-600/20',
-  rechazada: 'bg-red-50 text-red-700 ring-red-600/20',
-  cancelada: 'bg-gray-100 text-gray-500 ring-gray-400/20',
+const SOLICITUD_ESTADO_TONE: Record<SolicitudEstado, string> = {
+  borrador: 'b-neutral',
+  enviada: 'b-info',
+  asignado: 'b-indigo',
+  en_revision: 'b-warn',
+  requerida_subsanacion: 'b-orange',
+  aprobada: 'b-ok',
+  rechazada: 'b-danger',
+  cancelada: 'b-neutral',
 };
 
 export const SOLICITUD_ESTADO_LABEL: Record<SolicitudEstado, string> = {
@@ -77,32 +80,22 @@ export const SOLICITUD_ESTADO_LABEL: Record<SolicitudEstado, string> = {
 };
 
 export function SolicitudEstadoBadge({ estado }: { estado: SolicitudEstado }) {
-  return (
-    <Badge className={SOLICITUD_ESTADO_STYLE[estado]}>{SOLICITUD_ESTADO_LABEL[estado]}</Badge>
-  );
+  return <Badge tone={SOLICITUD_ESTADO_TONE[estado]}>{SOLICITUD_ESTADO_LABEL[estado]}</Badge>;
 }
 
-const PRIORIDAD_STYLE: Record<SolicitudPrioridad, string> = {
-  A: 'bg-red-50 text-red-700 ring-red-600/20',
-  B: 'bg-amber-50 text-amber-700 ring-amber-600/20',
-  C: 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
-  D: 'bg-sky-50 text-sky-700 ring-sky-600/20',
-  F: 'bg-gray-100 text-gray-600 ring-gray-500/20',
-};
-
+/** Chip de prioridad cuadrado (A–F). */
 export function PrioridadBadge({ prioridad }: { prioridad: SolicitudPrioridad }) {
-  return <Badge className={PRIORIDAD_STYLE[prioridad]}>{prioridad}</Badge>;
+  return <span className={`prio prio-${prioridad}`}>{prioridad}</span>;
 }
 
-/** Semáforo SLA (S-SLA): punto de color; null = no aplica. */
+/** Semáforo SLA (S-SLA): punto de color con halo; null = no aplica. */
 export function SlaSemaforo({ status }: { status: SlaStatus }) {
-  if (!status) return <span className="text-gray-300">—</span>;
-  const color =
-    status === 'verde' ? 'bg-green-500' : status === 'amarillo' ? 'bg-amber-400' : 'bg-red-500';
+  if (!status) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+  const tone = status === 'verde' ? 'sla-green' : status === 'amarillo' ? 'sla-amber' : 'sla-red';
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={`h-2.5 w-2.5 rounded-full ${color}`} />
-      <span className="text-xs capitalize text-gray-500">{status}</span>
+    <span className={`sla ${tone}`}>
+      <span className="slap" />
+      <span className="capitalize">{status}</span>
     </span>
   );
 }

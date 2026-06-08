@@ -1,8 +1,8 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
-import { logoutAction } from '@/app/logout-action';
-import { Button } from '@/components/ui/button';
+import { AppShell } from '@/components/shell/app-shell';
+import { brandingStyle } from '@/lib/branding';
+import { loadSuperadminShell } from '@/lib/superadmin-shell';
 
 /**
  * Layout del admin-plataform (superadmin). Verifica el rol en el servidor;
@@ -17,29 +17,21 @@ export default async function AdminPlataformLayout({
   if (!session?.user) redirect('/login');
   if (session.user.rol !== 'superadmin') redirect('/');
 
+  const { plazas, selected } = await loadSuperadminShell();
+  const css = brandingStyle(selected?.colorPrimario);
+
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-6">
-            <span className="text-lg font-bold text-primary">Plazapp</span>
-            <nav className="flex gap-4 text-sm">
-              <Link href="/superadmin/dashboard" className="text-gray-600 hover:text-primary">
-                Dashboard
-              </Link>
-              <Link href="/superadmin/plazas" className="text-gray-600 hover:text-primary">
-                Plazas
-              </Link>
-            </nav>
-          </div>
-          <form action={logoutAction}>
-            <Button type="submit" variant="outline" size="sm">
-              Cerrar sesión
-            </Button>
-          </form>
-        </div>
-      </header>
-      <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
-    </div>
+    <>
+      {css && <style>{css}</style>}
+      <AppShell
+        role="superadmin"
+        user={{ name: session.user.name ?? null, email: session.user.email ?? null }}
+        plaza={null}
+        plazas={plazas}
+        selectedPlazaId={selected?.id ?? null}
+      >
+        {children}
+      </AppShell>
+    </>
   );
 }

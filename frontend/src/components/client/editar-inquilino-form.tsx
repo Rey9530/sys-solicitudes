@@ -71,17 +71,17 @@ export function EditarInquilinoForm({
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="grid max-w-lg gap-4 rounded-lg border bg-white p-6"
+      className="card card-pad grid max-w-lg gap-4"
       noValidate
     >
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
           <Label>Razón social</Label>
-          <Input value={inquilino.razonSocial} disabled className="bg-gray-50" />
+          <Input value={inquilino.razonSocial} disabled />
         </div>
         <div className="grid gap-1.5">
           <Label>Identificación</Label>
-          <Input value={inquilino.identificacion ?? '—'} disabled className="bg-gray-50" />
+          <Input value={inquilino.identificacion ?? '—'} disabled />
         </div>
       </div>
       <p className="-mt-2 text-xs text-gray-400">
@@ -112,8 +112,7 @@ export function EditarInquilinoForm({
         <div title={tieneContratoVigente ? 'No se puede desactivar con contrato vigente' : ''}>
           <Button
             type="button"
-            variant="outline"
-            className="text-red-600"
+            variant="danger"
             disabled={tieneContratoVigente || deleting}
             onClick={onDelete}
           >

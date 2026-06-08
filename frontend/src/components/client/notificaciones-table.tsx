@@ -19,12 +19,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { previewEmailAction, reintentarEmailAction } from '@/app/(admin-plaza)/admin/notificaciones/actions';
 
 const ESTADO_BADGE: Record<EmailLogOutput['estado'], string> = {
-  pendiente: 'bg-amber-100 text-amber-800',
-  enviado: 'bg-green-100 text-green-800',
-  fallido: 'bg-red-100 text-red-800',
+  pendiente: 'b-warn',
+  enviado: 'b-ok',
+  fallido: 'b-danger',
 };
 
 function fmt(iso: string | null): string {
@@ -43,9 +45,9 @@ export function NotificacionesTable({ emails }: { emails: EmailLogOutput[] }) {
 
   if (emails.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-sm text-gray-500">
-        No hay emails con esos criterios.
-      </p>
+      <Card>
+        <EmptyState icon={Mail} title="Sin emails" body="No hay emails con esos criterios." />
+      </Card>
     );
   }
 
@@ -67,12 +69,8 @@ export function NotificacionesTable({ emails }: { emails: EmailLogOutput[] }) {
 
   return (
     <div className="space-y-2">
-      {error && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {error}
-        </p>
-      )}
-      <div className="rounded-lg border bg-white">
+      {error && <div className="banner banner-danger">{error}</div>}
+      <Card>
         <Table>
           <TableHeader>
             <TableRow>
@@ -88,33 +86,23 @@ export function NotificacionesTable({ emails }: { emails: EmailLogOutput[] }) {
           <TableBody>
             {emails.map((e) => (
               <TableRow key={e.id}>
-                <TableCell className="font-medium">{e.destinatario}</TableCell>
+                <TableCell className="lead">{e.destinatario}</TableCell>
                 <TableCell>
-                  <span className="inline-flex items-center gap-1.5 text-gray-600">
-                    <Mail className="h-3.5 w-3.5 text-gray-400" aria-hidden />
+                  <span className="mono inline-flex items-center gap-1.5" style={{ color: 'var(--text-2)' }}>
+                    <Mail className="h-3.5 w-3.5" style={{ color: 'var(--text-muted)' }} aria-hidden />
                     {e.plantilla}
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span
-                    className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${ESTADO_BADGE[e.estado]}`}
-                    title={e.lastError ?? undefined}
-                  >
+                  <span className={`badge ${ESTADO_BADGE[e.estado]}`} title={e.lastError ?? undefined}>
+                    <span className="bdot" />
                     {e.estado}
                   </span>
-                  {e.lastError && (
-                    <span
-                      className="ml-1 cursor-help text-xs text-red-500 underline decoration-dotted"
-                      title={e.lastError}
-                    >
-                      error
-                    </span>
-                  )}
                 </TableCell>
-                <TableCell className="text-center text-gray-500">{e.reintentos}</TableCell>
-                <TableCell className="text-gray-500">{fmt(e.createdAt)}</TableCell>
-                <TableCell className="text-gray-500">{fmt(e.sentAt)}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="num muted">{e.reintentos}</TableCell>
+                <TableCell className="muted">{fmt(e.createdAt)}</TableCell>
+                <TableCell className="muted">{fmt(e.sentAt)}</TableCell>
+                <TableCell className="actions">
                   <div className="flex justify-end gap-1">
                     <Button
                       variant="outline"
@@ -142,7 +130,7 @@ export function NotificacionesTable({ emails }: { emails: EmailLogOutput[] }) {
             ))}
           </TableBody>
         </Table>
-      </div>
+      </Card>
 
       <Dialog open={preview !== null} onOpenChange={(open) => !open && setPreview(null)}>
         <DialogContent className="max-w-2xl">

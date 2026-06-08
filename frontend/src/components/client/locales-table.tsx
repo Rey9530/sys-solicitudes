@@ -4,18 +4,14 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Store } from 'lucide-react';
 import type { LocalOutput } from '@app/contracts';
 import { deleteLocalAction } from '@/app/(admin-plaza)/admin/locales/actions';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LocalEstadoBadge } from '@/components/estado-badge';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
   const router = useRouter();
@@ -36,14 +32,18 @@ export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
 
   if (locales.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-sm text-gray-500">
-        No hay locales con esos criterios.
-      </p>
+      <Card>
+        <EmptyState
+          icon={Store}
+          title="Sin locales"
+          body="No hay locales que coincidan con esos criterios."
+        />
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-lg border bg-white">
+    <Card>
       <Table>
         <TableHeader>
           <TableRow>
@@ -51,31 +51,30 @@ export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
             <TableHead>Nombre</TableHead>
             <TableHead>Piso</TableHead>
             <TableHead>Sector</TableHead>
-            <TableHead>m²</TableHead>
+            <TableHead className="num">m²</TableHead>
             <TableHead>Estado</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+            <TableHead className="actions">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {locales.map((l) => (
             <TableRow key={l.id}>
-              <TableCell className="font-medium">
-                <Link href={`/admin/locales/${l.id}`} className="text-primary hover:underline">
+              <TableCell>
+                <Link href={`/admin/locales/${l.id}`} className="cellcode">
                   {l.codigo}
                 </Link>
               </TableCell>
-              <TableCell>{l.nombre ?? '—'}</TableCell>
-              <TableCell className="text-gray-500">{l.piso ?? '—'}</TableCell>
-              <TableCell className="text-gray-500">{l.sector ?? '—'}</TableCell>
-              <TableCell className="text-gray-500">{l.metrajeM2 ?? '—'}</TableCell>
+              <TableCell className="lead">{l.nombre ?? '—'}</TableCell>
+              <TableCell className="muted">{l.piso ?? '—'}</TableCell>
+              <TableCell className="muted">{l.sector ?? '—'}</TableCell>
+              <TableCell className="num muted">{l.metrajeM2 ?? '—'}</TableCell>
               <TableCell>
                 <LocalEstadoBadge estado={l.estado} />
               </TableCell>
-              <TableCell className="text-right">
+              <TableCell className="actions">
                 <Button
-                  variant="ghost"
+                  variant="danger"
                   size="sm"
-                  className="text-red-600 hover:bg-red-50"
                   disabled={pendingId === l.id}
                   onClick={() => onDelete(l)}
                 >
@@ -86,6 +85,6 @@ export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Card>
   );
 }

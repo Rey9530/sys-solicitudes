@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { SolicitudListItem } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
-import { Button } from '@/components/ui/button';
 import { SolicitudesTable } from '@/components/client/solicitudes-table';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card } from '@/components/ui/card';
+import { Pager } from '@/components/ui/pager';
 
 export const metadata: Metadata = { title: 'Mis solicitudes' };
 
@@ -38,69 +40,77 @@ export default async function SolicitudesPage({
     ? ((await res.json()) as Paginated)
     : { items: [], total: 0, page: 1, totalPages: 0 };
 
-  const selectClass = 'h-9 rounded-md border border-input bg-white px-2 text-sm';
+  const hrefFor = (page: number) =>
+    `/inquilino/solicitudes?${new URLSearchParams({ ...sp, page: String(page) }).toString()}`;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Mis solicitudes</h1>
-          <p className="text-sm text-gray-500">{data.total} solicitudes.</p>
-        </div>
-        <Button asChild>
-          <Link href="/inquilino/solicitudes/nueva">Nueva solicitud</Link>
-        </Button>
-      </div>
+    <div className="page wide">
+      <PageHeader
+        title="Mis solicitudes"
+        subtitle={`${data.total} solicitudes.`}
+        actions={
+          <Link href="/inquilino/solicitudes/nueva" className="btn btn-primary">
+            Nueva solicitud
+          </Link>
+        }
+      />
 
-      <form className="flex flex-wrap gap-2" action="/inquilino/solicitudes">
-        <select name="estado" defaultValue={sp.estado ?? ''} className={selectClass}>
-          <option value="">Todos los estados</option>
-          <option value="borrador">Borrador</option>
-          <option value="enviada">Enviada</option>
-          <option value="asignado">Asignada</option>
-          <option value="en_revision">En revisión</option>
-          <option value="requerida_subsanacion">Requiere subsanación</option>
-          <option value="aprobada">Aprobada</option>
-          <option value="rechazada">Rechazada</option>
-          <option value="cancelada">Cancelada</option>
-        </select>
-        <select name="tipo" defaultValue={sp.tipo ?? ''} className={selectClass}>
-          <option value="">Todos los tipos</option>
-          <option value="mantenimiento">Mantenimiento</option>
-          <option value="evento">Evento</option>
-          <option value="remodelacion">Remodelación</option>
-          <option value="otro">Otro</option>
-        </select>
-        <select name="prioridad" defaultValue={sp.prioridad ?? ''} className={selectClass}>
-          <option value="">Toda prioridad</option>
-          {['A', 'B', 'C', 'D', 'F'].map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-        <input type="date" name="fechaDesde" defaultValue={sp.fechaDesde} className={selectClass} />
-        <input type="date" name="fechaHasta" defaultValue={sp.fechaHasta} className={selectClass} />
-        <Button type="submit" variant="outline" size="sm" className="h-9">
-          Filtrar
-        </Button>
-      </form>
+      <Card className="mb-4">
+        <form className="filters" action="/inquilino/solicitudes">
+          <div className="field">
+            <label htmlFor="is-estado">Estado</label>
+            <select id="is-estado" name="estado" defaultValue={sp.estado ?? ''} className="select">
+              <option value="">Todos</option>
+              <option value="borrador">Borrador</option>
+              <option value="enviada">Enviada</option>
+              <option value="asignado">Asignada</option>
+              <option value="en_revision">En revisión</option>
+              <option value="requerida_subsanacion">Requiere subsanación</option>
+              <option value="aprobada">Aprobada</option>
+              <option value="rechazada">Rechazada</option>
+              <option value="cancelada">Cancelada</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="is-tipo">Tipo</label>
+            <select id="is-tipo" name="tipo" defaultValue={sp.tipo ?? ''} className="select">
+              <option value="">Todos</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="evento">Evento</option>
+              <option value="remodelacion">Remodelación</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="is-prioridad">Prioridad</label>
+            <select id="is-prioridad" name="prioridad" defaultValue={sp.prioridad ?? ''} className="select">
+              <option value="">Toda</option>
+              {['A', 'B', 'C', 'D', 'F'].map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="is-desde">Desde</label>
+            <input id="is-desde" type="date" name="fechaDesde" defaultValue={sp.fechaDesde} className="input" />
+          </div>
+          <div className="field">
+            <label htmlFor="is-hasta">Hasta</label>
+            <input id="is-hasta" type="date" name="fechaHasta" defaultValue={sp.fechaHasta} className="input" />
+          </div>
+          <button type="submit" className="btn btn-secondary btn-sm">
+            Filtrar
+          </button>
+        </form>
+      </Card>
 
       <SolicitudesTable solicitudes={data.items} baseHref="/inquilino/solicitudes" />
 
-      {data.totalPages > 1 && (
-        <div className="flex justify-center gap-2 text-sm">
-          {Array.from({ length: data.totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`/inquilino/solicitudes?${new URLSearchParams({ ...sp, page: String(p) }).toString()}`}
-              className={`rounded px-3 py-1 ${p === data.page ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              {p}
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="mt-4">
+        <Pager page={data.page} totalPages={data.totalPages} hrefFor={hrefFor} />
+      </div>
     </div>
   );
 }

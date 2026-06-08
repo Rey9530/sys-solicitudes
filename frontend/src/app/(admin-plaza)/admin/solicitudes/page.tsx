@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { RefreshCw } from 'lucide-react';
 import type { SolicitudListItem } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
-import { Button } from '@/components/ui/button';
 import { SolicitudesTable } from '@/components/client/solicitudes-table';
 import { AutoRefresh } from '@/components/client/auto-refresh';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card } from '@/components/ui/card';
+import { Pager } from '@/components/ui/pager';
 
 export const metadata: Metadata = { title: 'Bandeja de solicitudes' };
 
@@ -38,82 +41,86 @@ export default async function AdminSolicitudesPage({
     ? ((await res.json()) as Paginated)
     : { items: [], total: 0, page: 1, totalPages: 0 };
 
-  const selectClass = 'h-9 rounded-md border border-input bg-white px-2 text-sm';
   const asignadasAMi = sp.asignadasAMi === 'true';
+  const hrefFor = (page: number) =>
+    `/admin/solicitudes?${new URLSearchParams({ ...sp, page: String(page) }).toString()}`;
 
   return (
-    <div className="space-y-6">
+    <div className="page wide">
       {/* T-106: refresco automático cada 60 s (server component re-render). */}
       <AutoRefresh intervalMs={60_000} />
 
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Bandeja de solicitudes</h1>
-          <p className="text-sm text-gray-500">
-            {data.total} en curso · ordenadas por prioridad y antigüedad · semáforo SLA.
-          </p>
-        </div>
-        <Button asChild variant={asignadasAMi ? 'default' : 'outline'} size="sm">
-          <Link
-            href={`/admin/solicitudes?${new URLSearchParams({
-              ...sp,
-              asignadasAMi: asignadasAMi ? '' : 'true',
-              page: '1',
-            }).toString()}`}
-          >
-            {asignadasAMi ? 'Viendo: asignadas a mí' : 'Asignadas a mí'}
-          </Link>
-        </Button>
-      </div>
-
-      <form className="flex flex-wrap gap-2" action="/admin/solicitudes">
-        <select name="estado" defaultValue={sp.estado ?? ''} className={selectClass}>
-          <option value="">Las 3 colas</option>
-          <option value="enviada">Enviadas (en espera)</option>
-          <option value="asignado">Asignadas</option>
-          <option value="en_revision">En revisión</option>
-        </select>
-        <select name="tipo" defaultValue={sp.tipo ?? ''} className={selectClass}>
-          <option value="">Todos los tipos</option>
-          <option value="mantenimiento">Mantenimiento</option>
-          <option value="evento">Evento</option>
-          <option value="remodelacion">Remodelación</option>
-          <option value="otro">Otro</option>
-        </select>
-        <select name="prioridad" defaultValue={sp.prioridad ?? ''} className={selectClass}>
-          <option value="">Toda prioridad</option>
-          {['A', 'B', 'C', 'D', 'F'].map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
-        {asignadasAMi && <input type="hidden" name="asignadasAMi" value="true" />}
-        <Button type="submit" variant="outline" size="sm" className="h-9">
-          Filtrar
-        </Button>
-      </form>
-
-      <SolicitudesTable
-        solicitudes={data.items}
-        baseHref="/admin/solicitudes"
-        showSla
-        showAsignado
+      <PageHeader
+        title="Bandeja de solicitudes"
+        subtitle={`${data.total} en curso · ordenadas por prioridad y antigüedad · semáforo SLA.`}
+        actions={
+          <>
+            <span className="badge b-neutral">
+              <RefreshCw className="h-3 w-3" />
+              60 s
+            </span>
+            <div className="segment">
+              <Link
+                href={`/admin/solicitudes?${new URLSearchParams({ ...sp, asignadasAMi: '', page: '1' }).toString()}`}
+                className={!asignadasAMi ? 'on' : undefined}
+              >
+                Todas
+              </Link>
+              <Link
+                href={`/admin/solicitudes?${new URLSearchParams({ ...sp, asignadasAMi: 'true', page: '1' }).toString()}`}
+                className={asignadasAMi ? 'on' : undefined}
+              >
+                Asignadas a mí
+              </Link>
+            </div>
+          </>
+        }
       />
 
-      {data.totalPages > 1 && (
-        <div className="flex justify-center gap-2 text-sm">
-          {Array.from({ length: data.totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`/admin/solicitudes?${new URLSearchParams({ ...sp, page: String(p) }).toString()}`}
-              className={`rounded px-3 py-1 ${p === data.page ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              {p}
-            </Link>
-          ))}
-        </div>
-      )}
+      <Card className="mb-4">
+        <form className="filters" action="/admin/solicitudes">
+          <div className="field">
+            <label htmlFor="f-estado">Estado</label>
+            <select id="f-estado" name="estado" defaultValue={sp.estado ?? ''} className="select">
+              <option value="">Las 3 colas</option>
+              <option value="enviada">Enviadas (en espera)</option>
+              <option value="asignado">Asignadas</option>
+              <option value="en_revision">En revisión</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="f-tipo">Tipo</label>
+            <select id="f-tipo" name="tipo" defaultValue={sp.tipo ?? ''} className="select">
+              <option value="">Todos</option>
+              <option value="mantenimiento">Mantenimiento</option>
+              <option value="evento">Evento</option>
+              <option value="remodelacion">Remodelación</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="f-prioridad">Prioridad</label>
+            <select id="f-prioridad" name="prioridad" defaultValue={sp.prioridad ?? ''} className="select">
+              <option value="">Toda</option>
+              {['A', 'B', 'C', 'D', 'F'].map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+          {asignadasAMi && <input type="hidden" name="asignadasAMi" value="true" />}
+          <button type="submit" className="btn btn-secondary btn-sm">
+            Filtrar
+          </button>
+        </form>
+      </Card>
+
+      <SolicitudesTable solicitudes={data.items} baseHref="/admin/solicitudes" showSla showAsignado />
+
+      <div className="mt-4">
+        <Pager page={data.page} totalPages={data.totalPages} hrefFor={hrefFor} />
+      </div>
     </div>
   );
 }

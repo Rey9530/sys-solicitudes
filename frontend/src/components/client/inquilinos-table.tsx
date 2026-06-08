@@ -4,17 +4,13 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { UsersRound } from 'lucide-react';
 import type { InquilinoOutput } from '@app/contracts';
 import { deleteInquilinoAction } from '@/app/(admin-plaza)/admin/inquilinos/actions';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export function InquilinosTable({ inquilinos }: { inquilinos: InquilinoOutput[] }) {
   const router = useRouter();
@@ -35,14 +31,18 @@ export function InquilinosTable({ inquilinos }: { inquilinos: InquilinoOutput[] 
 
   if (inquilinos.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-sm text-gray-500">
-        No hay inquilinos con esos criterios.
-      </p>
+      <Card>
+        <EmptyState
+          icon={UsersRound}
+          title="Sin inquilinos"
+          body="No hay inquilinos que coincidan con esos criterios."
+        />
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-lg border bg-white">
+    <Card>
       <Table>
         <TableHeader>
           <TableRow>
@@ -50,25 +50,24 @@ export function InquilinosTable({ inquilinos }: { inquilinos: InquilinoOutput[] 
             <TableHead>Identificación</TableHead>
             <TableHead>Contacto</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+            <TableHead className="actions">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {inquilinos.map((i) => (
             <TableRow key={i.id}>
-              <TableCell className="font-medium">
-                <Link href={`/admin/inquilinos/${i.id}`} className="text-primary hover:underline">
+              <TableCell>
+                <Link href={`/admin/inquilinos/${i.id}`} className="lead" style={{ color: 'var(--text)' }}>
                   {i.razonSocial}
                 </Link>
               </TableCell>
-              <TableCell className="text-gray-500">{i.identificacion ?? '—'}</TableCell>
-              <TableCell className="text-gray-500">{i.contactoNombre ?? '—'}</TableCell>
-              <TableCell className="text-gray-500">{i.contactoEmail ?? '—'}</TableCell>
-              <TableCell className="text-right">
+              <TableCell className="mono muted">{i.identificacion ?? '—'}</TableCell>
+              <TableCell className="muted">{i.contactoNombre ?? '—'}</TableCell>
+              <TableCell className="muted">{i.contactoEmail ?? '—'}</TableCell>
+              <TableCell className="actions">
                 <Button
-                  variant="ghost"
+                  variant="danger"
                   size="sm"
-                  className="text-red-600 hover:bg-red-50"
                   disabled={pendingId === i.id}
                   onClick={() => onDelete(i)}
                 >
@@ -79,6 +78,6 @@ export function InquilinosTable({ inquilinos }: { inquilinos: InquilinoOutput[] 
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Card>
   );
 }

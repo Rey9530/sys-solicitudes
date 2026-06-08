@@ -28,6 +28,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Banner } from '@/components/ui/banner';
+import { Avatar } from '@/components/ui/avatar';
+import { Breadcrumb } from '@/components/ui/page-header';
 import {
   SolicitudEstadoBadge,
   PrioridadBadge,
@@ -41,8 +44,6 @@ export interface AdminOption {
   nombre: string;
   email: string;
 }
-
-const selectClass = 'h-9 w-full rounded-md border border-input bg-white px-2 text-sm';
 
 /** MIME permitidos por defecto para adjuntos de solicitud (T-V06, configurable por plaza). */
 const SOLICITUD_MIMES = [
@@ -88,12 +89,8 @@ const EVENTO_LABEL: Record<string, string> = {
 };
 
 /**
- * Detalle de solicitud del admin (T-107) con acciones contextuales:
- *  - enviada (cola): "Tomar" (cualquier admin).
- *  - asignado y soy el asignado: "Tomar" (pasa a revisión), "Reasignar", "Liberar".
- *  - en_revision y soy el asignado y NO soy el creador (SC-4): Aprobar /
- *    Rechazar / Pedir subsanación (modales con comentario) + Reasignar/Liberar.
- *  - en_revision y soy el creador: decisiones deshabilitadas (SC-4).
+ * Detalle de solicitud del admin (T-107) con panel de decisión lateral sticky.
+ * Acciones contextuales según estado/rol (SC-4: el creador no decide).
  */
 export function SolicitudDetailAdmin({
   solicitud,
@@ -107,9 +104,7 @@ export function SolicitudDetailAdmin({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [comentario, setComentario] = useState('');
-  const [modal, setModal] = useState<'aprobar' | 'rechazar' | 'subsanar' | 'reasignar' | null>(
-    null,
-  );
+  const [modal, setModal] = useState<'aprobar' | 'rechazar' | 'subsanar' | 'reasignar' | null>(null);
 
   const estado = solicitud.estado;
   const soyAsignado = solicitud.adminAsignadoId === miUsuarioId;
@@ -130,268 +125,308 @@ export function SolicitudDetailAdmin({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">{solicitud.codigo}</h1>
+    <div className="page wide">
+      <Breadcrumb items={[{ label: 'Solicitudes', href: '/admin/solicitudes' }, { label: solicitud.codigo }]} />
+      <div className="page-head">
+        <div className="ph-main">
+          <h1 className="page-title">
+            <span className="mono">{solicitud.codigo}</span>
             <SolicitudEstadoBadge estado={estado} />
             <PrioridadBadge prioridad={solicitud.prioridad} />
             <SlaSemaforo status={solicitud.slaStatus} />
-          </div>
-          <p className="mt-1 text-sm text-gray-500">
+          </h1>
+          <p className="page-sub">
             {solicitud.titulo} · Local {solicitud.localCodigo ?? '—'} ·{' '}
             {solicitud.inquilinoRazonSocial ?? '—'}
             {solicitud.adminAsignado ? ` · Asignada a ${solicitud.adminAsignado.nombre}` : ''}
           </p>
-          {soyCreador && !esTerminal && (
-            <p className="mt-1 text-xs font-medium text-amber-600">
-              Creaste esta solicitud: no puedes aprobarla ni rechazarla (SC-4).
-            </p>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {estado === 'enviada' && (
-            <Button
-              size="sm"
-              disabled={pending}
-              onClick={() => void run(() => tomarAction(solicitud.id), 'Tomada: en revisión')}
-            >
-              Tomar
-            </Button>
-          )}
-          {estado === 'asignado' && soyAsignado && (
-            <Button
-              size="sm"
-              disabled={pending}
-              onClick={() => void run(() => tomarAction(solicitud.id), 'En revisión')}
-            >
-              Tomar (revisar)
-            </Button>
-          )}
-          {estado === 'en_revision' && soyAsignado && !soyCreador && (
-            <>
-              <Button size="sm" disabled={pending} onClick={() => setModal('aprobar')}>
-                Aprobar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="text-red-600"
-                disabled={pending}
-                onClick={() => setModal('rechazar')}
-              >
-                Rechazar
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={pending}
-                onClick={() => setModal('subsanar')}
-              >
-                Pedir subsanación
-              </Button>
-            </>
-          )}
-          {(estado === 'asignado' || estado === 'en_revision') && (
-            <>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={pending}
-                onClick={() => setModal('reasignar')}
-              >
-                Reasignar
-              </Button>
-              {soyAsignado && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() => {
-                    const motivo = prompt('Motivo (opcional):') ?? undefined;
-                    void run(
-                      () => liberarAction(solicitud.id, motivo),
-                      'Liberada: volvió a la cola',
-                    );
-                  }}
-                >
-                  Liberar
-                </Button>
-              )}
-            </>
-          )}
-          {!esTerminal && estado !== 'borrador' && (
-            <>
-              <select
-                className="h-8 rounded-md border border-input bg-white px-1 text-sm"
-                value={solicitud.prioridad}
-                disabled={pending}
-                onChange={(e) =>
-                  void run(
-                    () => cambiarPrioridadAction(solicitud.id, e.target.value),
-                    `Prioridad ${e.target.value}`,
-                  )
-                }
-              >
-                {['A', 'B', 'C', 'D', 'F'].map((p) => (
-                  <option key={p} value={p}>
-                    Prioridad {p}
-                  </option>
-                ))}
-              </select>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="text-red-600"
-                disabled={pending}
-                onClick={() => {
-                  const motivo = prompt('Motivo de cancelación:') ?? undefined;
-                  void run(() => cancelarAdminAction(solicitud.id, motivo), 'Cancelada');
-                }}
-              >
-                Cancelar
-              </Button>
-            </>
-          )}
         </div>
       </div>
 
-      <Tabs
-        tabs={[
-          {
-            key: 'detalle',
-            label: 'Detalle',
-            content: (
-              <div className="grid gap-4 rounded-lg border bg-white p-6 text-sm">
-                <p className="whitespace-pre-wrap text-gray-700">{solicitud.descripcion}</p>
-                <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-gray-600">
-                  <dt className="font-medium text-gray-900">Solicitante</dt>
-                  <dd>
-                    {solicitud.usuarioCreador?.nombre ?? '—'} (
-                    {solicitud.inquilinoRazonSocial ?? '—'})
-                  </dd>
-                  <dt className="font-medium text-gray-900">Categoría / Subcategoría</dt>
-                  <dd>
-                    {solicitud.categoriaNombre ?? '—'} / {solicitud.subcategoriaNombre ?? '—'}
-                  </dd>
-                  <dt className="font-medium text-gray-900">Enviada</dt>
-                  <dd>{solicitud.enviadaAt ? formatDateInPlazaTz(solicitud.enviadaAt) : '—'}</dd>
-                  <dt className="font-medium text-gray-900">Decisión</dt>
-                  <dd>{solicitud.decisionAt ? formatDateInPlazaTz(solicitud.decisionAt) : '—'}</dd>
-                  {solicitud.fechaEventoInicio && (
+      {soyCreador && !esTerminal && (
+        <div className="mb-4">
+          <Banner tone="danger">
+            <b>SC-4:</b> creaste esta solicitud, por lo que no puedes aprobarla ni rechazarla.
+          </Banner>
+        </div>
+      )}
+
+      <div className="detail-grid">
+        <div className="min-w-0">
+          <Tabs
+            tabs={[
+              {
+                key: 'detalle',
+                label: 'Detalle',
+                content: (
+                  <div className="card card-pad">
+                    <p className="whitespace-pre-wrap" style={{ color: 'var(--text-2)', marginBottom: 18 }}>
+                      {solicitud.descripcion}
+                    </p>
+                    <dl className="dl c2">
+                      <div>
+                        <div className="dt">Solicitante</div>
+                        <div className="dd">
+                          {solicitud.usuarioCreador?.nombre ?? '—'} ({solicitud.inquilinoRazonSocial ?? '—'})
+                        </div>
+                      </div>
+                      <div>
+                        <div className="dt">Categoría / Subcategoría</div>
+                        <div className="dd">
+                          {solicitud.categoriaNombre ?? '—'} / {solicitud.subcategoriaNombre ?? '—'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="dt">Enviada</div>
+                        <div className="dd">
+                          {solicitud.enviadaAt ? formatDateInPlazaTz(solicitud.enviadaAt) : '—'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="dt">Decisión</div>
+                        <div className="dd">
+                          {solicitud.decisionAt ? formatDateInPlazaTz(solicitud.decisionAt) : '—'}
+                        </div>
+                      </div>
+                      {solicitud.fechaEventoInicio && (
+                        <div className="full">
+                          <div className="dt">Fechas del evento</div>
+                          <div className="dd">
+                            {solicitud.fechaEventoInicio} → {solicitud.fechaEventoFin ?? '—'}{' '}
+                            {solicitud.horaInicio ? `(${solicitud.horaInicio}–${solicitud.horaFin})` : ''}
+                          </div>
+                        </div>
+                      )}
+                      {Object.entries(solicitud.camposExtra).map(([k, v]) => (
+                        <CampoExtra key={k} k={k} v={v} />
+                      ))}
+                    </dl>
+                  </div>
+                ),
+              },
+              {
+                key: 'comentarios',
+                label: 'Comentarios',
+                count: solicitud.comentarios.length,
+                content: (
+                  <div className="stack" style={{ gap: 14 }}>
+                    {solicitud.comentarios.length === 0 && (
+                      <p className="muted text-sm">Sin comentarios.</p>
+                    )}
+                    {solicitud.comentarios.map((c) => (
+                      <div key={c.id} className="card card-pad">
+                        <div className="mb-2 flex items-center gap-2">
+                          <Avatar name={c.usuario?.nombre ?? 'Sistema'} sm />
+                          <b style={{ fontSize: 13 }}>{c.usuario?.nombre ?? 'Sistema'}</b>
+                          {c.tipo !== 'general' && <span className="badge b-warn">{c.tipo}</span>}
+                          <span className="tl-time ml-auto">{formatDateInPlazaTz(c.createdAt)}</span>
+                        </div>
+                        <p className="whitespace-pre-wrap text-sm" style={{ color: 'var(--text-2)' }}>
+                          {c.cuerpo}
+                        </p>
+                      </div>
+                    ))}
+                    <div className="flex items-start gap-2">
+                      <textarea
+                        rows={2}
+                        maxLength={4000}
+                        placeholder="Comentario para el inquilino…"
+                        className="textarea"
+                        value={comentario}
+                        onChange={(e) => setComentario(e.target.value)}
+                      />
+                      <Button
+                        disabled={pending || !comentario.trim()}
+                        onClick={() =>
+                          void run(async () => {
+                            const r = await comentarAdminAction(solicitud.id, { cuerpo: comentario });
+                            if (r.ok) setComentario('');
+                            return r;
+                          }, 'Comentario agregado')
+                        }
+                      >
+                        Comentar
+                      </Button>
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: 'historial',
+                label: 'Historial',
+                count: solicitud.historial.length,
+                content: (
+                  <div className="card card-pad">
+                    <div className="timeline">
+                      {solicitud.historial.map((h) => (
+                        <div key={h.id} className="tl-item">
+                          <span className="tl-dot" />
+                          <div className="tl-head">
+                            <b>{EVENTO_LABEL[h.evento] ?? h.evento}</b>
+                            {h.estadoNuevo && (
+                              <span className="muted text-xs">→ {SOLICITUD_ESTADO_LABEL[h.estadoNuevo]}</span>
+                            )}
+                            <span className="tl-time">
+                              {formatDateInPlazaTz(h.createdAt)} · {h.usuario?.nombre ?? 'Sistema'}
+                            </span>
+                          </div>
+                          {h.comentario && <div className="tl-body">{h.comentario}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                key: 'adjuntos',
+                label: 'Adjuntos',
+                count: solicitud.adjuntos.length,
+                content: (
+                  <AdjuntoUploader
+                    entidadTipo="solicitud"
+                    adjuntosIniciales={solicitud.adjuntos}
+                    mimeAllowlist={SOLICITUD_MIMES}
+                    maxBytes={SOLICITUD_MAX_BYTES}
+                    canDelete
+                    subirAction={(fd) => subirAdjuntoAdminAction(solicitud.id, fd)}
+                    descargarAction={descargarAdjuntoAdminAction}
+                    eliminarAction={(adjId) => eliminarAdjuntoAdminAction(solicitud.id, adjId)}
+                  />
+                ),
+              },
+            ]}
+          />
+        </div>
+
+        {/* Panel de decisión lateral (sticky) */}
+        <div className="side-panel">
+          <div className="card action-panel">
+            <h4>Panel de decisión</h4>
+            <p className="ap-sub">Acciones del flujo según el estado actual.</p>
+
+            <div className="action-stack">
+              {estado === 'enviada' && (
+                <Button
+                  size="block"
+                  disabled={pending}
+                  onClick={() => void run(() => tomarAction(solicitud.id), 'Tomada: en revisión')}
+                >
+                  Tomar
+                </Button>
+              )}
+              {estado === 'asignado' && soyAsignado && (
+                <Button
+                  size="block"
+                  disabled={pending}
+                  onClick={() => void run(() => tomarAction(solicitud.id), 'En revisión')}
+                >
+                  Tomar (revisar)
+                </Button>
+              )}
+              {estado === 'en_revision' && soyAsignado && !soyCreador && (
+                <>
+                  <Button variant="success" size="block" disabled={pending} onClick={() => setModal('aprobar')}>
+                    Aprobar
+                  </Button>
+                  <Button variant="danger" size="block" disabled={pending} onClick={() => setModal('rechazar')}>
+                    Rechazar
+                  </Button>
+                  <Button variant="secondary" size="block" disabled={pending} onClick={() => setModal('subsanar')}>
+                    Pedir subsanación
+                  </Button>
+                </>
+              )}
+              {esTerminal && (
+                <p className="muted text-sm">
+                  Solicitud {SOLICITUD_ESTADO_LABEL[estado].toLowerCase()}. No hay acciones pendientes.
+                </p>
+              )}
+            </div>
+
+            <div className="divider" />
+
+            <div className="kv">
+              <div className="kv-row">
+                <span className="kv-k">Prioridad</span>
+                <span className="kv-v inline-flex items-center gap-2">
+                  <PrioridadBadge prioridad={solicitud.prioridad} />
+                  {!esTerminal && (
+                    <select
+                      className="select"
+                      style={{ height: 30, width: 'auto', padding: '0 26px 0 8px', fontSize: 12 }}
+                      value={solicitud.prioridad}
+                      disabled={pending}
+                      onChange={(e) =>
+                        void run(
+                          () => cambiarPrioridadAction(solicitud.id, e.target.value),
+                          `Prioridad ${e.target.value}`,
+                        )
+                      }
+                    >
+                      {['A', 'B', 'C', 'D', 'F'].map((p) => (
+                        <option key={p} value={p}>
+                          {p}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </span>
+              </div>
+              <div className="kv-row">
+                <span className="kv-k">Asignada a</span>
+                <span className="kv-v">{solicitud.adminAsignado?.nombre ?? 'Sin asignar'}</span>
+              </div>
+              <div className="kv-row">
+                <span className="kv-k">SLA</span>
+                <span className="kv-v">
+                  <SlaSemaforo status={solicitud.slaStatus} />
+                </span>
+              </div>
+            </div>
+
+            {(estado === 'asignado' || estado === 'en_revision' || (!esTerminal)) && (
+              <>
+                <div className="divider" />
+                <div className="action-stack">
+                  {(estado === 'asignado' || estado === 'en_revision') && (
                     <>
-                      <dt className="font-medium text-gray-900">Fechas del evento</dt>
-                      <dd>
-                        {solicitud.fechaEventoInicio} → {solicitud.fechaEventoFin ?? '—'}{' '}
-                        {solicitud.horaInicio
-                          ? `(${solicitud.horaInicio}–${solicitud.horaFin})`
-                          : ''}
-                      </dd>
+                      <Button variant="secondary" size="block" disabled={pending} onClick={() => setModal('reasignar')}>
+                        Reasignar
+                      </Button>
+                      {soyAsignado && (
+                        <Button
+                          variant="ghost"
+                          size="block"
+                          disabled={pending}
+                          onClick={() => {
+                            const motivo = prompt('Motivo (opcional):') ?? undefined;
+                            void run(() => liberarAction(solicitud.id, motivo), 'Liberada: volvió a la cola');
+                          }}
+                        >
+                          Liberar
+                        </Button>
+                      )}
                     </>
                   )}
-                  {Object.entries(solicitud.camposExtra).map(([k, v]) => (
-                    <CampoExtra key={k} k={k} v={v} />
-                  ))}
-                </dl>
-              </div>
-            ),
-          },
-          {
-            key: 'comentarios',
-            label: `Comentarios (${solicitud.comentarios.length})`,
-            content: (
-              <div className="space-y-4">
-                <ul className="space-y-3">
-                  {solicitud.comentarios.length === 0 && (
-                    <li className="text-sm text-gray-500">Sin comentarios.</li>
+                  {!esTerminal && (
+                    <Button
+                      variant="danger"
+                      size="block"
+                      disabled={pending}
+                      onClick={() => {
+                        const motivo = prompt('Motivo de cancelación:') ?? undefined;
+                        void run(() => cancelarAdminAction(solicitud.id, motivo), 'Cancelada');
+                      }}
+                    >
+                      Cancelar solicitud
+                    </Button>
                   )}
-                  {solicitud.comentarios.map((c) => (
-                    <li key={c.id} className="rounded-lg border bg-white p-4 text-sm">
-                      <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
-                        <span className="font-medium text-gray-700">
-                          {c.usuario?.nombre ?? 'Sistema'}
-                          {c.tipo !== 'general' && (
-                            <span className="ml-2 rounded bg-amber-50 px-1.5 py-0.5 text-amber-700">
-                              {c.tipo}
-                            </span>
-                          )}
-                        </span>
-                        <span>{formatDateInPlazaTz(c.createdAt)}</span>
-                      </div>
-                      <p className="whitespace-pre-wrap text-gray-700">{c.cuerpo}</p>
-                    </li>
-                  ))}
-                </ul>
-                <div className="flex gap-2">
-                  <textarea
-                    rows={2}
-                    maxLength={4000}
-                    placeholder="Comentario para el inquilino…"
-                    className="flex-1 rounded-md border border-input bg-white px-3 py-2 text-sm"
-                    value={comentario}
-                    onChange={(e) => setComentario(e.target.value)}
-                  />
-                  <Button
-                    disabled={pending || !comentario.trim()}
-                    onClick={() =>
-                      void run(async () => {
-                        const r = await comentarAdminAction(solicitud.id, { cuerpo: comentario });
-                        if (r.ok) setComentario('');
-                        return r;
-                      }, 'Comentario agregado')
-                    }
-                  >
-                    Comentar
-                  </Button>
                 </div>
-              </div>
-            ),
-          },
-          {
-            key: 'historial',
-            label: `Historial (${solicitud.historial.length})`,
-            content: (
-              <ol className="relative ml-3 space-y-4 border-l pl-6">
-                {solicitud.historial.map((h) => (
-                  <li key={h.id} className="relative">
-                    <span className="absolute -left-[31px] top-1 h-2.5 w-2.5 rounded-full bg-primary" />
-                    <p className="text-sm font-medium text-gray-900">
-                      {EVENTO_LABEL[h.evento] ?? h.evento}
-                      {h.estadoNuevo && (
-                        <span className="ml-2 text-xs font-normal text-gray-500">
-                          → {SOLICITUD_ESTADO_LABEL[h.estadoNuevo]}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {formatDateInPlazaTz(h.createdAt)} · {h.usuario?.nombre ?? 'Sistema'}
-                    </p>
-                    {h.comentario && <p className="mt-1 text-sm text-gray-600">{h.comentario}</p>}
-                  </li>
-                ))}
-              </ol>
-            ),
-          },
-          {
-            key: 'adjuntos',
-            label: `Adjuntos (${solicitud.adjuntos.length})`,
-            content: (
-              <AdjuntoUploader
-                entidadTipo="solicitud"
-                adjuntosIniciales={solicitud.adjuntos}
-                mimeAllowlist={SOLICITUD_MIMES}
-                maxBytes={SOLICITUD_MAX_BYTES}
-                canDelete
-                subirAction={(fd) => subirAdjuntoAdminAction(solicitud.id, fd)}
-                descargarAction={descargarAdjuntoAdminAction}
-                eliminarAction={(adjId) => eliminarAdjuntoAdminAction(solicitud.id, adjId)}
-              />
-            ),
-          },
-        ]}
-      />
+              </>
+            )}
+          </div>
+        </div>
+      </div>
 
       {(modal === 'aprobar' || modal === 'rechazar' || modal === 'subsanar') && (
         <DecisionDialog
@@ -404,10 +439,7 @@ export function SolicitudDetailAdmin({
             } else if (modal === 'rechazar') {
               void run(() => rechazarAction(solicitud.id, texto), 'Rechazada');
             } else {
-              void run(
-                () => pedirSubsanacionAction(solicitud.id, texto),
-                'Subsanación solicitada',
-              );
+              void run(() => pedirSubsanacionAction(solicitud.id, texto), 'Subsanación solicitada');
             }
           }}
         />
@@ -431,10 +463,10 @@ export function SolicitudDetailAdmin({
 
 function CampoExtra({ k, v }: { k: string; v: unknown }) {
   return (
-    <>
-      <dt className="font-medium text-gray-900">{CAMPOS_EXTRA_LABEL[k] ?? k}</dt>
-      <dd>{typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v ?? '—')}</dd>
-    </>
+    <div>
+      <div className="dt">{CAMPOS_EXTRA_LABEL[k] ?? k}</div>
+      <div className="dd">{typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v ?? '—')}</div>
+    </div>
   );
 }
 
@@ -470,7 +502,7 @@ function DecisionDialog({
           rows={4}
           maxLength={4000}
           autoFocus
-          className="w-full rounded-md border border-input bg-white px-3 py-2 text-sm"
+          className="textarea"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
         />
@@ -480,7 +512,7 @@ function DecisionDialog({
           </Button>
           <Button
             disabled={pending || (obligatorio && !texto.trim())}
-            variant={tipo === 'rechazar' ? 'destructive' : 'default'}
+            variant={tipo === 'rechazar' ? 'danger-solid' : tipo === 'aprobar' ? 'success' : 'default'}
             onClick={() => onSubmit(texto.trim())}
           >
             {titulo}
@@ -516,11 +548,7 @@ function ReasignarDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3">
-          <select
-            className={selectClass}
-            value={seleccion}
-            onChange={(e) => setSeleccion(e.target.value)}
-          >
+          <select className="select" value={seleccion} onChange={(e) => setSeleccion(e.target.value)}>
             <option value="">Selecciona administrador…</option>
             {admins.map((a) => (
               <option key={a.id} value={a.id}>
@@ -531,7 +559,7 @@ function ReasignarDialog({
           <input
             placeholder="Motivo (opcional)"
             maxLength={1000}
-            className="h-9 rounded-md border border-input bg-white px-3 text-sm"
+            className="input"
             value={motivo}
             onChange={(e) => setMotivo(e.target.value)}
           />
@@ -539,10 +567,7 @@ function ReasignarDialog({
             <Button variant="outline" onClick={onClose}>
               Cancelar
             </Button>
-            <Button
-              disabled={pending || !seleccion}
-              onClick={() => onSubmit(seleccion, motivo.trim() || undefined)}
-            >
+            <Button disabled={pending || !seleccion} onClick={() => onSubmit(seleccion, motivo.trim() || undefined)}>
               Reasignar
             </Button>
           </div>

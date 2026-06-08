@@ -8,12 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
 import { LoginSchema, type LoginInput } from '@app/contracts';
 import { loginAction } from '@/app/(public)/login/actions';
-
-/** Destino post-login por rol. Los dashboards llegan en módulos posteriores;
- *  por ahora todos van a la home autenticada. */
-function redirectTarget(_rol: string): string {
-  return '/';
-}
+import { homeForRole } from '@/lib/home-redirect';
 
 export function LoginForm() {
   const router = useRouter();
@@ -33,7 +28,7 @@ export function LoginForm() {
       const result = await loginAction(values);
       if (result.ok) {
         toast.success('Sesión iniciada');
-        router.push(redirectTarget(result.rol));
+        router.push(homeForRole(result.rol));
         router.refresh();
         return;
       }
@@ -52,47 +47,39 @@ export function LoginForm() {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
-      <div className="space-y-1.5">
-        <label htmlFor="email" className="text-sm font-medium text-gray-700">
-          Email
-        </label>
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4" noValidate>
+      <div className="field">
+        <label htmlFor="email">Email</label>
         <input
           id="email"
           type="email"
           autoComplete="email"
           {...register('email')}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+          className="input"
           placeholder="tucorreo@plazapp.com"
         />
-        {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
+        {errors.email && <p className="err">{errors.email.message}</p>}
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="password" className="text-sm font-medium text-gray-700">
-          Contraseña
-        </label>
+      <div className="field">
+        <label htmlFor="password">Contraseña</label>
         <input
           id="password"
           type="password"
           autoComplete="current-password"
           {...register('password')}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/30"
+          className="input"
           placeholder="••••••••"
         />
-        {errors.password && <p className="text-xs text-red-600">{errors.password.message}</p>}
+        {errors.password && <p className="err">{errors.password.message}</p>}
       </div>
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <button type="submit" disabled={submitting} className="btn btn-primary btn-block btn-lg">
         {submitting ? 'Iniciando…' : 'Iniciar sesión'}
       </button>
 
       <div className="text-center">
-        <Link href="/reset-password" className="text-sm text-primary hover:underline">
+        <Link href="/reset-password" className="text-sm" style={{ color: 'var(--primary)' }}>
           ¿Olvidaste tu contraseña?
         </Link>
       </div>

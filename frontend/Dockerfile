@@ -38,6 +38,17 @@ RUN npm run build:contracts
 WORKDIR /app/frontend
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+
+# Las variables NEXT_PUBLIC_* se inlinean en build-time (no runtime). Se pasan
+# como build args desde docker-compose.prod.yml. En el patrón BFF, lib/api.ts las
+# usa server-side para alcanzar al backend a través del dominio público.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_APP_NAME
+ARG NEXT_PUBLIC_SENTRY_DSN
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+ENV NEXT_PUBLIC_APP_NAME=${NEXT_PUBLIC_APP_NAME}
+ENV NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}
+
 RUN npm run build
 
 # ─────────────────────────────────────────────────────────────────────────────

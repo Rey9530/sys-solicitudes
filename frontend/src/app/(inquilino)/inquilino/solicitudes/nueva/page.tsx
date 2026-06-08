@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { SolicitudTipoSchema } from '@app/contracts';
 import { loadCategorias, loadLocales } from '@/lib/solicitudes-data';
 import { SolicitudWizard, type WizardPrefill } from '@/components/client/solicitud-wizard';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Nueva solicitud' };
 
@@ -27,13 +28,12 @@ export default async function NuevaSolicitudPage({
   };
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Nueva solicitud</h1>
-        <p className="text-sm text-gray-500">
-          Se guarda como borrador hasta que la envíes; al enviarla entra a la cola de asignación.
-        </p>
-      </div>
+    <div className="page narrow">
+      <PageHeader
+        title="Nueva solicitud"
+        subtitle="Se guarda como borrador hasta que la envíes; al enviarla entra a la cola de asignación."
+        breadcrumb={[{ label: 'Mis solicitudes', href: '/inquilino/solicitudes' }, { label: 'Nueva' }]}
+      />
       <SolicitudWizard categorias={categorias} locales={locales} prefill={prefill} />
     </div>
   );

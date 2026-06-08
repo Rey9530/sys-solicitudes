@@ -408,8 +408,9 @@ export class ReportesService {
   // ── T-141: KPIs ──────────────────────────────────────────────────────────────
 
   async kpis(actor: AuthenticatedUser): Promise<KpisOutput> {
-    if (actor.rol === 'superadmin') {
-      // Dashboard global (T-143): agregado de TODAS las plazas (admin client).
+    // superadmin SIN plaza elegida → dashboard global (agregado de todas las
+    // plazas). Con plaza elegida (impersonación), cae al scope por RLS.
+    if (actor.rol === 'superadmin' && !actor.plazaId) {
       return this.calcularKpis(this.prismaAdmin);
     }
     const plazaId = this.requirePlaza(actor);
@@ -491,7 +492,7 @@ export class ReportesService {
   // ── T-143: datos de gráficos del dashboard ───────────────────────────────────
 
   async dashboardCharts(actor: AuthenticatedUser): Promise<DashboardChartsOutput> {
-    if (actor.rol === 'superadmin') {
+    if (actor.rol === 'superadmin' && !actor.plazaId) {
       return this.calcularCharts(this.prismaAdmin);
     }
     const plazaId = this.requirePlaza(actor);

@@ -1,16 +1,13 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { FileText } from 'lucide-react';
 import type { ContratoListItem } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContratoEstadoBadge } from '@/components/estado-badge';
+import { PageHeader } from '@/components/ui/page-header';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export const metadata: Metadata = { title: 'Mis contratos' };
 
@@ -22,41 +19,35 @@ export default async function InquilinoContratosPage() {
     : { items: [], total: 0 };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Mis contratos</h1>
-        <p className="text-sm text-gray-500">{data.total} contratos asociados a tu cuenta.</p>
-      </div>
+    <div className="page wide">
+      <PageHeader title="Mis contratos" subtitle={`${data.total} contratos asociados a tu cuenta.`} />
       {data.items.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-8 text-center text-sm text-gray-500">
-          No tienes contratos registrados.
-        </p>
+        <Card>
+          <EmptyState icon={FileText} title="Sin contratos" body="No tienes contratos registrados." />
+        </Card>
       ) : (
-        <div className="rounded-lg border bg-white">
+        <Card>
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Local</TableHead>
                 <TableHead>Inicio</TableHead>
                 <TableHead>Fin</TableHead>
-                <TableHead>Monto</TableHead>
+                <TableHead className="num">Monto</TableHead>
                 <TableHead>Estado</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data.items.map((c) => (
                 <TableRow key={c.id}>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/inquilino/contratos/${c.id}`}
-                      className="text-primary hover:underline"
-                    >
+                  <TableCell>
+                    <Link href={`/inquilino/contratos/${c.id}`} className="cellcode">
                       {c.localCodigo ?? c.localId.slice(0, 8)}
                     </Link>
                   </TableCell>
-                  <TableCell className="text-gray-500">{c.fechaInicio}</TableCell>
-                  <TableCell className="text-gray-500">{c.fechaFin ?? 'Indefinido'}</TableCell>
-                  <TableCell className="text-gray-500">
+                  <TableCell className="muted">{c.fechaInicio}</TableCell>
+                  <TableCell className="muted">{c.fechaFin ?? 'Indefinido'}</TableCell>
+                  <TableCell className="num muted">
                     {c.montoMensual !== null ? `${c.moneda} ${c.montoMensual}` : '—'}
                   </TableCell>
                   <TableCell>
@@ -66,7 +57,7 @@ export default async function InquilinoContratosPage() {
               ))}
             </TableBody>
           </Table>
-        </div>
+        </Card>
       )}
     </div>
   );

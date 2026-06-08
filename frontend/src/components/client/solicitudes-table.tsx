@@ -1,16 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { Inbox } from 'lucide-react';
 import type { SolicitudListItem } from '@app/contracts';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { SolicitudEstadoBadge, PrioridadBadge, SlaSemaforo } from '@/components/estado-badge';
+import { Avatar } from '@/components/ui/avatar';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { formatDateInPlazaTz } from '@/lib/datetime';
 
 const TIPO_LABEL: Record<string, string> = {
@@ -34,14 +31,18 @@ export function SolicitudesTable({
 }) {
   if (solicitudes.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed p-8 text-center text-sm text-gray-500">
-        No hay solicitudes con esos criterios.
-      </p>
+      <Card>
+        <EmptyState
+          icon={Inbox}
+          title="Sin solicitudes"
+          body="No hay solicitudes que coincidan con esos criterios."
+        />
+      </Card>
     );
   }
 
   return (
-    <div className="rounded-lg border bg-white">
+    <Card>
       <Table>
         <TableHeader>
           <TableRow>
@@ -60,14 +61,18 @@ export function SolicitudesTable({
         <TableBody>
           {solicitudes.map((s) => (
             <TableRow key={s.id}>
-              <TableCell className="font-medium">
-                <Link href={`${baseHref}/${s.id}`} className="text-primary hover:underline">
+              <TableCell>
+                <Link href={`${baseHref}/${s.id}`} className="cellcode">
                   {s.codigo}
                 </Link>
               </TableCell>
-              <TableCell className="text-gray-600">{TIPO_LABEL[s.tipo] ?? s.tipo}</TableCell>
-              <TableCell className="max-w-xs truncate">{s.titulo}</TableCell>
-              <TableCell className="text-gray-500">{s.localCodigo ?? '—'}</TableCell>
+              <TableCell>
+                <span className="badge b-neutral">{TIPO_LABEL[s.tipo] ?? s.tipo}</span>
+              </TableCell>
+              <TableCell className="lead max-w-xs truncate">{s.titulo}</TableCell>
+              <TableCell>
+                <span className="mono">{s.localCodigo ?? '—'}</span>
+              </TableCell>
               <TableCell>
                 <SolicitudEstadoBadge estado={s.estado} />
               </TableCell>
@@ -80,18 +85,27 @@ export function SolicitudesTable({
                 </TableCell>
               )}
               {showAsignado && (
-                <TableCell className="text-gray-500">{s.adminAsignado?.nombre ?? '—'}</TableCell>
+                <TableCell>
+                  {s.adminAsignado?.nombre ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Avatar name={s.adminAsignado.nombre} sm />
+                      <span style={{ color: 'var(--text-2)' }}>{s.adminAsignado.nombre}</span>
+                    </span>
+                  ) : (
+                    <span className="muted">—</span>
+                  )}
+                </TableCell>
               )}
-              <TableCell className="text-gray-500">
+              <TableCell className="muted">
                 {s.enviadaAt ? formatDateInPlazaTz(s.enviadaAt) : '—'}
               </TableCell>
-              <TableCell className="text-gray-500">
+              <TableCell className="muted">
                 {s.decisionAt ? formatDateInPlazaTz(s.decisionAt) : '—'}
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Card>
   );
 }

@@ -2,9 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { LocalOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
-import { Button } from '@/components/ui/button';
 import { LocalesTable } from '@/components/client/locales-table';
 import { LocalesFiltros } from '@/components/client/locales-filtros';
+import { PageHeader } from '@/components/ui/page-header';
+import { Pager } from '@/components/ui/pager';
 
 export const metadata: Metadata = { title: 'Locales' };
 
@@ -31,35 +32,27 @@ export default async function AdminLocalesPage({
     ? ((await res.json()) as Paginated)
     : { items: [], total: 0, page: 1, totalPages: 0 };
 
+  const hrefFor = (page: number) =>
+    `/admin/locales?${new URLSearchParams({ ...sp, page: String(page) }).toString()}`;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Locales</h1>
-          <p className="text-sm text-gray-500">
-            {data.total} locales · gestiona las unidades de la plaza.
-          </p>
-        </div>
-        {/* Sin botón "Importar CSV": descartado por T-V07 */}
-        <Button asChild>
-          <Link href="/admin/locales/nuevo">Nuevo local</Link>
-        </Button>
+    <div className="page wide">
+      <PageHeader
+        title="Locales"
+        subtitle={`${data.total} locales · gestiona las unidades de la plaza.`}
+        actions={
+          <Link href="/admin/locales/nuevo" className="btn btn-primary">
+            Nuevo local
+          </Link>
+        }
+      />
+      <div className="mb-4">
+        <LocalesFiltros estado={sp.estado} piso={sp.piso} sector={sp.sector} />
       </div>
-      <LocalesFiltros estado={sp.estado} piso={sp.piso} sector={sp.sector} />
       <LocalesTable locales={data.items} />
-      {data.totalPages > 1 && (
-        <div className="flex justify-center gap-2 text-sm">
-          {Array.from({ length: data.totalPages }, (_, i) => i + 1).map((p) => (
-            <Link
-              key={p}
-              href={`/admin/locales?${new URLSearchParams({ ...sp, page: String(p) }).toString()}`}
-              className={`rounded px-3 py-1 ${p === data.page ? 'bg-primary text-white' : 'text-gray-600 hover:bg-gray-100'}`}
-            >
-              {p}
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="mt-4">
+        <Pager page={data.page} totalPages={data.totalPages} hrefFor={hrefFor} />
+      </div>
     </div>
   );
 }

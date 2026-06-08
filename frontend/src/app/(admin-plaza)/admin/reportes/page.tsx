@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { InquilinoOutput, LocalOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
 import { ReportesGenerator } from '@/components/client/reportes-generator';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Reportes' };
 
@@ -19,13 +20,11 @@ export default async function AdminReportesPage() {
     : [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Reportes</h1>
-        <p className="text-sm text-gray-500">
-          Exporta solicitudes, locales e inquilinos a CSV, XLSX o PDF. Rango máximo: 12 meses.
-        </p>
-      </div>
+    <div className="page wide">
+      <PageHeader
+        title="Reportes"
+        subtitle="Exporta solicitudes, locales e inquilinos a CSV, XLSX o PDF. Rango máximo: 12 meses."
+      />
       <ReportesGenerator
         locales={locales.map((l) => ({ id: l.id, label: l.codigo }))}
         inquilinos={inquilinos.map((i) => ({ id: i.id, label: i.razonSocial }))}

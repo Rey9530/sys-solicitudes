@@ -56,9 +56,7 @@ export function CerrarContratoDialog({ contrato }: { contrato: ContratoOutput })
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="text-red-600">
-          Cerrar contrato
-        </Button>
+        <Button variant="danger">Cerrar contrato</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -71,11 +69,7 @@ export function CerrarContratoDialog({ contrato }: { contrato: ContratoOutput })
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-3" noValidate>
           <div className="grid gap-1.5">
             <Label htmlFor="cerrar-estado">Tipo de cierre</Label>
-            <select
-              id="cerrar-estado"
-              className="h-9 rounded-md border border-input bg-white px-2 text-sm"
-              {...register('estado')}
-            >
+            <select id="cerrar-estado" className="select" {...register('estado')}>
               <option value="finalizado">Finalizado (fin normal)</option>
               <option value="cancelado">Cancelado (terminación anticipada)</option>
             </select>

@@ -37,11 +37,7 @@ export function NuevoLocalForm() {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="grid gap-4 rounded-lg border bg-white p-6"
-      noValidate
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="card card-pad grid gap-4" noValidate>
       <div className="grid grid-cols-2 gap-3">
         <div className="grid gap-1.5">
           <Label htmlFor="codigo">Código *</Label>

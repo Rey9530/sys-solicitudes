@@ -20,4 +20,12 @@ export interface JwtPayload {
 }
 
 /** Lo que queda en `request.user` tras JwtAuthGuard. */
-export type AuthenticatedUser = JwtPayload;
+export type AuthenticatedUser = JwtPayload & {
+  /**
+   * Runtime-only (NO es un claim del JWT): true cuando un `superadmin` actúa
+   * sobre una plaza concreta vía header `x-plaza-id` (impersonación). Lo setea
+   * `PlazaScopeGuard`; en ese caso `plazaId` deja de ser null y pasa a ser la
+   * plaza elegida. Sirve para auditoría de la impersonación.
+   */
+  actingAsPlaza?: boolean;
+};

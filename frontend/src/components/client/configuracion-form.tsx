@@ -147,15 +147,9 @@ export function ConfiguracionForm({
   return (
     <div className="space-y-4">
       {mensaje && (
-        <p
-          className={`rounded-md border px-3 py-2 text-sm ${
-            mensaje.tipo === 'ok'
-              ? 'border-green-200 bg-green-50 text-green-700'
-              : 'border-red-200 bg-red-50 text-red-700'
-          }`}
-        >
+        <div className={`banner ${mensaje.tipo === 'ok' ? 'banner-ok' : 'banner-danger'}`}>
           {mensaje.texto}
-        </p>
+        </div>
       )}
       <Tabs
         tabs={[
@@ -163,7 +157,7 @@ export function ConfiguracionForm({
             key: 'general',
             label: 'General',
             content: (
-              <div className="max-w-md space-y-3">
+              <div className="card card-pad max-w-md space-y-3">
                 <div className="grid gap-1">
                   <label className={labelClass}>Nombre comercial</label>
                   <Input value={nombre} onChange={(e) => setNombre(e.target.value)} />
@@ -193,7 +187,7 @@ export function ConfiguracionForm({
             key: 'branding',
             label: 'Branding',
             content: (
-              <div className="max-w-md space-y-3">
+              <div className="card card-pad max-w-md space-y-3">
                 <div className="grid gap-1">
                   <label className={labelClass}>Color primario</label>
                   <div className="flex items-center gap-2">
@@ -201,7 +195,8 @@ export function ConfiguracionForm({
                       type="color"
                       value={color}
                       onChange={(e) => setColor(e.target.value)}
-                      className="h-9 w-14 cursor-pointer rounded border"
+                      className="h-9 w-14 cursor-pointer rounded"
+                      style={{ border: '1px solid var(--border-strong)' }}
                     />
                     <Input
                       value={color}
@@ -236,10 +231,10 @@ export function ConfiguracionForm({
             key: 'sla',
             label: 'SLA',
             content: (
-              <div className="space-y-4">
+              <div className="card card-pad space-y-4">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">Días por tipo</p>
+                    <p className="text-sm font-semibold">Días por tipo</p>
                     {TIPOS.map((t) => (
                       <div key={t} className="flex items-center gap-2">
                         <span className="w-32 text-sm capitalize">{t}</span>
@@ -257,7 +252,7 @@ export function ConfiguracionForm({
                     ))}
                   </div>
                   <div className="space-y-2">
-                    <p className="text-sm font-medium text-gray-700">
+                    <p className="text-sm font-semibold">
                       Multiplicador por prioridad
                     </p>
                     {PRIORIDADES.map((p) => (
@@ -277,33 +272,27 @@ export function ConfiguracionForm({
                   </div>
                 </div>
                 <div>
-                  <p className="mb-1 text-sm font-medium text-gray-700">
+                  <p className="mb-1 text-sm font-semibold">
                     Preview del semáforo (días totales)
                   </p>
-                  <table className="text-xs">
+                  <table className="sla-matrix">
                     <thead>
                       <tr>
-                        <th className="px-2 py-1 text-left text-gray-500">Tipo</th>
+                        <th>Tipo</th>
                         {PRIORIDADES.map((p) => (
-                          <th key={p} className="px-2 py-1 text-gray-500">
-                            {p}
-                          </th>
+                          <th key={p}>{p}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
                       {previewSla.map((fila) => (
                         <tr key={fila.tipo}>
-                          <td className="px-2 py-1 capitalize">{fila.tipo}</td>
+                          <td className="capitalize">{fila.tipo}</td>
                           {fila.valores.map((v) => (
-                            <td key={v.prioridad} className="px-2 py-1 text-center">
+                            <td key={v.prioridad}>
                               <span
-                                className={`inline-block rounded-full px-2 py-0.5 ${
-                                  v.dias <= 3
-                                    ? 'bg-red-100 text-red-700'
-                                    : v.dias <= 7
-                                      ? 'bg-amber-100 text-amber-700'
-                                      : 'bg-green-100 text-green-700'
+                                className={`sla-cell ${
+                                  v.dias <= 3 ? 'red' : v.dias <= 7 ? 'amber' : 'green'
                                 }`}
                               >
                                 {v.dias}d
@@ -325,9 +314,9 @@ export function ConfiguracionForm({
             key: 'adjuntos',
             label: 'Adjuntos',
             content: (
-              <div className="max-w-md space-y-3">
+              <div className="card card-pad max-w-md space-y-3">
                 <div>
-                  <p className="mb-1 text-sm font-medium text-gray-700">Tipos permitidos</p>
+                  <p className="mb-1 text-sm font-semibold">Tipos permitidos</p>
                   {MIME_CONOCIDOS.map((m) => (
                     <label key={m.mime} className="flex items-center gap-2 py-0.5 text-sm">
                       <input
@@ -365,7 +354,7 @@ export function ConfiguracionForm({
             key: 'calendario',
             label: 'Calendario',
             content: (
-              <div className="max-w-md space-y-3">
+              <div className="card card-pad max-w-md space-y-3">
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"

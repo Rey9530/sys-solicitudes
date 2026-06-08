@@ -4,6 +4,7 @@ import type { SolicitudDetailOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
 import { loadCategorias, loadLocales } from '@/lib/solicitudes-data';
 import { SolicitudWizard } from '@/components/client/solicitud-wizard';
+import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Editar solicitud' };
 
@@ -24,13 +25,16 @@ export default async function EditarSolicitudPage({
   const [categorias, locales] = await Promise.all([loadCategorias(), loadLocales()]);
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Editar {solicitud.codigo}</h1>
-        <p className="text-sm text-gray-500">
-          El cambio de local solo está permitido en borrador y requerida_subsanacion (S-FS-F).
-        </p>
-      </div>
+    <div className="page narrow">
+      <PageHeader
+        title={`Editar ${solicitud.codigo}`}
+        subtitle="El cambio de local solo está permitido en borrador y requerida_subsanacion (S-FS-F)."
+        breadcrumb={[
+          { label: 'Mis solicitudes', href: '/inquilino/solicitudes' },
+          { label: solicitud.codigo, href: `/inquilino/solicitudes/${solicitud.id}` },
+          { label: 'Editar' },
+        ]}
+      />
       <SolicitudWizard categorias={categorias} locales={locales} solicitud={solicitud} />
     </div>
   );

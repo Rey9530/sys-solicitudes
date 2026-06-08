@@ -48,11 +48,7 @@ export function CategoriaForm({ categoria }: { categoria?: CategoriaOutput }) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="grid gap-4 rounded-lg border bg-white p-6"
-      noValidate
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="card card-pad grid gap-4" noValidate>
       <div className="grid gap-1.5">
         <Label htmlFor="nombre">Nombre *</Label>
         <Input id="nombre" maxLength={80} {...register('nombre')} />
@@ -64,7 +60,7 @@ export function CategoriaForm({ categoria }: { categoria?: CategoriaOutput }) {
           id="descripcion"
           rows={3}
           maxLength={500}
-          className="rounded-md border border-input bg-white px-3 py-2 text-sm"
+          className="textarea"
           {...register('descripcion')}
         />
         {errors.descripcion && <p className="text-xs text-red-600">{errors.descripcion.message}</p>}

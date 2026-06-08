@@ -78,8 +78,11 @@ export class AuditoriaService {
     if (query.fechaHasta) createdAt.lt = new Date(`${query.fechaHasta}T24:00:00.000Z`);
 
     const where: Prisma.auditoriaWhereInput = {
-      // Scope multi-tenant: admin_plaza solo su plaza; superadmin todas.
-      ...(actor.rol === 'superadmin' ? {} : { plaza_id: this.requirePlaza(actor) }),
+      // Scope multi-tenant: admin_plaza solo su plaza; superadmin todas (sin
+      // plaza elegida) o la plaza seleccionada (impersonación, actor.plazaId set).
+      ...(actor.rol === 'superadmin' && !actor.plazaId
+        ? {}
+        : { plaza_id: this.requirePlaza(actor) }),
       ...(query.accion ? { accion: { contains: query.accion, mode: 'insensitive' } } : {}),
       ...(query.entidadTipo ? { entidad_tipo: query.entidadTipo } : {}),
       ...(query.entidadId ? { entidad_id: query.entidadId } : {}),

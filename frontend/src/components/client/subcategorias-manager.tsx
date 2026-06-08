@@ -46,7 +46,7 @@ export interface StaffOption {
 
 const PRIORIDADES = SolicitudPrioridadSchema.options;
 
-const selectClass = 'h-9 w-full rounded-md border border-input bg-white px-2 text-sm';
+const selectClass = 'select';
 
 // Form sin supervisores (se gestionan con su propio modal).
 const SubFormSchema = CreateSubcategoriaSchema.omit({ supervisorIds: true });
@@ -98,11 +98,11 @@ export function SubcategoriasManager({
       </div>
 
       {subcategorias.length === 0 ? (
-        <p className="rounded-lg border border-dashed p-8 text-center text-sm text-gray-500">
-          No hay subcategorías. Crea la primera.
-        </p>
+        <div className="card card-pad text-center">
+          <p className="muted text-sm">No hay subcategorías. Crea la primera.</p>
+        </div>
       ) : (
-        <div className="rounded-lg border bg-white">
+        <div className="card">
           <Table>
             <TableHeader>
               <TableRow>
@@ -117,11 +117,9 @@ export function SubcategoriasManager({
             <TableBody>
               {subcategorias.map((s) => (
                 <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.nombre}</TableCell>
+                  <TableCell className="lead">{s.nombre}</TableCell>
                   <TableCell>
-                    <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-semibold">
-                      {s.prioridad}
-                    </span>
+                    <span className={`prio prio-${s.prioridad}`}>{s.prioridad}</span>
                   </TableCell>
                   <TableCell className="text-gray-600">{s.responsable?.nombre ?? '—'}</TableCell>
                   <TableCell>
@@ -292,13 +290,7 @@ function SubcategoriaFormDialog({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="sub-descripcion">Descripción</Label>
-            <textarea
-              id="sub-descripcion"
-              rows={2}
-              maxLength={500}
-              className="rounded-md border border-input bg-white px-3 py-2 text-sm"
-              {...register('descripcion')}
-            />
+            <textarea id="sub-descripcion" rows={2} maxLength={500} className="textarea" {...register('descripcion')} />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="sub-prioridad">Prioridad por defecto</Label>

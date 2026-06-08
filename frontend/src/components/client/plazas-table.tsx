@@ -4,9 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { PlazaOutput } from '@app/contracts';
-import { deactivatePlazaAction } from '@/app/(admin-plataform)/superadmin/plazas/actions';
+import { deactivatePlazaAction, selectPlazaAction } from '@/app/(admin-plataform)/superadmin/plazas/actions';
+import { Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { formatDateInPlazaTz } from '@/lib/datetime';
 
 export function PlazasTable({ plazas }: { plazas: PlazaOutput[] }) {
@@ -26,12 +29,22 @@ export function PlazasTable({ plazas }: { plazas: PlazaOutput[] }) {
     }
   };
 
+  const onEntrar = async (plaza: PlazaOutput) => {
+    await selectPlazaAction(plaza.id);
+    router.push('/admin/dashboard');
+    router.refresh();
+  };
+
   if (plazas.length === 0) {
-    return <p className="rounded-lg border border-dashed p-8 text-center text-sm text-gray-500">No hay plazas todavía.</p>;
+    return (
+      <Card>
+        <EmptyState icon={Building2} title="Sin plazas" body="Aún no hay plazas registradas." />
+      </Card>
+    );
   }
 
   return (
-    <div className="rounded-lg border bg-white">
+    <Card>
       <Table>
         <TableHeader>
           <TableRow>
@@ -39,39 +52,40 @@ export function PlazasTable({ plazas }: { plazas: PlazaOutput[] }) {
             <TableHead>Slug</TableHead>
             <TableHead>Contacto</TableHead>
             <TableHead>Creada</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+            <TableHead className="actions">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {plazas.map((p) => (
             <TableRow key={p.id}>
-              <TableCell className="font-medium">
-                <span className="flex items-center gap-2">
-                  <span
-                    className="inline-block h-3 w-3 rounded-full"
-                    style={{ backgroundColor: p.colorPrimario }}
-                  />
+              <TableCell className="lead">
+                <span className="rowdot">
+                  <span className="dot" style={{ backgroundColor: p.colorPrimario }} />
                   {p.nombreComercial}
                 </span>
               </TableCell>
-              <TableCell className="text-gray-500">{p.slug}</TableCell>
-              <TableCell className="text-gray-500">{p.emailContacto ?? '—'}</TableCell>
-              <TableCell className="text-gray-500">{formatDateInPlazaTz(p.createdAt)}</TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-red-600 hover:bg-red-50"
-                  disabled={pendingId === p.id}
-                  onClick={() => onDeactivate(p)}
-                >
-                  {pendingId === p.id ? 'Desactivando…' : 'Desactivar'}
-                </Button>
+              <TableCell className="mono muted">{p.slug}</TableCell>
+              <TableCell className="muted">{p.emailContacto ?? '—'}</TableCell>
+              <TableCell className="muted">{formatDateInPlazaTz(p.createdAt)}</TableCell>
+              <TableCell className="actions">
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => onEntrar(p)}>
+                    Entrar
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={pendingId === p.id}
+                    onClick={() => onDeactivate(p)}
+                  >
+                    {pendingId === p.id ? 'Desactivando…' : 'Desactivar'}
+                  </Button>
+                </div>
               </TableCell>
             </TableRow>
           ))}
         </TableBody>
       </Table>
-    </div>
+    </Card>
   );
 }
