@@ -1,0 +1,13 @@
+<table>
+  <tr>
+    <td>Razón social</td><td>Identificación</td><td>Contacto</td><td>Email</td>
+    <td>Teléfono</td><td>Contratos vigentes</td><td>Locales</td>
+  </tr>
+  {{#each items}}
+  <tr>
+    <td>{{this.razonSocial}}</td><td>{{this.identificacion}}</td>
+    <td>{{this.contacto}}</td><td>{{this.email}}</td><td>{{this.telefono}}</td>
+    <td>{{this.contratosVigentes}}</td><td>{{this.locales}}</td>
+  </tr>
+  {{/each}}
+</table>

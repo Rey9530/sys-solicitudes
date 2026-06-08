@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8" />
+<style>
+  body { font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #27272a; font-size: 11px; }
+  .header { display: flex; align-items: center; gap: 10px; border-bottom: 3px solid {{plaza.colorPrimario}}; padding-bottom: 8px; margin-bottom: 12px; }
+  .header img { height: 36px; }
+  .header h1 { font-size: 16px; margin: 0; }
+  h2 { font-size: 13px; margin: 16px 0 6px; color: {{plaza.colorPrimario}}; }
+  .meta { color: #71717a; font-size: 9px; margin-bottom: 10px; }
+  .ficha { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th { background: {{plaza.colorPrimario}}; color: #fff; text-align: left; padding: 5px 6px; font-size: 10px; }
+  td { padding: 4px 6px; border-bottom: 1px solid #e4e4e7; }
+</style></head>
+<body>
+  <div class="header">
+    {{#if plaza.logoUrl}}<img src="{{{plaza.logoUrl}}}" alt="" />{{/if}}
+    <div><h1>{{plaza.nombreComercial}}</h1><div>Ficha de inquilino · {{inquilino.razonSocial}}</div></div>
+  </div>
+  <p class="meta">Generado: {{generadoEl}}</p>
+
+  <h2>Datos del inquilino</h2>
+  <div class="ficha">
+    <div><strong>Razón social:</strong> {{inquilino.razonSocial}}</div>
+    <div><strong>Identificación:</strong> {{inquilino.identificacion}}</div>
+    <div><strong>Contacto:</strong> {{inquilino.contacto}}</div>
+    <div><strong>Email:</strong> {{inquilino.email}}</div>
+    <div><strong>Teléfono:</strong> {{inquilino.telefono}}</div>
+    <div><strong>Dirección:</strong> {{inquilino.direccion}}</div>
+  </div>
+
+  <h2>Contratos ({{contratos.length}})</h2>
+  <table>
+    <thead><tr><th>Local</th><th>Inicio</th><th>Fin</th><th>Monto</th><th>Estado</th></tr></thead>
+    <tbody>
+      {{#each contratos}}
+      <tr>
+        <td>{{this.local}}</td><td>{{this.fechaInicio}}</td><td>{{this.fechaFin}}</td>
+        <td>{{this.monto}}</td><td>{{this.estado}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <h2>Solicitudes ({{solicitudes.length}})</h2>
+  <table>
+    <thead><tr><th>Código</th><th>Tipo</th><th>Título</th><th>Local</th><th>Estado</th><th>Enviada</th></tr></thead>
+    <tbody>
+      {{#each solicitudes}}
+      <tr>
+        <td>{{this.codigo}}</td><td>{{this.tipo}}</td><td>{{this.titulo}}</td>
+        <td>{{this.local}}</td><td>{{this.estado}}</td><td>{{this.enviadaAt}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</body>
+</html>

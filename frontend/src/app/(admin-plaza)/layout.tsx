@@ -21,6 +21,9 @@ export default async function AdminPlazaLayout({ children }: { children: React.R
           <div className="flex items-center gap-6">
             <span className="text-lg font-bold text-primary">Plazapp</span>
             <nav className="flex gap-4 text-sm">
+              <Link href="/admin/dashboard" className="text-gray-600 hover:text-primary">
+                Dashboard
+              </Link>
               <Link href="/admin/locales" className="text-gray-600 hover:text-primary">
                 Locales
               </Link>
@@ -38,6 +41,15 @@ export default async function AdminPlazaLayout({ children }: { children: React.R
               </Link>
               <Link href="/admin/notificaciones" className="text-gray-600 hover:text-primary">
                 Notificaciones
+              </Link>
+              <Link href="/admin/calendario" className="text-gray-600 hover:text-primary">
+                Calendario
+              </Link>
+              <Link href="/admin/reportes" className="text-gray-600 hover:text-primary">
+                Reportes
+              </Link>
+              <Link href="/admin/configuracion" className="text-gray-600 hover:text-primary">
+                Configuración
               </Link>
             </nav>
           </div>

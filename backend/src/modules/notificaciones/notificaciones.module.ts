@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { ScheduleModule } from '@nestjs/schedule';
 import { AuditoriaModule } from '../auditoria/auditoria.module';
 import { NotificacionesController } from './notificaciones.controller';
 import { NotificacionesService } from './notificaciones.service';
@@ -16,7 +15,9 @@ import { EmailWorker } from './cron/email-worker.cron';
  * pasando el JWT_SECRET por llamada.
  */
 @Module({
-  imports: [ScheduleModule.forRoot(), JwtModule.register({}), AuditoriaModule],
+  // ⚠️ fix (módulo 11): ScheduleModule.forRoot() vive SOLO en AppModule
+  // (duplicarlo creaba dos schedulers y los @Cron corrían dos veces).
+  imports: [JwtModule.register({}), AuditoriaModule],
   controllers: [NotificacionesController],
   providers: [
     NotificacionesService,

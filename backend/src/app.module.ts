@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { LoggerModule } from 'nestjs-pino';
@@ -43,6 +44,11 @@ import { RolesGuard } from './common/guards/roles.guard';
 
     // Logger pino con requestId context (T-013)
     LoggerModule.forRootAsync({ useFactory: () => buildPinoOptions() }),
+
+    // Scheduler de crons — ÚNICA registración de toda la app (fix módulo 11:
+    // estaba duplicado en AdjuntosModule y NotificacionesModule y cada @Cron
+    // disparaba dos veces).
+    ScheduleModule.forRoot(),
 
     // Rate limit global: 100 req/min por IP
     ThrottlerModule.forRoot([

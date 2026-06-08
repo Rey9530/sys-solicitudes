@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8" />
+<style>
+  body { font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #27272a; font-size: 11px; }
+  .header { display: flex; align-items: center; gap: 10px; border-bottom: 3px solid {{plaza.colorPrimario}}; padding-bottom: 8px; margin-bottom: 12px; }
+  .header img { height: 36px; }
+  .header h1 { font-size: 16px; margin: 0; }
+  .meta { color: #71717a; font-size: 9px; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: {{plaza.colorPrimario}}; color: #fff; text-align: left; padding: 5px 6px; font-size: 10px; }
+  td { padding: 4px 6px; border-bottom: 1px solid #e4e4e7; }
+  tr:nth-child(even) td { background: #fafafa; }
+</style></head>
+<body>
+  <div class="header">
+    {{#if plaza.logoUrl}}<img src="{{{plaza.logoUrl}}}" alt="" />{{/if}}
+    <div><h1>{{plaza.nombreComercial}}</h1><div>Reporte de inquilinos</div></div>
+  </div>
+  <p class="meta">Generado: {{generadoEl}} · {{total}} inquilinos</p>
+  <table>
+    <thead><tr>
+      <th>Razón social</th><th>Identificación</th><th>Contacto</th><th>Email</th>
+      <th>Teléfono</th><th>Contratos vigentes</th><th>Locales</th>
+    </tr></thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>{{this.razonSocial}}</td><td>{{this.identificacion}}</td>
+        <td>{{this.contacto}}</td><td>{{this.email}}</td><td>{{this.telefono}}</td>
+        <td>{{this.contratosVigentes}}</td><td>{{this.locales}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+</body>
+</html>

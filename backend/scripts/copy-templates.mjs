@@ -10,6 +10,10 @@ const pares = [
     join(root, 'src', 'modules', 'notificaciones', 'templates'),
     join(root, 'dist', 'modules', 'notificaciones', 'templates'),
   ],
+  [
+    join(root, 'src', 'modules', 'reportes', 'templates'),
+    join(root, 'dist', 'modules', 'reportes', 'templates'),
+  ],
 ];
 
 for (const [desde, hasta] of pares) {
