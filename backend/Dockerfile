@@ -57,10 +57,13 @@ ENV PORT=4000
 RUN addgroup --system --gid 1001 nestjs && \
     adduser --system --uid 1001 --ingroup nestjs nestjs
 
-# Copiamos el dist/, los node_modules productivos y el Prisma Client
+# Copiamos el dist/, los node_modules productivos y el Prisma Client.
+# En el monorepo con workspaces las deps del backend (y el @prisma/client
+# generado) se hoistean al node_modules RAIZ (/app/node_modules), no a
+# /app/backend/node_modules (que queda vacio). Se copia el raiz.
 COPY --from=builder --chown=nestjs:nestjs /app/backend/dist ./dist
 COPY --from=builder --chown=nestjs:nestjs /app/backend/prisma ./prisma
-COPY --from=builder --chown=nestjs:nestjs /app/backend/node_modules ./node_modules
+COPY --from=builder --chown=nestjs:nestjs /app/node_modules ./node_modules
 COPY --from=builder --chown=nestjs:nestjs /app/backend/package.json ./package.json
 # prisma.config.ts + tsconfig: necesarios para `prisma migrate deploy` y el seed
 # (ts-node) dentro del contenedor en producción. Sin ellos, migrate no resuelve
