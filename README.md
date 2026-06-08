@@ -87,6 +87,26 @@ sys-solicitudes/
 
 **Total:** 175 tareas (15 de validación + 160 de implementación) con dependencias explícitas y trazables.
 
+## 7.2. Códigos de error de dominio (RFC 7807)
+
+> Materializa T-152 (módulo 12). Catálogo canónico en `backend/src/common/errors/domain-errors.ts`
+> (la API responde el envelope `{ type, title, status, detail, instance, code, requestId }`).
+
+| Código | HTTP | Área |
+|---|---|---|
+| `INVALID_CREDENTIALS`, `ACCOUNT_LOCKED`, `TOKEN_EXPIRED`, `TOKEN_INVALID`, `REFRESH_EXPIRED`, `REFRESH_INVALID`, `RESET_TOKEN_INVALID`, `INVALID_CURRENT_PASSWORD` | 400/401/423 | Auth |
+| `ROLE_FORBIDDEN`, `PLAZA_SCOPE_VIOLATION`, `INQUILINO_SCOPE_VIOLATION`, `VALIDATION_ERROR`, `NOT_FOUND` | 400/403/404 | Transversales |
+| `PLAZA_NOT_FOUND`, `PLAZA_SLUG_TAKEN`, `USUARIO_EMAIL_DUPLICADO`, `ROL_STAFF_REQUERIDO`, `INQUILINO_REQUERIDO`, `CONFIGURACION_NOT_FOUND` | 400/404/409 | Plazas y usuarios |
+| `LOCAL_CODIGO_DUPLICADO`, `LOCAL_HAS_ACTIVE_CONTRACT`, `LOCAL_NO_DISPONIBLE`, `LOCAL_NO_DEL_INQUILINO`, `INQUILINO_IDENTIFICACION_DUPLICADA`, `INQUILINO_HAS_ACTIVE_CONTRACT`, `CONTRATO_OVERLAP` | 403/409 | Locales y contratos |
+| `CATEGORIA_HAS_ACTIVE_SUBCATEGORIAS`, `SUBCATEGORIA_INACTIVA`, `SUBCATEGORIA_REQUERIDA`, `SUBCATEGORIA_MAX_5_SUPERVISORES` | 400/409 | Categorías |
+| `INVALID_STATE_TRANSITION`, `INVALID_STATE_FOR_EDIT`, `NOT_ASSIGNED_ADMIN`, `SAME_ASSIGNEE`, `COMENTARIO_REQUERIDO`, `CAMPOS_EXTRA_INVALIDOS`, `CANNOT_APPROVE_OWN_REQUEST`, `CANNOT_REJECT_OWN_REQUEST` | 400/403/409 | Solicitudes (state machine) |
+| `ADJUNTO_MIME_INVALIDO`, `ADJUNTO_DEMASIADO_GRANDE`, `MAX_ADJUNTOS_EXCEDIDO`, `EJECUTABLE_NO_PERMITIDO`, `UPLOAD_FORBIDDEN` | 400/403/409/413 | Adjuntos |
+| `EMAIL_NO_REINTENTABLE`, `UNSUBSCRIBE_TOKEN_INVALIDO`, `PLANTILLA_DESCONOCIDA` | 400/404/500 | Notificaciones |
+| `EVENTO_NO_ENCONTRADO`, `RANGO_INVALIDO` | 400/404 | Calendario |
+| `JSREPORT_ERROR`, `ENTIDAD_INVALIDA`, `RANGO_EXCEDIDO`, `REPORTE_DEMASIADO_GRANDE` | 400/413/502 | Reportes |
+
+Lista completa con títulos y detalles por defecto: `domain-errors.ts` (es la fuente de verdad).
+
 ignora lo siguiente
 'Desarrolla todas las tareas de @PLANIFICACION/01-setup-base.md analizxalo primero y si no tienes algo claro preguntame primero para que despues te quedes codificando, no se te escape que tienes que ir documentando las tareas
   que vayas finalizando, con respeto a las tecnologias primero investigfa en la red cual es la version mas actual estable y asegurate en usar eso, esto ultimo ponlo en el @CLAUDE.md para que lo hagas en todas las tareas futuras

@@ -240,6 +240,17 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` (y Docker Hub
 | `ics` | **NO instalado** | v3.12.0 evaluada y descartada: el `.ics` se genera inline (RFC 5545 es texto plano; cero deps) |
 | jsreport (Docker) | `4.13.0` | confirmada como latest en npm Y Docker Hub — decisión S-JSReport sin desviación |
 
+### Hallazgos de versiones (módulo 12 — seguridad y auditoría, 2026-06-07)
+
+Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de instalar:
+
+| Paquete | Versión instalada | Notas de compatibilidad |
+|---|---|---|
+| `sanitize-html` | `2.17.4` | nativa server-side (sin DOM) — elegida sobre `dompurify@3.4.8`/`isomorphic-dompurify@3.16.0` que requieren jsdom |
+| `@types/sanitize-html` | `2.16.1` | dev dependency |
+| `helmet` (ya estaba) | `8.x` | sin cambios; solo ajuste de CSP (unsafe-eval solo dev) |
+| `@nestjs/throttler` (ya estaba) | `6.5.x` | ⚠️ gotcha: throttler con nombre custom sufija los headers (`Retry-After-global`); usar `name: 'default'` para `Retry-After` limpio |
+
 ### Documentación de tareas
 
 > **Regla obligatoria:** Al finalizar una tarea técnica de `PLANIFICACION/*.md`, se debe:

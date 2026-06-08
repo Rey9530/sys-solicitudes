@@ -30,6 +30,7 @@ import { AutoAsignacionCron } from './cron/auto-asignacion.cron';
 import { SlaRefreshCron } from './cron/sla-refresh.cron';
 import { MantenimientoFinCron } from './cron/mantenimiento-fin.cron';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { SkipAuditoria } from '../../common/decorators/auditable.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
@@ -62,6 +63,7 @@ export class AprobacionesController {
   }
 
   @Post('cron/test-auto-asignacion')
+  @SkipAuditoria() // T-150: endpoint dev de cron, sin captura automática
   @Roles('admin_plaza', 'superadmin')
   @ApiOperation({ summary: 'Ejecuta la auto-asignación manualmente (solo dev, T-091b).' })
   testAutoAsignacion() {
@@ -70,6 +72,7 @@ export class AprobacionesController {
   }
 
   @Post('cron/test-sla-refresh')
+  @SkipAuditoria() // T-150: endpoint dev de cron, sin captura automática
   @Roles('admin_plaza', 'superadmin')
   @ApiOperation({ summary: 'Refresca la matview SLA manualmente (solo dev, T-101).' })
   async testSlaRefresh() {
@@ -79,6 +82,7 @@ export class AprobacionesController {
   }
 
   @Post('cron/test-mantenimiento-fin')
+  @SkipAuditoria() // T-150: endpoint dev de cron, sin captura automática
   @Roles('admin_plaza', 'superadmin')
   @ApiOperation({ summary: 'Cierra ventanas de mantenimiento vencidas (solo dev, T-103).' })
   testMantenimientoFin() {

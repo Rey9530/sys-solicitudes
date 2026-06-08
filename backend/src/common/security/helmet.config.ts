@@ -13,7 +13,11 @@ export function buildHelmet(): RequestHandler {
       useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", isProd ? "'unsafe-inline'" : "'unsafe-inline'", "'unsafe-eval'"],
+        // T-147: 'unsafe-eval' SOLO en dev (Swagger UI lo necesita); en prod
+        // queda únicamente 'unsafe-inline' (init inline de Swagger).
+        scriptSrc: isProd
+          ? ["'self'", "'unsafe-inline'"]
+          : ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
         imgSrc: ["'self'", 'data:', 'blob:'],
