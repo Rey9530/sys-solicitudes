@@ -18,12 +18,15 @@ import {
   UpdateInquilinoSchema,
   ListInquilinosQuerySchema,
   ListContratoHistorialQuerySchema,
+  ListUsuariosQuerySchema,
   type CreateInquilinoInput,
   type UpdateInquilinoInput,
   type ListInquilinosQuery,
   type ListContratoHistorialQuery,
+  type ListUsuariosQuery,
 } from '@app/contracts';
 import { InquilinosService, type RequestMeta } from './inquilinos.service';
+import { UsuariosService } from '../usuarios/usuarios.service';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -33,7 +36,10 @@ import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 @ApiBearerAuth()
 @Controller('inquilinos')
 export class InquilinosController {
-  constructor(private readonly service: InquilinosService) {}
+  constructor(
+    private readonly service: InquilinosService,
+    private readonly usuarios: UsuariosService,
+  ) {}
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
@@ -75,6 +81,20 @@ export class InquilinosController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.service.findContratos(id, query, user);
+  }
+
+  @Get(':id/usuarios')
+  @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @ApiOperation({
+    summary:
+      'Listar usuarios asociados al inquilino (T-059-bis, pestaña "Usuarios" del detalle).',
+  })
+  findUsuarios(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Query(new ZodValidationPipe(ListUsuariosQuerySchema)) query: ListUsuariosQuery,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usuarios.findByInquilino(id, query, user);
   }
 
   @Patch(':id')

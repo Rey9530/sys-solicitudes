@@ -60,32 +60,63 @@ export type SlaStatus = z.infer<typeof SlaStatusSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Campos extra por tipo (T-079, S-CamposTipo)
+// T-V21: bloque de asistentes (nombre + documento) transversal a los 4 tipos.
+//   - `evento`: `asistentes_estimados` OBLIGATORIO (mín 1, T-V05 umbral aprobación especial).
+//   - resto: `asistentes_estimados` OPCIONAL (0 por defecto); si N>0 se piden
+//     nombre+documento de cada uno (refine de coherencia abajo).
 
-export const CamposExtraMantenimientoSchema = z.object({
-  area_afectada: z.string().trim().min(1).max(200),
-  requiere_ingreso_a_local: z.boolean(),
+/** Asistente individual: nombre + documento (DUI, NIT, pasaporte, etc.). */
+export const AsistenteSchema = z.object({
+  nombre: z.string().trim().min(1).max(120),
+  documento: z.string().trim().min(3).max(20),
 });
+export type Asistente = z.infer<typeof AsistenteSchema>;
+
+/**
+ * Bloque de asistentes para tipos donde es opcional (mantenimiento, remodelación, otro).
+ * `evento` usa una versión estricta con `min(1)` directamente.
+ */
+export const AsistentesBloqueSchema = z.object({
+  asistentes_estimados: z.coerce.number().int().min(0).max(10),
+  asistentes: z.array(AsistenteSchema),
+});
+export type AsistentesBloque = z.infer<typeof AsistentesBloqueSchema>;
+
+export const CamposExtraMantenimientoSchema = z
+  .object({
+    area_afectada: z.string().trim().min(1).max(200),
+    requiere_ingreso_a_local: z.boolean(),
+  })
+  .and(AsistentesBloqueSchema);
 export type CamposExtraMantenimiento = z.infer<typeof CamposExtraMantenimientoSchema>;
 
 export const CamposExtraEventoSchema = z.object({
-  asistentes_estimados: z.coerce.number().int().min(1).max(10_000),
+  // evento: mínimo 1 asistente, mismo tope 10 que el resto (antes era 10_000;
+  // se mantiene la regla T-V05 de "umbral aprobación especial" sobre este valor).
+  asistentes_estimados: z.coerce.number().int().min(1).max(10),
+  asistentes: z.array(AsistenteSchema),
   requiere_corte_calle: z.boolean(),
   requiere_amplificacion: z.boolean(),
 });
 export type CamposExtraEvento = z.infer<typeof CamposExtraEventoSchema>;
 
-export const CamposExtraRemodelacionSchema = z.object({
-  fecha_inicio_estimada: z.iso.date(),
-  duracion_dias: z.coerce.number().int().min(1).max(365),
-  empresa_constructora: z.string().trim().min(1).max(160),
-  monto_presupuesto: z.coerce.number().min(0),
-});
+export const CamposExtraRemodelacionSchema = z
+  .object({
+    fecha_inicio_estimada: z.iso.date(),
+    duracion_dias: z.coerce.number().int().min(1).max(365),
+    empresa_constructora: z.string().trim().min(1).max(160),
+    monto_presupuesto: z.coerce.number().min(0),
+  })
+  .and(AsistentesBloqueSchema);
 export type CamposExtraRemodelacion = z.infer<typeof CamposExtraRemodelacionSchema>;
 
-export const CamposExtraOtroSchema = z.object({
-  categoria_libre: z.string().trim().min(1).max(120),
-  descripcion_larga: z.string().trim().min(1).max(4000),
-});
+/**
+ * T-V21 (Interpretación B): `otro` se comporta como cualquier otro tipo:
+ * categoría + subcategoría obligatorias (validado a nivel de CreateSolicitudSchema.refine
+ * y en SolicitudesService.resolverSubcategoria). El bloque de asistentes es opcional
+ * (puede ser 0 si la solicitud no involucra gente, e.g. "solicito información").
+ */
+export const CamposExtraOtroSchema = AsistentesBloqueSchema;
 export type CamposExtraOtro = z.infer<typeof CamposExtraOtroSchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,13 +143,30 @@ export const CreateSolicitudSchema = BaseSolicitudSchema.and(
     z.object({ tipo: z.literal('remodelacion'), camposExtra: CamposExtraRemodelacionSchema }),
     z.object({ tipo: z.literal('otro'), camposExtra: CamposExtraOtroSchema }),
   ]),
-).refine(
-  (v) => v.tipo === 'otro' || (v.categoriaId && v.subcategoriaId),
-  {
-    message: 'categoriaId y subcategoriaId son obligatorios salvo tipo=otro',
+)
+  // T-V21: categoría y subcategoría obligatorias para TODOS los tipos (antes
+  // 'otro' estaba exento). Esto se refuerza también en
+  // SolicitudesService.resolverSubcategoria (RN-CA-1).
+  .refine((v) => Boolean(v.categoriaId) && Boolean(v.subcategoriaId), {
+    message: 'categoriaId y subcategoriaId son obligatorios para todo tipo de solicitud.',
     path: ['categoriaId'],
-  },
-);
+  })
+  // T-V21: coherencia N ↔ lista de asistentes. Si N=0 la lista debe estar
+  // vacía; si N>0 la lista debe tener exactamente N elementos (validados por
+  // AsistenteSchema). El check fino se hace también en el validator de BE
+  // (campos-extra.validator.ts → assertAsistentesCoherentes) para cubrir PATCH
+  // donde camposExtra llega por separado.
+  .refine(
+    (v) => {
+      const n = (v.camposExtra as { asistentes_estimados: number }).asistentes_estimados;
+      const lista = (v.camposExtra as { asistentes: unknown[] }).asistentes;
+      return Array.isArray(lista) && lista.length === n;
+    },
+    {
+      message: 'La lista de asistentes no coincide con la cantidad estimada.',
+      path: ['camposExtra'],
+    },
+  );
 export type CreateSolicitudInput = z.infer<typeof CreateSolicitudSchema>;
 
 export const UpdateSolicitudSchema = BaseSolicitudSchema.partial().extend({

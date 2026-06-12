@@ -1,5 +1,11 @@
 import 'server-only';
-import type { CategoriaOutput, CategoriaDetailOutput, ContratoListItem } from '@app/contracts';
+import type {
+  CategoriaOutput,
+  CategoriaDetailOutput,
+  ContratoListItem,
+  SolicitudTipoConfigOutput,
+  SolicitudTipo,
+} from '@app/contracts';
 import { apiFetch } from '@/lib/api';
 import type { CategoriaOption, LocalOption } from '@/components/client/solicitud-wizard';
 
@@ -42,3 +48,18 @@ export async function loadLocales(): Promise<LocalOption[]> {
     })
     .map((c) => ({ id: c.localId, codigo: c.localCodigo ?? c.localId }));
 }
+
+/**
+ * Tipos de solicitud activos de la plaza actual (T-V20). Se usa en el wizard
+ * de nueva solicitud y en el generador de reportes. Backend ya devuelve
+ * ordenados por `orden ASC, codigo ASC`.
+ */
+export async function loadTiposSolicitud(): Promise<SolicitudTipoConfigOutput[]> {
+  const res = await apiFetch('/solicitudes/tipos');
+  if (!res.ok) return [];
+  return (await res.json()) as SolicitudTipoConfigOutput[];
+}
+
+/** Forma mínima que consume el wizard: solo codigo + etiqueta. */
+export type TipoOption = { codigo: SolicitudTipo; etiqueta: string };
+

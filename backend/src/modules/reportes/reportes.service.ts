@@ -26,6 +26,18 @@ const MAX_FILAS_REPORTE = 10_000;
 const MAX_RANGO_MESES = 12;
 /** Offset fijo de la plaza (T-V08). */
 const PLAZA_UTC_OFFSET_MS = 6 * 3_600_000;
+/** Plazo de validez del "Permiso de Trabajos" (T-V21+). Hardcoded 30 días;
+ *  futuro: mover a `configuracion.plazo_permisos_dias` por plaza. */
+const PLAZO_PERMISO_DIAS = 30;
+/** Campos de `campos_extra` que ya se imprimen en su propia sección del PDF
+ *  (asistentes, datos del subcontratista, etc.) y por tanto se filtran del
+ *  listado genérico para no duplicar la información. */
+const CAMPOS_EXTRA_FILTRADOS_PARA_PDF = new Set<string>([
+  'asistentes',
+  'asistentes_estimados',
+  'empresa_constructora',
+  'requiere_aprobacion_especial',
+]);
 
 /** Etiquetas de estado para el PDF "Permiso de Trabajos". */
 const ESTADO_LABEL: Record<string, string> = {
@@ -58,19 +70,20 @@ const MESES_ABREV = [
   'Nov',
   'Dec',
 ];
-/** Etiquetas legibles de campos_extra (espejo de solicitud-detail-inquilino.tsx). */
+/** Etiquetas legibles de campos_extra (espejo de solicitud-detail-inquilino.tsx).
+ *  T-V21: quitados categoria_libre/descripcion_larga (interpretación B);
+ *  agregado `asistentes` (lista de nombres) para el reporte. */
 const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   area_afectada: 'Área afectada',
   requiere_ingreso_a_local: 'Requiere ingreso al local',
   asistentes_estimados: 'Asistentes estimados',
+  asistentes: 'Asistentes',
   requiere_corte_calle: 'Requiere corte de calle',
   requiere_amplificacion: 'Requiere amplificación',
   fecha_inicio_estimada: 'Fecha de inicio estimada',
   duracion_dias: 'Duración (días)',
   empresa_constructora: 'Empresa constructora',
   monto_presupuesto: 'Monto presupuesto',
-  categoria_libre: 'Categoría libre',
-  descripcion_larga: 'Descripción larga',
 };
 
 /** Formatea un valor de campos_extra para el PDF (booleanos → Sí/No). */
@@ -448,8 +461,29 @@ export class ReportesService {
    * PDF "Permiso de Trabajos" de una sola solicitud (formato del cliente).
    * Accesible por admin_plaza/superadmin de la plaza e inquilino DUEÑO de la
    * solicitud (scope replicado de SolicitudesService.assertInquilinoScope).
-   * Los campos que el modelo no captura (firma, personal involucrado, datos del
-   * subcontratista, autorizante) se renderizan como "n/a" (decisión del cliente).
+   *
+   * Datos que se imprimen:
+   *  - Identificación: código, título, tipo, prioridad, estado, descripción,
+   *    fechas (enviada, decisión, evento).
+   *  - Solicitante: nombre, email, teléfono.
+   *  - Cliente (inquilino): razón social, NIT, contacto, dirección.
+   *  - Local: código, nombre, piso, sector, m², estado.
+   *  - Contrato vigente: ID, fechas, monto, moneda.
+   *  - Asistentes (T-V21): tabla nombre+documento.
+   *  - Adjuntos vivos: nombre, MIME, tamaño.
+   *  - Historial del flujo + comentarios (trazabilidad).
+   *  - Autorizante: admin asignado + email + teléfono.
+   *  - Cláusula de compromiso (literales A-G del cliente) + placeholders para
+   *    firma física del solicitante y del responsable de obra.
+   *
+   *  Marca de agua según estado: APROBADO (verde) / BORRADOR (gris) /
+   *  PENDIENTE (ámbar) / RECHAZADO/CANCELADA (rojo).
+   *  Plazo de validez del permiso: `decision_at + PLAZO_PERMISO_DIAS` si la
+   *  solicitud está aprobada; en otro caso `n/a` (placeholder).
+   *
+   *  NOTA: `adjuntos` (polimórfico) y `contrato` (relación local↔inquilino,
+   *  no solicitud) se consultan por separado porque Prisma no tiene esas
+   *  relaciones desde `solicitud`.
    */
   async exportSolicitudPermisoPdf(
     id: string,
@@ -460,12 +494,42 @@ export class ReportesService {
       const solicitud = await tx.solicitud.findFirst({
         where: { id },
         include: {
-          local: { select: { codigo: true, piso: true } },
-          inquilino: { select: { razon_social: true, contacto_email: true } },
+          local: {
+            select: {
+              codigo: true,
+              nombre: true,
+              piso: true,
+              sector: true,
+              metraje_m2: true,
+              estado: true,
+            },
+          },
+          inquilino: {
+            select: {
+              razon_social: true,
+              identificacion: true,
+              direccion: true,
+              contacto_nombre: true,
+              contacto_email: true,
+              contacto_telefono: true,
+            },
+          },
           categoria: { select: { nombre: true } },
-          subcategoria: { select: { nombre: true } },
-          usuario_creador: { select: { nombre: true, email: true } },
-          admin_asignado: { select: { nombre: true } },
+          subcategoria: { select: { nombre: true, prioridad: true } },
+          usuario_creador: {
+            select: { nombre: true, email: true, telefono: true },
+          },
+          admin_asignado: {
+            select: { nombre: true, email: true, telefono: true },
+          },
+          comentarios: {
+            orderBy: { created_at: 'asc' },
+            include: { usuario: { select: { nombre: true } } },
+          },
+          historial: {
+            orderBy: { created_at: 'asc' },
+            include: { usuario: { select: { nombre: true } } },
+          },
         },
       });
       if (!solicitud) {
@@ -484,62 +548,242 @@ export class ReportesService {
         });
       }
 
+      // Adjuntos (polimórfico): consulta aparte.
+      const adjuntos = await tx.adjunto.findMany({
+        where: { entidad_tipo: 'solicitud', entidad_id: id, deleted_at: null },
+        orderBy: { created_at: 'asc' },
+        select: {
+          id: true,
+          nombre_original: true,
+          mime_type: true,
+          tamano_bytes: true,
+          created_at: true,
+        },
+      });
+
+      // Contrato vigente del (local, inquilino) de la solicitud.
+      const contrato = await tx.contrato.findFirst({
+        where: {
+          local_id: solicitud.local_id,
+          inquilino_id: solicitud.inquilino_id,
+          estado: 'vigente',
+        },
+        orderBy: { fecha_inicio: 'desc' },
+        select: {
+          id: true,
+          fecha_inicio: true,
+          fecha_fin: true,
+          monto_mensual: true,
+          moneda: true,
+          condiciones: true,
+        },
+      });
+
       const camposExtra = (solicitud.campos_extra ?? {}) as Record<string, unknown>;
       const empresa =
         typeof camposExtra.empresa_constructora === 'string'
           ? camposExtra.empresa_constructora
           : null;
+      const esAprobada = solicitud.estado === 'aprobada';
+      const fechaExpiracion =
+        esAprobada && solicitud.decision_at
+          ? this.fechaPermiso(
+              new Date(solicitud.decision_at.getTime() + PLAZO_PERMISO_DIAS * 86_400_000),
+            )
+          : 'n/a';
+
+      // Asistentes (T-V21) — derivado de campos_extra; el wizard garantiza
+      // la coherencia N↔lista.
+      const asistentesRaw = Array.isArray(camposExtra.asistentes)
+        ? (camposExtra.asistentes as Array<{ nombre?: string; documento?: string }>)
+        : [];
+      const asistentesEstimados = Number(camposExtra.asistentes_estimados ?? 0);
+      const asistentes = asistentesRaw.map((a, i) => ({
+        n: i + 1,
+        nombre: a.nombre ?? '',
+        documento: a.documento ?? '',
+      }));
+
+      // Marca de agua según estado.
+      const marcaAgua = this.marcaAguaParaEstado(solicitud.estado);
 
       return {
         plaza: await this.plazaBranding(tx, plazaId),
+        generadoEl: this.fechaPermiso(new Date()),
         codigo: solicitud.codigo,
+        titulo: solicitud.titulo,
+        tipo: solicitud.tipo,
+        prioridad: solicitud.prioridad,
+        estado: solicitud.estado,
         estadoLabel: ESTADO_LABEL[solicitud.estado] ?? solicitud.estado,
         estadoClase: ESTADO_CLASE[solicitud.estado] ?? 'neutro',
-        solicitante: solicitud.usuario_creador?.nombre ?? 'n/a',
-        cliente: solicitud.inquilino?.razon_social ?? 'n/a',
-        nivel: solicitud.local?.piso ?? 'n/a',
-        local: solicitud.local?.codigo ?? 'n/a',
-        fechaSolicitud: this.fechaPermiso(solicitud.enviada_at ?? solicitud.created_at),
-        fechaExpiracion: 'n/a',
-        firmaSolicitante: 'n/a',
-        tipoTrabajo: solicitud.subcategoria?.nombre ?? solicitud.tipo,
+        marcaAgua,
         descripcion: solicitud.descripcion,
-        autorizamosA: empresa ?? 'n/a',
-        nombreSubcontratista: 'n/a',
-        telefonoContacto: 'n/a',
-        email: solicitud.usuario_creador?.email ?? solicitud.inquilino?.contacto_email ?? 'n/a',
-        camposExtra: Object.entries(camposExtra)
-          .filter(([k]) => k !== 'empresa_constructora')
-          .map(([k, v]) => ({ label: CAMPOS_EXTRA_LABEL[k] ?? k, valor: formatCampoExtra(v) })),
-        personal: { nombre1: 'n/a', documento1: 'n/a', nombre2: 'n/a', documento2: 'n/a' },
-        remodelacion: { responsable: 'n/a', sello: 'n/a', firma: 'n/a' },
-        subcontratista: {
-          contacto: 'n/a',
-          telefono: 'n/a',
-          equipos: 'n/a',
-          escalera: 'n/a',
-          otro: 'n/a',
+        fechaSolicitud: this.fechaPermiso(solicitud.enviada_at ?? solicitud.created_at),
+        fechaCreacion: this.fechaPermiso(solicitud.created_at),
+        fechaAsignada: solicitud.asignada_at ? this.fechaPermiso(solicitud.asignada_at) : 'n/a',
+        fechaDecision: solicitud.decision_at ? this.fechaPermiso(solicitud.decision_at) : 'n/a',
+        fechaExpiracion,
+        plazoPermisoDias: esAprobada ? PLAZO_PERMISO_DIAS : null,
+        fechaEventoInicio: solicitud.fecha_evento_inicio
+          ? this.fechaIso(solicitud.fecha_evento_inicio)
+          : null,
+        fechaEventoFin: solicitud.fecha_evento_fin
+          ? this.fechaIso(solicitud.fecha_evento_fin)
+          : null,
+        horaInicio: solicitud.hora_inicio ?? null,
+        horaFin: solicitud.hora_fin ?? null,
+        requiereAprobacionEspecial: Boolean(camposExtra.requiere_aprobacion_especial),
+
+        // Solicitante (usuario que creó la solicitud).
+        solicitante: {
+          nombre: solicitud.usuario_creador?.nombre ?? 'n/a',
+          email: solicitud.usuario_creador?.email ?? 'n/a',
+          telefono: solicitud.usuario_creador?.telefono ?? 'n/a',
         },
-        jefePlaza: solicitud.admin_asignado?.nombre ?? 'n/a',
+        // Cliente (inquilino).
+        cliente: {
+          razonSocial: solicitud.inquilino?.razon_social ?? 'n/a',
+          identificacion: solicitud.inquilino?.identificacion ?? 'n/a',
+          direccion: solicitud.inquilino?.direccion ?? 'n/a',
+          contactoNombre: solicitud.inquilino?.contacto_nombre ?? 'n/a',
+          contactoEmail: solicitud.inquilino?.contacto_email ?? 'n/a',
+          contactoTelefono: solicitud.inquilino?.contacto_telefono ?? 'n/a',
+        },
+        // Local.
+        local: {
+          codigo: solicitud.local?.codigo ?? 'n/a',
+          nombre: solicitud.local?.nombre ?? 'n/a',
+          piso: solicitud.local?.piso ?? 'n/a',
+          sector: solicitud.local?.sector ?? 'n/a',
+          metraje: solicitud.local?.metraje_m2
+            ? `${solicitud.local.metraje_m2.toString()} m²`
+            : 'n/a',
+          estado: solicitud.local?.estado ?? 'n/a',
+        },
+        // Contrato vigente.
+        contrato: contrato
+          ? {
+              id: contrato.id,
+              fechaInicio: this.fechaIso(contrato.fecha_inicio),
+              fechaFin: contrato.fecha_fin ? this.fechaIso(contrato.fecha_fin) : 'Indefinido',
+              monto: contrato.monto_mensual
+                ? `${contrato.monto_mensual.toString()} ${contrato.moneda}`
+                : 'n/a',
+              condiciones: contrato.condiciones ?? 'n/a',
+            }
+          : null,
+        // Categoría + subcategoría.
+        categoria: solicitud.categoria?.nombre ?? 'n/a',
+        subcategoria: solicitud.subcategoria?.nombre ?? 'n/a',
+        subcategoriaPrioridad: solicitud.subcategoria?.prioridad ?? null,
+
+        // Asistentes (T-V21).
+        asistentesEstimados,
+        asistentes,
+
+        // Adjuntos vivos.
+        adjuntos: adjuntos.map((a) => ({
+          nombre: a.nombre_original,
+          mime: a.mime_type,
+          tamano: `${(a.tamano_bytes / 1024).toFixed(1)} KB`,
+          fecha: this.fechaIso(a.created_at),
+        })),
+
+        // Historial del flujo.
+        historial: solicitud.historial.map((h) => ({
+          evento: h.evento,
+          estadoAnterior: h.estado_anterior,
+          estadoNuevo: h.estado_nuevo,
+          usuario: h.usuario?.nombre ?? 'Sistema',
+          fecha: this.fechaPermiso(h.created_at),
+          comentario: h.comentario ?? null,
+        })),
+
+        // Comentarios.
+        comentarios: solicitud.comentarios.map((c) => ({
+          cuerpo: c.cuerpo,
+          tipo: c.tipo,
+          usuario: c.usuario?.nombre ?? 'Sistema',
+          fecha: this.fechaPermiso(c.created_at),
+        })),
+
+        // Campos extra relevantes (filtramos los ya modelados arriba).
+        camposExtra: Object.entries(camposExtra)
+          .filter(([k]) => !CAMPOS_EXTRA_FILTRADOS_PARA_PDF.has(k))
+          .map(([k, v]) => ({ label: CAMPOS_EXTRA_LABEL[k] ?? k, valor: formatCampoExtra(v) })),
+
+        // Subcontratista (placeholder si la solicitud no lo modela).
+        autorizamosA: empresa ?? 'n/a',
+
+        // Personal (placeholders — el cliente los rellena a mano).
+        personal: { nombre1: '', documento1: '', nombre2: '', documento2: '' },
+
+        // Bloque de remodelación (placeholders para firma/sello del responsable).
+        remodelacion: { responsable: '', sello: '', firma: '' },
+
+        // Subcontratista (placeholders por ahora; ver T-V21+).
+        subcontratista: {
+          contacto: '',
+          telefono: '',
+          equipos: '',
+          escalera: '',
+          otro: '',
+        },
+
+        // Autorizante (admin asignado).
+        autorizante: {
+          nombre: solicitud.admin_asignado?.nombre ?? 'n/a',
+          email: solicitud.admin_asignado?.email ?? 'n/a',
+          telefono: solicitud.admin_asignado?.telefono ?? 'n/a',
+        },
       };
     });
     const buffer = await this.jsreport.renderPdf('solicitud-permiso-pdf', data);
     return { filename: `permiso-${data.codigo}.pdf`, buffer };
   }
 
-  /** Fecha estilo formato del cliente: "28/Dec/2024 10:00:00" en TZ de la plaza. */
-  private fechaPermiso(date: Date | null): string {
-    if (!date) return 'n/a';
-    const d = new Date(date.getTime() - PLAZA_UTC_OFFSET_MS);
-    const dia = String(d.getUTCDate()).padStart(2, '0');
-    const mes = MESES_ABREV[d.getUTCMonth()];
-    const anio = d.getUTCFullYear();
-    const hh = String(d.getUTCHours()).padStart(2, '0');
-    const mm = String(d.getUTCMinutes()).padStart(2, '0');
-    const ss = String(d.getUTCSeconds()).padStart(2, '0');
-    return `${dia}/${mes}/${anio} ${hh}:${mm}:${ss}`;
+  /** Marca de agua para el PDF según estado (T-V21+: visual). */
+  private marcaAguaParaEstado(estado: string): {
+    texto: string;
+    clase: 'ok' | 'warn' | 'danger' | 'neutral';
+  } {
+    switch (estado) {
+      case 'aprobada':
+        return { texto: 'APROBADO', clase: 'ok' };
+      case 'rechazada':
+      case 'cancelada':
+        return { texto: estado.toUpperCase(), clase: 'danger' };
+      case 'borrador':
+        return { texto: 'BORRADOR', clase: 'neutral' };
+      default:
+        return { texto: 'PENDIENTE', clase: 'warn' };
+    }
   }
 
+    /** Fecha estilo formato del cliente: "28/Dec/2024 10:00:00" en TZ de la plaza. */
+    private fechaPermiso(date: Date | null): string {
+      if (!date) return 'n/a';
+      const d = new Date(date.getTime() - PLAZA_UTC_OFFSET_MS);
+      const dia = String(d.getUTCDate()).padStart(2, '0');
+      const mes = MESES_ABREV[d.getUTCMonth()];
+      const anio = d.getUTCFullYear();
+      const hh = String(d.getUTCHours()).padStart(2, '0');
+      const mm = String(d.getUTCMinutes()).padStart(2, '0');
+      const ss = String(d.getUTCSeconds()).padStart(2, '0');
+      return `${dia}/${mes}/${anio} ${hh}:${mm}:${ss}`;
+    }
+
+    /** Fecha ISO corta para tablas y secciones: "2026-12-15". */
+    private fechaIso(date: Date | null | undefined): string {
+      if (!date) return 'n/a';
+      const d = new Date(date.getTime() - PLAZA_UTC_OFFSET_MS);
+      const dia = String(d.getUTCDate()).padStart(2, '0');
+      const mes = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const anio = d.getUTCFullYear();
+      return `${anio}-${mes}-${dia}`;
+    }
+    
   /** T-144: primeros 10 registros para la previsualización (sin descarga). */
   async preview(
     entidad: 'solicitudes' | 'locales' | 'inquilinos',

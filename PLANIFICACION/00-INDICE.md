@@ -15,9 +15,9 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 | Concepto | Cantidad |
 |---|---|
 | Archivos de planificación | 15 (este + 14 módulos) |
-| Tareas técnicas (T-NNN) | 160 |
+| Tareas técnicas (T-NNN) | 161 |
 | Tareas de validación de SUPUESTOS (T-VNN) | 15 |
-| **Total de tareas** | **175** |
+| **Total de tareas** | **176** |
 
 ---
 
@@ -41,7 +41,8 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 | `11-reportes-panel.md` | T-135 … T-145 | 11 | 0 | 0% |
 | `12-seguridad-auditoria.md` | T-146 … T-152 | 7 | 0 | 0% |
 | `13-observabilidad-despliegue.md` | T-153 … T-160 | 8 | 0 | 0% |
-| **Total** | | **175** | **14** | **8%** |
+| `12-seguridad-auditoria.md` (T-161 agregado en sesión 2026-06-11) | T-146 … T-161 | 8 | 0 | 0% |
+| **Total** | | **176** | **14** | **8%** |
 
 > Nota 2026-06-06: los módulos 01–03 figuran con 0 en esta tabla aunque sus bitácoras los marcan completados — la tabla no se actualizó al cierre de esos módulos. Se actualizó solo la fila del módulo 04 en esta sesión; regularizar las filas 00–03 al revisarlas.
 

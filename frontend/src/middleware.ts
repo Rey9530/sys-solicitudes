@@ -20,9 +20,10 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  if (!req.auth) {
+  if (!req.auth || !req.auth.user?.id) {
     const loginUrl = new URL('/login', req.nextUrl.origin);
     loginUrl.searchParams.set('callbackUrl', pathname);
+    if (!req.auth?.user?.id) loginUrl.searchParams.set('expired', '1');
     return NextResponse.redirect(loginUrl);
   }
 

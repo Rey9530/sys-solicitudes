@@ -1,6 +1,10 @@
 import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { AuditoriaOutput, ListAuditoriaQuery } from '@app/contracts';
+import type {
+  AuditoriaOutput,
+  AuditoriaUsuario,
+  ListAuditoriaQuery,
+} from '@app/contracts';
 import { PrismaAdminService } from '../../prisma/prisma-admin.service';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
@@ -100,11 +104,28 @@ export class AuditoriaService {
       this.prismaAdmin.auditoria.count({ where }),
     ]);
 
+    // T-161: join batch con `usuario` para evitar N+1 en el frontend. Una sola
+    // query por página (≤ 20 ids). Si no hay items, no se ejecuta.
+    const usuarioIds = Array.from(
+      new Set(items.map((a) => a.usuario_id).filter((id): id is string => Boolean(id))),
+    );
+    const usuariosById = new Map<string, AuditoriaUsuario>();
+    if (usuarioIds.length > 0) {
+      const usuarios = await this.prismaAdmin.usuario.findMany({
+        where: { id: { in: usuarioIds } },
+        select: { id: true, nombre: true, email: true },
+      });
+      for (const u of usuarios) {
+        usuariosById.set(u.id, { id: u.id, nombre: u.nombre, email: u.email });
+      }
+    }
+
     return {
       items: items.map((a) => ({
         id: a.id,
         plazaId: a.plaza_id,
         usuarioId: a.usuario_id,
+        usuario: a.usuario_id ? (usuariosById.get(a.usuario_id) ?? null) : null,
         accion: a.accion,
         entidadTipo: a.entidad_tipo,
         entidadId: a.entidad_id,

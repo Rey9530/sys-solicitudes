@@ -78,6 +78,7 @@ model plaza {
   kpi_snapshots        kpi_snapshot[]
   categorias           categoria[]
   subcategorias        subcategoria[]
+  tipos_solicitud      solicitud_tipo_config[]
   solicitudes          solicitud[]
   solicitud_historial  solicitud_historial[]
   comentarios          comentario[]
@@ -470,6 +471,37 @@ model subcategoria_supervisor {
   @@id([subcategoria_id, usuario_id])
   @@index([usuario_id])
   @@map("subcategoria_supervisor")
+}
+
+/// Configuración por plaza de los tipos de solicitud canónicos
+/// (T-V20: TIPO_CONFIGURABLE_POR_PLAZA).
+///
+/// El `codigo` se mantiene como uno de los valores del enum `solicitud_tipo`
+/// y NO es editable: la columna `solicitud.tipo` lo guarda y la discriminated
+/// union de Zod depende de él. Lo configurable por plaza es:
+///   - `etiqueta`     → label que se muestra en wizard, reportes, etc.
+///   - `descripcion`  → ayuda contextual
+///   - `activo`       → ocultar del wizard y de los filtros
+///   - `orden`        → orden de aparición en el select
+///
+/// El `codigo='otro'` es siempre activo (regla de app + enforce backend).
+/// RLS heredado de plaza_id (policy en SQL manual de la migración).
+model solicitud_tipo_config {
+  id          String   @id @default(uuid()) @db.Uuid
+  plaza_id    String   @db.Uuid
+  codigo      String
+  etiqueta    String
+  descripcion String?
+  activo      Boolean  @default(true)
+  orden       Int      @default(0)
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime @updatedAt @db.Timestamptz(6)
+
+  plaza plaza @relation(fields: [plaza_id], references: [id], onDelete: Cascade)
+
+  @@unique([plaza_id, codigo])
+  @@index([plaza_id, activo, orden])
+  @@map("solicitud_tipo_config")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

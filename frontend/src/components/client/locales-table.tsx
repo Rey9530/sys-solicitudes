@@ -12,13 +12,19 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LocalEstadoBadge } from '@/components/estado-badge';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { confirmAction } from '@/lib/sweetalert';
 
 export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const onDelete = async (local: LocalOutput) => {
-    if (!confirm(`¿Desactivar el local "${local.codigo}"?`)) return;
+    const ok = await confirmAction({
+      title: `¿Desactivar el local "${local.codigo}"?`,
+      icon: 'warning',
+      confirmButtonText: 'Sí, desactivar',
+    });
+    if (!ok) return;
     setPendingId(local.id);
     const result = await deleteLocalAction(local.id);
     setPendingId(null);

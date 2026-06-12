@@ -2,13 +2,14 @@ import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import type { SolicitudDetailOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
-import { loadCategorias, loadLocales } from '@/lib/solicitudes-data';
+import { loadCategorias, loadLocales, loadTiposSolicitud } from '@/lib/solicitudes-data';
 import { SolicitudWizard } from '@/components/client/solicitud-wizard';
 import { PageHeader } from '@/components/ui/page-header';
 
 export const metadata: Metadata = { title: 'Editar solicitud' };
 
-/** Edición (T-080/T-089): solo en borrador o requerida_subsanacion (S-FS-F). */
+/** Edición (T-080/T-089): solo en borrador o requerida_subsanacion (S-FS-F).
+ *  T-V20: la lista de tipos también viene de la config por plaza. */
 export default async function EditarSolicitudPage({
   params,
 }: {
@@ -22,7 +23,11 @@ export default async function EditarSolicitudPage({
     redirect(`/inquilino/solicitudes/${id}`);
   }
 
-  const [categorias, locales] = await Promise.all([loadCategorias(), loadLocales()]);
+  const [categorias, locales, tiposConfig] = await Promise.all([
+    loadCategorias(),
+    loadLocales(),
+    loadTiposSolicitud(),
+  ]);
 
   return (
     <div className="page narrow">
@@ -35,7 +40,12 @@ export default async function EditarSolicitudPage({
           { label: 'Editar' },
         ]}
       />
-      <SolicitudWizard categorias={categorias} locales={locales} solicitud={solicitud} />
+      <SolicitudWizard
+        categorias={categorias}
+        locales={locales}
+        tipos={tiposConfig.map((t) => ({ codigo: t.codigo, etiqueta: t.etiqueta }))}
+        solicitud={solicitud}
+      />
     </div>
   );
 }

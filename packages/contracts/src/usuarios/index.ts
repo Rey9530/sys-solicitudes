@@ -49,6 +49,15 @@ export const ListUsuariosQuerySchema = PaginationSchema.extend({
 export type ListUsuariosQuery = z.infer<typeof ListUsuariosQuerySchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Deshabilitar usuario (soft delete) — RN-AU-5: si se deshabilita un
+// admin_plaza, se exige un motivo trazable (auditoría).
+
+export const DisableUsuarioSchema = z.object({
+  motivo: z.string().trim().min(3, 'Mínimo 3 caracteres').max(500).optional(),
+});
+export type DisableUsuarioInput = z.infer<typeof DisableUsuarioSchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Output
 
 export const UsuarioOutputSchema = z.object({

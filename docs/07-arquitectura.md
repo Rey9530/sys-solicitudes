@@ -306,6 +306,29 @@ sys-solicitudes/
 - **Branches:** `main` (protegida), `develop`, `feat/*`, `fix/*`, `release/*`.
 - **PRs:** requieren 1 aprobación + CI en verde.
 
+### 7.4.5. Convenciones de UI (diálogos de decisión)
+
+> **Decisión adoptada el 2026-06-10 (refactor de T-059-bis).**
+
+- **SweetAlert2** (`frontend/src/lib/sweetalert.ts`, v11.x) es la **única** librería permitida para diálogos modales de **decisión o confirmación destructiva** (deshabilitar, eliminar, resetear, reactivar, cerrar contrato, etc.).
+- **Prohibido** usar `window.confirm(...)` o `window.alert(...)` nativos:
+  - Look & feel inconsistente con la app.
+  - No respeta los límites `'use client'` / Server Components en Next.js.
+  - No es mockeable para tests futuros.
+- Wrapper estandarizado:
+  - `confirmAction({ title, text, icon, confirmButtonText, cancelButtonText, focusCancel })` → `Promise<boolean>`.
+  - `notifySuccess(title, text?)` y `notifyError(title, text?)` para feedback bloqueante.
+  - Por defecto, `icon: 'warning'` enfoca el botón **Cancelar** (acción segura por defecto).
+- **Toasts efímeros no modales** (operación exitosa, error recuperable, progreso) siguen yendo por **`sonner`** (`toast.success`, `toast.error`). Es más liviano y no bloquea la UI.
+- Toda nueva acción destructiva o de decisión que se añada en un módulo futuro debe importar `confirmAction` desde `@/lib/sweetalert`. La regla aplica a:
+  - Módulo 04 (locales, inquilinos, contratos — desactivar / cerrar / renovar).
+  - Módulo 05 (categorías, subcategorías — desactivar).
+  - Módulo 06/07 (solicitudes — cancelar, rechazar).
+  - Módulo 08 (adjuntos — eliminar).
+  - Módulo 09 (notificaciones — unsubscribe).
+  - Módulo 03 (plazas — desactivar).
+  - Cualquier pantalla admin futura.
+
 ### 7.4.4. Estructura de un módulo NestJS
 
 ```

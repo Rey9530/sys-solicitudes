@@ -14,6 +14,7 @@ import { LocalesModule } from './modules/locales/locales.module';
 import { InquilinosModule } from './modules/inquilinos/inquilinos.module';
 import { ContratosModule } from './modules/contratos/contratos.module';
 import { CategoriasModule } from './modules/categorias/categorias.module';
+import { TiposSolicitudModule } from './modules/tipos-solicitud/tipos-solicitud.module';
 import { SolicitudesModule } from './modules/solicitudes/solicitudes.module';
 import { AprobacionesModule } from './modules/aprobaciones/aprobaciones.module';
 import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
@@ -88,6 +89,7 @@ import { RolesGuard } from './common/guards/roles.guard';
     InquilinosModule,
     ContratosModule,
     CategoriasModule,
+    TiposSolicitudModule,
     // AprobacionesModule ANTES de SolicitudesModule: sus rutas estaticas
     // (/solicitudes/bandeja, /solicitudes/cron/*) deben registrarse antes
     // que el parametro :id del controller de solicitudes.

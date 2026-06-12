@@ -11,13 +11,19 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { confirmAction } from '@/lib/sweetalert';
 
 export function CategoriasTable({ categorias }: { categorias: CategoriaOutput[] }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const onDelete = async (categoria: CategoriaOutput) => {
-    if (!confirm(`¿Desactivar la categoría "${categoria.nombre}"?`)) return;
+    const ok = await confirmAction({
+      title: `¿Desactivar la categoría "${categoria.nombre}"?`,
+      icon: 'warning',
+      confirmButtonText: 'Sí, desactivar',
+    });
+    if (!ok) return;
     setPendingId(categoria.id);
     const result = await deleteCategoriaAction(categoria.id);
     setPendingId(null);

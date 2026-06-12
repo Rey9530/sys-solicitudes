@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -12,6 +12,7 @@ import { homeForRole } from '@/lib/home-redirect';
 
 export function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [submitting, setSubmitting] = useState(false);
   const {
     register,
@@ -21,6 +22,12 @@ export function LoginForm() {
     resolver: zodResolver(LoginSchema),
     defaultValues: { email: '', password: '' },
   });
+
+  useEffect(() => {
+    if (searchParams.get('expired') === '1') {
+      toast.error('Tu sesión expiró. Vuelve a iniciar sesión.');
+    }
+  }, [searchParams]);
 
   const onSubmit = async (values: LoginInput) => {
     setSubmitting(true);

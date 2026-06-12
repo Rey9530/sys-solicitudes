@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: 'Iniciar sesión' };
 
 export default async function LoginPage() {
   const session = await auth();
-  if (session?.user) {
+  if (session?.user && session.error !== 'RefreshTokenError') {
     redirect('/');
   }
 

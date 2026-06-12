@@ -8,6 +8,7 @@ import { File as FileIcon, Loader2, Trash2, Download, Image as ImageIcon } from 
 import type { AdjuntoOutput } from '@app/contracts';
 import { Button } from '@/components/ui/button';
 import { formatDateInPlazaTz } from '@/lib/datetime';
+import { confirmAction } from '@/lib/sweetalert';
 
 export type AdjuntoEntidadTipo = 'solicitud' | 'local' | 'contrato';
 
@@ -143,7 +144,13 @@ export function AdjuntoUploader({
   };
 
   const onDelete = async (adj: AdjuntoOutput) => {
-    if (!confirm(`¿Eliminar "${adj.nombreOriginal}"? El archivo se moverá a cuarentena.`)) return;
+    const ok = await confirmAction({
+      title: `¿Eliminar "${adj.nombreOriginal}"?`,
+      text: 'El archivo se moverá a cuarentena.',
+      icon: 'warning',
+      confirmButtonText: 'Sí, eliminar',
+    });
+    if (!ok) return;
     setPendingId(adj.id);
     const r = await eliminarAction(adj.id);
     setPendingId(null);

@@ -1,135 +1,570 @@
 <!doctype html>
 <html lang="es">
-<head><meta charset="utf-8" />
-<style>
-  body { font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #18181b; font-size: 11px; line-height: 1.4; }
-  .logo { font-size: 26px; font-weight: 700; letter-spacing: 0.5px; margin: 0 0 14px; }
-  .logo img { height: 44px; }
-  .titulo { text-align: center; margin-bottom: 10px; }
-  .titulo .t1 { font-size: 14px; }
-  .titulo .t1 b { margin-right: 18px; }
-  .titulo .estado { margin-top: 6px; }
-  .badge { display: inline-block; padding: 3px 12px; border: 1px solid #16a34a; border-radius: 3px; background: #4ade80; color: #052e16; font-weight: 600; }
-  .badge.neutro { border-color: #a1a1aa; background: #e4e4e7; color: #27272a; }
-  .badge.rojo { border-color: #dc2626; background: #fca5a5; color: #450a0a; }
-  h2 { font-size: 13px; margin: 18px 0 0; padding-bottom: 6px; border-bottom: 2px solid #18181b; }
-  h2.center { text-align: center; border: 0; padding-bottom: 0; margin-bottom: 0; }
-  .sep { border-bottom: 2px solid #18181b; margin: 4px 0 12px; }
-  .ficha { margin: 10px 0 4px; }
-  .ficha .row { display: flex; gap: 8px; margin-bottom: 4px; }
-  .ficha .row .lbl { min-width: 230px; color: #3f3f46; }
-  .ficha .row .val { font-weight: 600; }
-  .lista .row { display: flex; gap: 12px; margin-bottom: 3px; }
-  .lista .lbl { min-width: 230px; color: #3f3f46; }
-  .clausula p { margin: 8px 0; text-align: justify; }
-  ol.literales { margin: 8px 0; padding-left: 18px; }
-  ol.literales li { margin-bottom: 6px; text-align: justify; }
-  .firma-box { margin-top: 6px; height: 46px; }
-  .autoriza { margin-top: 18px; }
-  .na { color: #71717a; }
-</style></head>
-<body>
-  <div class="logo">
-    {{#if plaza.logoUrl}}<img src="{{{plaza.logoUrl}}}" alt="{{plaza.nombreComercial}}" />{{else}}{{plaza.nombreComercial}}{{/if}}
-  </div>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    @page {
+      size: A4;
+      margin: 16mm 14mm 18mm 14mm;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      color: #18181b;
+      font-size: 10.5px;
+      line-height: 1.45;
+      margin: 0;
+    }
 
-  <div class="titulo">
-    <div class="t1"><b>Permiso de Trabajos</b> VARIOS-INQUILINOS-SUBCONTRATISTAS</div>
-    <div class="estado">Estado de la solicitud:
-      <span class="badge {{estadoClase}}">{{estadoLabel}}</span>
+    /* ── Header (banda superior con color primario de la plaza) ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 10px 14px;
+      background: {{plaza.colorPrimario}};
+      color: #fff;
+      border-radius: 4px;
+      margin-bottom: 14px;
+    }
+    .header .logo img { height: 38px; filter: brightness(0) invert(1); }
+    .header .logo .fallback { font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+    .header .meta { flex: 1; }
+    .header .meta h1 { font-size: 17px; margin: 0 0 2px; font-weight: 700; }
+    .header .meta .sub { font-size: 10px; opacity: 0.9; }
+    .header .doc-title {
+      text-align: right;
+      font-size: 11px;
+      opacity: 0.95;
+    }
+    .header .doc-title b { display: block; font-size: 13px; letter-spacing: 0.5px; }
+
+    /* ── Marca de agua ── */
+    .marca-agua {
+      position: fixed;
+      top: 45%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      font-size: 110px;
+      font-weight: 800;
+      letter-spacing: 8px;
+      opacity: 0.08;
+      pointer-events: none;
+      z-index: 0;
+      color: #18181b;
+    }
+    .marca-agua.ok      { color: #16a34a; }
+    .marca-agua.warn    { color: #d97706; }
+    .marca-agua.danger  { color: #dc2626; }
+    .marca-agua.neutral { color: #71717a; }
+
+    /* ── Bloque identificación rápida ── */
+    .ident {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 8px 12px;
+      border: 1px solid #e4e4e7;
+      border-radius: 4px;
+      background: #fafafa;
+      margin-bottom: 14px;
+    }
+    .ident .codigo { font-family: 'SF Mono', 'Consolas', monospace; font-weight: 700; font-size: 12px; }
+    .ident .titulo { flex: 1; font-weight: 600; }
+    .ident .badge {
+      display: inline-block;
+      padding: 3px 12px;
+      border-radius: 3px;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.5px;
+    }
+    .ident .badge.ok      { background: #16a34a; color: #fff; }
+    .ident .badge.warn    { background: #d97706; color: #fff; }
+    .ident .badge.danger  { background: #dc2626; color: #fff; }
+    .ident .badge.neutral { background: #52525b; color: #fff; }
+
+    /* ── Secciones ── */
+    h2 {
+      font-size: 12px;
+      font-weight: 700;
+      margin: 18px 0 6px;
+      padding: 0 0 4px 8px;
+      border-left: 4px solid {{plaza.colorPrimario}};
+      color: #18181b;
+      letter-spacing: 0.3px;
+    }
+    h2 small { color: #71717a; font-weight: 400; font-size: 9.5px; margin-left: 6px; }
+
+    /* ── Tabla de datos clave/valor ── */
+    table.ficha {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 4px;
+    }
+    table.ficha td {
+      padding: 3px 8px;
+      border-bottom: 1px solid #f1f1f4;
+      vertical-align: top;
+    }
+    table.ficha td.k {
+      width: 32%;
+      color: #52525b;
+      font-weight: 500;
+    }
+    table.ficha td.v { font-weight: 600; }
+    table.ficha tr:last-child td { border-bottom: 0; }
+
+    /* ── Tabla de items (asistentes, adjuntos, historial, comentarios) ── */
+    table.t {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 4px;
+      font-size: 10px;
+    }
+    table.t th {
+      background: #f4f4f5;
+      color: #27272a;
+      text-align: left;
+      padding: 5px 8px;
+      font-weight: 600;
+      font-size: 10px;
+      border-bottom: 2px solid {{plaza.colorPrimario}};
+    }
+    table.t td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #e4e4e7;
+    }
+    table.t tr:nth-child(even) td { background: #fafafa; }
+    table.t .na { color: #a1a1aa; font-style: italic; }
+
+    /* ── Cláusula de compromiso ── */
+    .clausula { padding: 0 4px; }
+    .clausula p { margin: 6px 0; text-align: justify; }
+    ol.literales { margin: 6px 0 6px 16px; padding: 0; }
+    ol.literales li { margin-bottom: 4px; text-align: justify; font-size: 10px; }
+
+    /* ── Bloque de firma ── */
+    .firma-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 8px;
+    }
+    .firma-box {
+      border: 1px dashed #a1a1aa;
+      border-radius: 3px;
+      height: 56px;
+      margin: 4px 0 2px;
+      position: relative;
+    }
+    .firma-box .lbl {
+      position: absolute;
+      bottom: 2px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      font-size: 8.5px;
+      color: #71717a;
+      font-style: italic;
+    }
+
+    /* ── Badges de prioridad y tipo ── */
+    .prio {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 2px;
+      font-weight: 700;
+      font-size: 9px;
+      color: #fff;
+    }
+    .prio-A { background: #dc2626; }
+    .prio-B { background: #ea580c; }
+    .prio-C { background: #ca8a04; }
+    .prio-D { background: #65a30d; }
+    .prio-F { background: #4d7c0f; }
+
+    .tipo-tag {
+      display: inline-block;
+      padding: 1px 7px;
+      border-radius: 2px;
+      font-weight: 600;
+      font-size: 9px;
+      background: #e0e7ff;
+      color: #3730a3;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Utilidades ── */
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .muted { color: #71717a; }
+    .empty { color: #a1a1aa; font-style: italic; font-size: 9.5px; padding: 4px 8px; }
+    .descripcion {
+      padding: 8px 10px;
+      background: #fafafa;
+      border-left: 3px solid #d4d4d8;
+      margin: 4px 0;
+      white-space: pre-wrap;
+    }
+
+    /* ── Footer con paginación ── */
+    .footer {
+      position: fixed;
+      bottom: 8mm;
+      left: 14mm;
+      right: 14mm;
+      text-align: center;
+      font-size: 8.5px;
+      color: #71717a;
+      border-top: 1px solid #e4e4e7;
+      padding-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Marca de agua -->
+  <div class="marca-agua {{marcaAgua.clase}}">{{marcaAgua.texto}}</div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      {{#if plaza.logoUrl}}
+        <img src="{{{plaza.logoUrl}}}" alt="{{plaza.nombreComercial}}" />
+      {{else}}
+        <span class="fallback">{{plaza.nombreComercial}}</span>
+      {{/if}}
+    </div>
+    <div class="meta">
+      <h1>{{plaza.nombreComercial}}</h1>
+      <div class="sub">Permiso de Trabajos · Sistema Plazapp</div>
+    </div>
+    <div class="doc-title">
+      <b>PERMISO</b>
+      <div>Generado: {{generadoEl}}</div>
     </div>
   </div>
 
-  <h2 class="center">Datos del solicitante</h2>
-  <div class="sep"></div>
-  <div class="ficha">
-    <div class="row"><span class="lbl">Solicitante:</span><span class="val">{{solicitante}}</span></div>
-    <div class="row"><span class="lbl">Cliente:</span><span class="val">{{cliente}}</span></div>
-    <div class="row"><span class="lbl">Nivel:</span><span class="val">{{nivel}}</span></div>
-    <div class="row"><span class="lbl">Local:</span><span class="val">{{local}}</span></div>
+  <!-- Identificación -->
+  <div class="ident">
+    <span class="codigo">{{codigo}}</span>
+    <span class="titulo">{{titulo}}</span>
+    <span class="tipo-tag">{{tipo}}</span>
+    <span class="prio prio-{{prioridad}}">Prioridad {{prioridad}}</span>
+    <span class="badge {{estadoClase}}">{{estadoLabel}}</span>
   </div>
 
-  <h2>Información de la solicitud</h2>
-  <div class="ficha lista">
-    <div class="row"><span class="lbl">Fecha de la solicitud:</span><span>{{fechaSolicitud}}</span></div>
-    <div class="row"><span class="lbl">Fecha de la expiración:</span><span>{{fechaExpiracion}}</span></div>
-    <div class="row"><span class="lbl">Firma del solicitante:</span><span class="na">{{firmaSolicitante}}</span></div>
-  </div>
+  <!-- 1. Datos del solicitante -->
+  <h2>Datos del solicitante</h2>
+  <table class="ficha">
+    <tr><td class="k">Nombre</td><td class="v">{{solicitante.nombre}}</td></tr>
+    <tr><td class="k">Email</td><td class="v">{{solicitante.email}}</td></tr>
+    <tr><td class="k">Teléfono</td><td class="v">{{solicitante.telefono}}</td></tr>
+  </table>
 
-  <h2>Información de la solicitud</h2>
-  <div class="ficha lista">
-    <div class="row"><span class="lbl">Tipo de trabajo</span><span>{{tipoTrabajo}}</span></div>
-    <div class="row"><span class="lbl">Descripción del trabajo a realizar</span><span>{{descripcion}}</span></div>
-    <div class="row"><span class="lbl">Autorizamos a</span><span>{{autorizamosA}}</span></div>
-    <div class="row"><span class="lbl">Nombre del subcontratista</span><span>{{nombreSubcontratista}}</span></div>
-    <div class="row"><span class="lbl">Teléfono de contacto</span><span>{{telefonoContacto}}</span></div>
-    <div class="row"><span class="lbl">Email</span><span>{{email}}</span></div>
-    {{#each camposExtra}}
-    <div class="row"><span class="lbl">{{this.label}}</span><span>{{this.valor}}</span></div>
-    {{/each}}
-  </div>
+  <!-- 2. Cliente (inquilino) -->
+  <h2>Cliente <small>inquilino</small></h2>
+  <table class="ficha">
+    <tr>
+      <td class="k">Razón social</td><td class="v">{{cliente.razonSocial}}</td>
+      <td class="k">Identificación</td><td class="v">{{cliente.identificacion}}</td>
+    </tr>
+    <tr>
+      <td class="k">Contacto</td><td class="v">{{cliente.contactoNombre}}</td>
+      <td class="k">Email contacto</td><td class="v">{{cliente.contactoEmail}}</td>
+    </tr>
+    <tr>
+      <td class="k">Teléfono contacto</td><td class="v">{{cliente.contactoTelefono}}</td>
+      <td class="k">Dirección</td><td class="v">{{cliente.direccion}}</td>
+    </tr>
+  </table>
 
-  <h2>Personal involucrado</h2>
-  <div class="ficha lista">
-    <div class="row"><span class="lbl">Nombre de la persona 1</span><span class="na">{{personal.nombre1}}</span></div>
-    <div class="row"><span class="lbl">Tipo y número de documento 1</span><span class="na">{{personal.documento1}}</span></div>
-    <div class="row"><span class="lbl">Nombre de la persona 2</span><span class="na">{{personal.nombre2}}</span></div>
-    <div class="row"><span class="lbl">Tipo y número de documento 2</span><span class="na">{{personal.documento2}}</span></div>
-  </div>
+  <!-- 3. Local -->
+  <h2>Local</h2>
+  <table class="ficha">
+    <tr>
+      <td class="k">Código</td><td class="v">{{local.codigo}}</td>
+      <td class="k">Nombre</td><td class="v">{{local.nombre}}</td>
+    </tr>
+    <tr>
+      <td class="k">Piso</td><td class="v">{{local.piso}}</td>
+      <td class="k">Sector</td><td class="v">{{local.sector}}</td>
+    </tr>
+    <tr>
+      <td class="k">Superficie</td><td class="v">{{local.metraje}}</td>
+      <td class="k">Estado</td><td class="v">{{local.estado}}</td>
+    </tr>
+  </table>
 
+  <!-- 4. Contrato vigente -->
+  <h2>Contrato vigente</h2>
+  {{#if contrato}}
+    <table class="ficha">
+      <tr>
+        <td class="k">ID</td><td class="v">{{contrato.id}}</td>
+        <td class="k">Monto</td><td class="v">{{contrato.monto}}</td>
+      </tr>
+      <tr>
+        <td class="k">Fecha inicio</td><td class="v">{{contrato.fechaInicio}}</td>
+        <td class="k">Fecha fin</td><td class="v">{{contrato.fechaFin}}</td>
+      </tr>
+      {{#if contrato.condiciones}}
+        <tr><td class="k">Condiciones</td><td colspan="3" class="v">{{contrato.condiciones}}</td></tr>
+      {{/if}}
+    </table>
+  {{else}}
+    <p class="empty">Sin contrato vigente asociado al local e inquilino de esta solicitud.</p>
+  {{/if}}
+
+  <!-- 5. Datos de la solicitud -->
+  <h2>Datos de la solicitud</h2>
+  <table class="ficha">
+    <tr>
+      <td class="k">Categoría</td><td class="v">{{categoria}}</td>
+      <td class="k">Subcategoría</td>
+      <td class="v">
+        {{subcategoria}}
+        {{#if subcategoriaPrioridad}}<span class="muted">(prioridad heredada {{subcategoriaPrioridad}})</span>{{/if}}
+      </td>
+    </tr>
+    <tr>
+      <td class="k">Creada</td><td class="v">{{fechaCreacion}}</td>
+      <td class="k">Enviada</td><td class="v">{{fechaSolicitud}}</td>
+    </tr>
+    <tr>
+      <td class="k">Asignada</td><td class="v">{{fechaAsignada}}</td>
+      <td class="k">Decidida</td><td class="v">{{fechaDecision}}</td>
+    </tr>
+    {{#if fechaExpiracion}}
+      <tr>
+        <td class="k">Válida hasta</td>
+        <td colspan="3" class="v">
+          {{fechaExpiracion}} <span class="muted">({{plazoPermisoDias}} días desde la aprobación)</span>
+        </td>
+      </tr>
+    {{/if}}
+  </table>
+
+  {{#if fechaEventoInicio}}
+    <h2>Fecha del evento <small>solo tipo evento</small></h2>
+    <table class="ficha">
+      <tr>
+        <td class="k">Inicio</td>
+        <td class="v">
+          {{fechaEventoInicio}}{{#if horaInicio}} {{horaInicio}}{{/if}}
+        </td>
+        <td class="k">Fin</td>
+        <td class="v">
+          {{fechaEventoFin}}{{#if horaFin}} {{horaFin}}{{/if}}
+        </td>
+      </tr>
+    </table>
+  {{/if}}
+
+  {{#if requiereAprobacionEspecial}}
+    <p class="empty" style="background:#fef3c7; color:#92400e; padding:6px 10px; border-radius:3px;">
+      <b>⚠ Requiere aprobación especial</b> — supera el umbral de asistentes configurado por la plaza.
+    </p>
+  {{/if}}
+
+  <h2>Descripción</h2>
+  <div class="descripcion">{{descripcion}}</div>
+
+  <!-- 6. Asistentes (T-V21) -->
+  {{#if asistentes}}
+    <h2>Asistentes <small>total: {{asistentesEstimados}}</small></h2>
+    <table class="t">
+      <thead>
+        <tr><th style="width:6%">N</th><th style="width:48%">Nombre</th><th>Documento</th></tr>
+      </thead>
+      <tbody>
+        {{#each asistentes}}
+          <tr>
+            <td>{{this.n}}</td>
+            <td>{{this.nombre}}</td>
+            <td>{{this.documento}}</td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  {{else}}
+    {{#if asistentesEstimados}}
+      <h2>Asistentes</h2>
+      <p class="empty">{{asistentesEstimados}} asistente(s) estimado(s) sin detalle nominal.</p>
+    {{/if}}
+  {{/if}}
+
+  <!-- 7. Adjuntos -->
+  <h2>Adjuntos <small>archivos adjuntos a la solicitud</small></h2>
+  {{#if adjuntos}}
+    <table class="t">
+      <thead>
+        <tr><th style="width:5%">N</th><th>Nombre</th><th style="width:20%">Tipo</th><th style="width:14%">Tamaño</th><th style="width:16%">Subido</th></tr>
+      </thead>
+      <tbody>
+        {{#each adjuntos}}
+          <tr>
+            <td>{{@index}}</td>
+            <td>{{this.nombre}}</td>
+            <td>{{this.mime}}</td>
+            <td>{{this.tamano}}</td>
+            <td>{{this.fecha}}</td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  {{else}}
+    <p class="empty">Sin adjuntos.</p>
+  {{/if}}
+
+  <!-- 8. Campos extra relevantes -->
+  {{#if camposExtra}}
+    <h2>Información adicional</h2>
+    <table class="ficha">
+      {{#each camposExtra}}
+        <tr><td class="k">{{this.label}}</td><td class="v">{{this.valor}}</td></tr>
+      {{/each}}
+    </table>
+  {{/if}}
+
+  <!-- 9. Personal involucrado (placeholders para firma manual) -->
+  <h2>Personal involucrado <small>completar a mano al imprimir</small></h2>
+  <table class="ficha">
+    <tr><td class="k">Nombre 1</td><td class="v na">{{personal.nombre1}}</td>
+        <td class="k">Documento 1</td><td class="v na">{{personal.documento1}}</td></tr>
+    <tr><td class="k">Nombre 2</td><td class="v na">{{personal.nombre2}}</td>
+        <td class="k">Documento 2</td><td class="v na">{{personal.documento2}}</td></tr>
+  </table>
+
+  <!-- 10. Datos del subcontratista (placeholders) -->
+  <h2>Datos del subcontratista <small>completar a mano al imprimir</small></h2>
+  <table class="ficha">
+    <tr><td class="k">Empresa autorizada</td><td colspan="3" class="v">{{autorizamosA}}</td></tr>
+    <tr><td class="k">En caso de accidente llamar a</td><td class="v na">{{subcontratista.contacto}}</td>
+        <td class="k">Teléfono</td><td class="v na">{{subcontratista.telefono}}</td></tr>
+    <tr><td class="k">Equipos a utilizar</td><td class="v na">{{subcontratista.equipos}}</td>
+        <td class="k">Escalera</td><td class="v na">{{subcontratista.escalera}}</td></tr>
+    <tr><td class="k">Otro</td><td colspan="3" class="v na">{{subcontratista.otro}}</td></tr>
+  </table>
+
+  <!-- 11. Historial del flujo -->
+  <h2>Historial del flujo</h2>
+  {{#if historial}}
+    <table class="t">
+      <thead>
+        <tr><th style="width:14%">Fecha</th><th style="width:18%">Evento</th><th style="width:14%">Estado</th><th style="width:22%">Usuario</th><th>Comentario</th></tr>
+      </thead>
+      <tbody>
+        {{#each historial}}
+          <tr>
+            <td>{{this.fecha}}</td>
+            <td>{{this.evento}}</td>
+            <td>
+              {{#if this.estadoAnterior}}<span class="muted">{{this.estadoAnterior}}</span> → {{/if}}
+              <b>{{this.estadoNuevo}}</b>
+            </td>
+            <td>{{this.usuario}}</td>
+            <td>{{this.comentario}}</td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  {{else}}
+    <p class="empty">Sin eventos registrados.</p>
+  {{/if}}
+
+  <!-- 12. Comentarios -->
+  {{#if comentarios}}
+    <h2>Comentarios <small>comentarios del flujo</small></h2>
+    <table class="t">
+      <thead>
+        <tr><th style="width:14%">Fecha</th><th style="width:14%">Tipo</th><th style="width:22%">Usuario</th><th>Cuerpo</th></tr>
+      </thead>
+      <tbody>
+        {{#each comentarios}}
+          <tr>
+            <td>{{this.fecha}}</td>
+            <td>{{this.tipo}}</td>
+            <td>{{this.usuario}}</td>
+            <td>{{this.cuerpo}}</td>
+          </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  {{/if}}
+
+  <!-- 13. Cláusula de compromiso (formato del cliente) -->
   <h2>Cláusula de compromiso</h2>
   <div class="clausula">
     <p>Me comprometo a la supervisión y cumplimiento por parte del subcontratista a lo
       establecido en el Reglamento y Normativa de Centro Comercial, según el decreto
-      <b>254 Ley General de Prevención de riesgos</b> en lugares de trabajo de lo contrario,
+      <b>254 Ley General de Prevención de riesgos</b> en lugares de trabajo; de lo contrario,
       autorizo la suspensión de sus labores y el cargo económico que corresponda en caso de
-      daño a terceros, así como lo indica los literales de la &ldquo;A&rdquo; a la &ldquo;G&rdquo;.</p>
-    <p class="na">Compromiso del subcontratista (marcar de leído)</p>
+      daño a terceros, así como lo indican los literales de la &ldquo;A&rdquo; a la &ldquo;G&rdquo;.</p>
+    <p class="muted" style="font-style:italic;">Compromiso del subcontratista (marcar de leído)</p>
     <ol class="literales" type="A">
       <li>Todo el personal debe usar su EPP (equipo de protección personal) adecuado para la
-        realización de la obra, casco, chaleco, guantes, taco de ISSS, botas, lentes, arnés,
+        realización de la obra: casco, chaleco, guantes, taco de ISSS, botas, lentes, arnés,
         escalera vertical, conos o cinta amarilla para delimitar el área de trabajo.</li>
-      <li>En caso de realizar trabajos críticos en altura superior a 1.50mts, trabajos con
+      <li>En caso de realizar trabajos críticos en altura superior a 1.50 m, trabajos con
         fuentes de calor, polvo, olor y sustancias peligrosas; trabajos en espacios confinados
-        y trabajos eléctricos, deben de gestionar los permisos correspondientes en el
+        y trabajos eléctricos, deben gestionar los permisos correspondientes en el
         departamento de seguridad.</li>
       <li>Deben atender las recomendaciones del delegado de seguridad Industrial y supervisores
-        de seguridad, con el objetivo de recibir la obra bajo normativas de Centro comercial.</li>
+        de seguridad, con el objetivo de recibir la obra bajo normativas de Centro Comercial.</li>
       <li>Deben respetar las normativas NEC, Sanitarias, Códigos de Telefonía, sistemas
         especiales y los diseños aprobados de equipo de A/A.</li>
-      <li>Atender los procedimientos de seguridad laboral e higiene indicadas por el Centro
-        comercial, durante el día, solamente pueden trabajar en actividades que no generen
+      <li>Atender los procedimientos de seguridad laboral e higiene indicados por el Centro
+        Comercial; durante el día solamente pueden trabajar en actividades que no generen
         ruido, polvo u olores fuertes.</li>
-      <li>Entrada y salida por zona de carga determinada.</li>
+      <li>Entrada y salida por la zona de carga determinada.</li>
       <li>Por normativa de Seguridad e Higiene todos los residuos de pintura, pastas y similares
-        deberán ser retirados del local, por ningún motivo deben dejarse en en lo resumideros.</li>
+        deberán ser retirados del local; por ningún motivo deben dejarse en los resumideros.</li>
     </ol>
   </div>
 
-  <h2>Locales en Remodelación</h2>
-  <div class="ficha lista">
-    <div class="row"><span class="lbl">Nombre del responsable del proyecto</span><span class="na">{{remodelacion.responsable}}</span></div>
-    <div class="row"><span class="lbl">Sello del responsable del proyecto</span><span class="na">{{remodelacion.sello}}</span></div>
-    <div class="row"><span class="lbl">Firma del responsable del proyecto</span><span class="na">{{remodelacion.firma}}</span></div>
-  </div>
+  <!-- 14. Locales en remodelación (placeholders de firma) -->
+  <h2>Responsable del proyecto <small>completar a mano al imprimir</small></h2>
+  <table class="ficha">
+    <tr><td class="k">Nombre del responsable</td><td class="v na">{{remodelacion.responsable}}</td>
+        <td class="k">Sello</td><td class="v na">{{remodelacion.sello}}</td></tr>
+  </table>
 
-  <h2>Datos del subcontratista</h2>
-  <div class="ficha lista">
-    <div class="row"><span class="lbl">En caso de accidente llamar a</span><span class="na">{{subcontratista.contacto}}</span></div>
-    <div class="row"><span class="lbl">Teléfono</span><span class="na">{{subcontratista.telefono}}</span></div>
-    <div class="row"><span class="lbl">Equipos que utilizaremos</span><span class="na">{{subcontratista.equipos}}</span></div>
-    <div class="row"><span class="lbl">Escalera</span><span class="na">{{subcontratista.escalera}}</span></div>
-    <div class="row"><span class="lbl">Otro</span><span class="na">{{subcontratista.otro}}</span></div>
-  </div>
-
-  <div class="autoriza">
-    <h2>Autorizado por {{plaza.nombreComercial}}</h2>
-    <div class="ficha lista">
-      <div class="row"><span class="lbl">Jefe de Plaza:</span><span class="val">{{jefePlaza}}</span></div>
+  <!-- 15. Firmas -->
+  <h2>Firmas</h2>
+  <div class="firma-grid">
+    <div>
+      <div style="font-size:10px; color:#52525b; margin-bottom:2px;">Firma del solicitante</div>
+      <div class="firma-box"><span class="lbl">{{solicitante.nombre}}</span></div>
     </div>
-    <div class="row"><span class="lbl">Firma:</span></div>
-    <div class="firma-box"></div>
-    <div class="row"><span class="lbl">Sello:</span></div>
+    <div>
+      <div style="font-size:10px; color:#52525b; margin-bottom:2px;">Firma del responsable del proyecto</div>
+      <div class="firma-box"><span class="lbl">_____________________________</span></div>
+    </div>
+  </div>
+
+  <!-- 16. Autorizado por -->
+  <h2>Autorizado por {{plaza.nombreComercial}}</h2>
+  <table class="ficha">
+    <tr><td class="k">Autorizante</td><td class="v">{{autorizante.nombre}}</td>
+        <td class="k">Email</td><td class="v">{{autorizante.email}}</td></tr>
+    <tr><td class="k">Teléfono</td><td class="v">{{autorizante.telefono}}</td>
+        <td class="k">Jefe de Plaza</td><td class="v">{{autorizante.nombre}}</td></tr>
+  </table>
+  <div class="firma-grid" style="margin-top:10px;">
+    <div>
+      <div style="font-size:10px; color:#52525b; margin-bottom:2px;">Firma del autorizante</div>
+      <div class="firma-box"><span class="lbl">{{autorizante.nombre}}</span></div>
+    </div>
+    <div>
+      <div style="font-size:10px; color:#52525b; margin-bottom:2px;">Sello institucional</div>
+      <div class="firma-box"><span class="lbl">{{plaza.nombreComercial}}</span></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    {{plaza.nombreComercial}} · {{codigo}} · Generado el {{generadoEl}}
   </div>
 </body>
 </html>

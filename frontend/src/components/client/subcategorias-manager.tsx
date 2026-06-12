@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { confirmAction } from '@/lib/sweetalert';
 
 export interface StaffOption {
   id: string;
@@ -79,7 +80,12 @@ export function SubcategoriasManager({
   };
 
   const onDelete = async (sub: SubcategoriaDetailOutput) => {
-    if (!confirm(`¿Desactivar la subcategoría "${sub.nombre}"?`)) return;
+    const ok = await confirmAction({
+      title: `¿Desactivar la subcategoría "${sub.nombre}"?`,
+      icon: 'warning',
+      confirmButtonText: 'Sí, desactivar',
+    });
+    if (!ok) return;
     setPendingId(sub.id);
     const result = await deleteSubcategoriaAction(categoriaId, sub.id);
     setPendingId(null);

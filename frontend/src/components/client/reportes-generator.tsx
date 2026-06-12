@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import type { SolicitudTipo } from '@app/contracts';
 import { Button } from '@/components/ui/button';
 import { previewReporteAction } from '@/app/(admin-plaza)/admin/reportes/actions';
 
@@ -20,16 +21,18 @@ const ESTADOS_SOLICITUD = [
   'rechazada',
   'cancelada',
 ];
-const TIPOS = ['mantenimiento', 'evento', 'remodelacion', 'otro'];
 const ESTADOS_LOCAL = ['disponible', 'alquilado', 'en_mantenimiento', 'fuera_de_servicio'];
 
-/** T-144: generador de reportes con filtros contextuales y preview. */
+/** T-144: generador de reportes con filtros contextuales y preview.
+ *  T-V20: la lista de tipos viene de la config por plaza (etiqueta visible). */
 export function ReportesGenerator({
   locales,
   inquilinos,
+  tipos,
 }: {
   locales: Array<{ id: string; label: string }>;
   inquilinos: Array<{ id: string; label: string }>;
+  tipos: Array<{ codigo: SolicitudTipo; etiqueta: string }>;
 }) {
   const [entidad, setEntidad] = useState<string>('solicitudes');
   const [formato, setFormato] = useState<string>('csv');
@@ -117,9 +120,9 @@ export function ReportesGenerator({
                 onChange={(e) => setF('tipo', e.target.value)}
               >
                 <option value="">Todos</option>
-                {TIPOS.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
+                {tipos.map((t) => (
+                  <option key={t.codigo} value={t.codigo}>
+                    {t.etiqueta}
                   </option>
                 ))}
               </select>

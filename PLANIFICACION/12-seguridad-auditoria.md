@@ -15,6 +15,7 @@
 | T-150 | Implementar captura automática de auditoría en POST/PATCH/DELETE (Interceptor) | Alta | Completada |
 | T-151 | Implementar sanitización HTML en descripciones de solicitudes | Alta | Completada |
 | T-152 | Implementar excepciones RFC 7807 con códigos de dominio | Alta | Completada |
+| T-161 | UI: página de auditoría para `admin_plaza` y cierre de huecos de auth | Alta | Completada |
 
 ---
 
@@ -125,6 +126,7 @@
   - ⚠️ Decisión de alcance (owner 2026-06-07): el interceptor es **OPT-IN y cubre huecos** — el survey confirmó que los ~45 endpoints de mutación de los módulos 02-11 YA auditan manualmente desde sus services (con antes/después curados). Migrarlos al interceptor duplicaría registros o degradaría la calidad; las llamadas manuales se mantienen y el interceptor es el patrón OFICIAL para endpoints nuevos.
   - Huecos cerrados: `POST /auth/reset-password/confirm` → `@Auditable('auth.password_reset_confirm', omitirBody: true)` (el body trae token+password). `@SkipAuditoria()` aplicado a los 3 endpoints dev de cron de aprobaciones (documental: el interceptor es opt-in, pero queda vinculante si se pasa a opt-out).
   - Verificado end-to-end: flujo completo de reset → fila en `auditoria` con accion/entidad/ip y antes/despues null (omitirBody); password del usuario de prueba restaurado tras el test.
+  - ➕ **2026-06-11 (T-161):** se aplicaron 5 `@Auditable` adicionales a los endpoints de `auth.controller.ts` (`login`, `refresh`, `logout`, `reset-password`, `change-password`) y un `@SkipAuditoria()` al cron dev de contratos (`test-alertas`). Cobertura de mutating endpoints al 100%. Ver T-161 para el detalle de la UI y de la decisión sobre el doble registro de login (`auditoria` + `auditoria_login`).
 
 ### T-151 — Implementar sanitización HTML en descripciones de solicitudes
 
@@ -175,3 +177,48 @@
   - ⚠️ Decisión de alcance (owner 2026-06-07): SIN refactor masivo — los throws actuales (`new XxxException({ code, title, message })`) ya producen el envelope correcto vía filters y quedan documentados como conformes; `DomainException` es la forma canónica para código nuevo.
   - Fix en `HttpExceptionFilter`: `instance` y `requestId` faltaban en sus dos caminos (el AllExceptionsFilter sí los tenía) — ahora TODOS los errores incluyen el envelope completo. Verificado: 404 de dominio responde `type/title/status/detail/instance/code/requestId` exactos al formato del plan.
   - 5xx con stack en pino ✓ (filter); 4xx sin stack ni internals ✓ (verificado).
+
+---
+
+### T-161 — UI: página de auditoría para `admin_plaza` y cierre de huecos de auth
+
+- **Descripción:** Construir el visor frontend del log de auditoría (T-146 ya tenía el endpoint `GET /api/v1/auditoria` pero la bitácora decía "Sin UI en v1") y cerrar los huecos de auditoría en `auth` (login/refresh/logout/reset-password/change-password), decisión owner 2026-06-11. El visor sigue el patrón de las otras páginas: Server Component con `apiFetch` + Client Component para tabla/filtros/drawer. La multi-tenancy (admin_plaza ve su plaza, superadmin ve todo lo impersonable) ya la implementa el backend en `auditoria.service.findAll()`.
+- **Criterios de aceptación:**
+  - [x] Ruta `/admin/auditoria` con tabla paginada, filtros (accion/entidadTipo/fechaDesde/fechaHasta) y drawer de detalle con diff antes/después.
+  - [x] El drawer muestra: timestamp en TZ de la plaza, usuario (nombre + email), acción (badge coloreado por verbo), entidad con link al detalle cuando aplica, IP, user-agent, request_id, y diff naive por super-conjunto de keys (filas resaltadas con valores modificados).
+  - [x] Backend: `AuditoriaOutput` enriquecido con `usuario: { id, nombre, email } | null` (join batch por página, evita N+1). Contrato en `packages/contracts/src/auditoria/index.ts`.
+  - [x] Backend: `@Auditable` agregado a los 5 endpoints de `auth.controller.ts` que no tenían (`login`, `refresh`, `logout`, `reset-password`, `change-password`). El confirm ya estaba desde T-150. Decisión owner: login se duplica entre `auditoria_login` y `auditoria` (la vista unificada vale la pena).
+  - [x] Backend: `@SkipAuditoria()` agregado al cron dev `POST /contratos/cron/test-alertas` (consistencia con los 3 crons dev de aprobaciones que ya lo tenían).
+  - [x] Frontend: entrada "Auditoría" en `NAV.admin_plaza` (grupo Plataforma) y `NAV.superadmin` (grupo Gestión) con icono `ScrollText`.
+  - [x] Multi-tenancy: el backend aplica el scope por `plaza_id` desde el JWT; superadmin ve todas las plazas + filas de plataforma (`plaza_id NULL`) si no impersona; con impersonación header `x-plaza-id`.
+  - [x] `npm run type-check` y `npm run lint` en `backend/` y `frontend/` en 0 errores.
+  - [x] Sin `window.confirm`/`window.alert` fuera de `lib/sweetalert.ts` (verificado con grep).
+- **Dependencias:** T-146 (tabla + endpoint), T-150 (interceptor), T-152 (envelope RFC 7807 consistente).
+- **Prioridad:** Alta.
+- **Estado:** Completada (2026-06-11).
+- **Bitácora de cambios:**
+  - 2026-06-11 — Construido en una sesión. Cobertura de auditoría al 100% de los mutating endpoints (66/66 entre los manuales existentes y los 5 nuevos de auth + el `SkipAuditoria` agregado).
+  - **Backend (4 archivos):**
+    - `src/modules/auth/auth.controller.ts` — 5 `@Auditable({ accion, entidadTipo: 'usuario', omitirBody: true })` agregados con comentario T-161 explicando la semántica. `omitirBody: true` porque los bodies traen credenciales; el interceptor igual redactaría por la lista de llaves sensibles pero el `omitirBody` evita siquiera persistir el body.
+    - `src/modules/contratos/contratos.controller.ts` — `@SkipAuditoria()` en `test-alertas` (consistencia con los 3 crons dev de aprobaciones).
+    - `src/modules/auditoria/auditoria.service.ts` — join batch con `usuario` (id/nombre/email) tras `findMany`, evita N+1 en el frontend. Si el usuario fue eliminado, el join devuelve `null` para esa entrada.
+    - `packages/contracts/src/auditoria/index.ts` — interface `AuditoriaUsuario` exportada, agregada a `AuditoriaOutput.usuario`.
+  - **Frontend (4 archivos nuevos + 1 modificado):**
+    - `src/app/(admin-plaza)/admin/auditoria/page.tsx` — Server Component. Lee `searchParams`, valida con `ListAuditoriaQuerySchema.safeParse` (cae a defaults si inválido), construye `URLSearchParams` y llama `apiFetch('/auditoria?...')`. Usa `Pager` y `PageHeader` del sistema de diseño.
+    - `src/app/(admin-plaza)/admin/auditoria/actions.ts` — placeholder read-only (`export {}`); el visor no muta. Si en el futuro hay acciones (p.ej. "marcar revisado"), se exportan acá con el patrón estándar.
+    - `src/components/client/auditoria-filtros.tsx` — Client Component con `useRouter` + `useTransition`. Inputs para acción, entidad, desde, hasta. Botón "Filtrar" persiste en `searchParams`.
+    - `src/components/client/auditoria-tabla.tsx` — Client Component. Tabla shadcn con `Table/TableBody/...`; click en fila abre `Dialog` (radix) con diff naive. Diff: super-conjunto de keys entre `antes` y `despues`, marca modificadas con color de fondo. `entidadHref()` mapea `entidadTipo` → ruta del admin para el link "Ver detalle".
+    - `src/components/shell/nav-config.ts` — 2 entradas `auditoria` (`admin_plaza` y `superadmin`) con `ScrollText` de lucide-react (import ya añadido).
+    - `src/app/globals.css` — bloque "T-161" con estilos para `.auditoria-meta`, `.auditoria-link`, `.auditoria-diff`, `.diff-pre`, `.diff-title`, `.diff-tbl`, `.diff-key`, `.diff-val`, `.diff-changed` (usa design tokens del handoff, no colores hardcoded).
+  - **Decisiones de alcance:**
+    - Sin librería externa para el diff: la lógica es trivial (super-conjunto de keys + JSON.stringify compare). Agregar `diff` o `jsondiffpatch` sería overkill y sumaría una dep.
+    - Sin export CSV/PDF: la exportación de reportes vive en el módulo 11 (jsreport). El visor es web-only en esta entrega; si se necesita exportar, se reutiliza el patrón de `/admin/reportes` en una iteración futura.
+    - El drawer usa el `Dialog` modal del sistema (no un Sheet lateral) por consistencia con el resto del repo, que solo usa modales.
+  - **Verificación manual (sin tests automatizados, per regla del proyecto):**
+    1. Levantar stack (`docker-compose up -d` + `npm run start:dev` + `npm run dev`).
+    2. Login `admin_plaza` plaza A → crear/editar/eliminar 1 local, 1 usuario, 1 solicitud, 1 adjunto, hacer login/refresh/logout, cambiar password → ir a `/admin/auditoria` → ver ≥ 8 filas con usuario correcto, accion/entidad, orden desc por timestamp.
+    3. Filtrar por `entidadTipo=local` → ver solo filas de local. Filtrar por rango de fechas → ajustar el resultado. Click en fila → drawer abre con antes/después formateado, link "Ver local N-12" lleva al detalle.
+    4. Login `admin_plaza` plaza B → confirmar que NO ve filas de la plaza A.
+    5. Login `superadmin` sin impersonar → ve todo (multi-plaza + plataforma). Impersonando plaza A → ve solo A.
+    6. Validar que las 5 acciones de auth aparecen en la tabla: `auth.login` (éxitos, fallos van solo a `auditoria_login`), `auth.refresh`, `auth.logout`, `auth.password_reset_request`, `auth.password_change`, `auth.password_reset_confirm`.
+  - **Tareas dependientes potencialmente afectadas:** Ninguna nueva. El endpoint `GET /auditoria` ya existía desde T-146; esta tarea solo le agregó el campo `usuario` (backwards-compatible: campo nuevo opcional nullable).

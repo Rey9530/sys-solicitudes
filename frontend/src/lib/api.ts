@@ -84,7 +84,7 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
       cache: 'no-store',
     });
     if (!refreshRes.ok) {
-      redirect('/login');
+      redirect('/login?expired=1');
     }
     const data = (await refreshRes.json()) as { accessToken: string };
     res = await doFetch(data.accessToken);

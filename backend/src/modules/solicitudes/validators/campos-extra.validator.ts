@@ -16,7 +16,26 @@ const SCHEMAS: Record<SolicitudTipo, z.ZodType> = {
 };
 
 /**
- * Valida `campos_extra` contra el schema Zod del tipo (T-079, S-SO-A).
+ * T-V21: coherencia entre `asistentes_estimados` y la longitud de `asistentes`.
+ * Esta regla se valida además en el `.refine` de `CreateSolicitudSchema` del
+ * lado POST, pero acá la replicamos para cubrir PATCH (donde tipo y
+ * camposExtra llegan por separado) y `duplicar`.
+ */
+function assertAsistentesCoherentes(camposExtra: Record<string, unknown>): void {
+  const n = Number(camposExtra.asistentes_estimados ?? 0);
+  const lista = Array.isArray(camposExtra.asistentes) ? camposExtra.asistentes : [];
+  if (lista.length !== n) {
+    throw new UnprocessableEntityException({
+      code: 'ASISTENTES_COHERENCIA',
+      title: 'Entidad no procesable',
+      message: `La lista de asistentes (${lista.length}) no coincide con la cantidad estimada (${n}).`,
+      meta: { estimados: n, recibidos: lista.length },
+    });
+  }
+}
+
+/**
+ * Valida `campos_extra` contra el schema Zod del tipo (T-079, S-SO-A, T-V21).
  *
  * El POST ya valida vía discriminated union en el controller; este helper
  * cubre PATCH (donde tipo y camposExtra llegan por separado) y duplicar.
@@ -35,5 +54,7 @@ export function validateCamposExtra(
       meta: { issues: parsed.error.issues },
     });
   }
-  return parsed.data as Record<string, unknown>;
+  const data = parsed.data as Record<string, unknown>;
+  assertAsistentesCoherentes(data);
+  return data;
 }

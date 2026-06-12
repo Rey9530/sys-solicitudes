@@ -6,7 +6,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json --incremental false && node scripts/copy-templates.mjs",
     "start": "node dist/main.js",
-    "start:dev": "tsc -p tsconfig.json --incremental false --watch",
+    "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main.js",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",

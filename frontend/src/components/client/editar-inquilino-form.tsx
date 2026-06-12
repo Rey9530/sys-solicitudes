@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { confirmAction } from '@/lib/sweetalert';
 
 /** Edición de inquilino (T-059): solo contacto y dirección son editables. */
 export function EditarInquilinoForm({
@@ -56,7 +57,13 @@ export function EditarInquilinoForm({
   };
 
   const onDelete = async () => {
-    if (!confirm(`¿Desactivar a "${inquilino.razonSocial}"?`)) return;
+    const ok = await confirmAction({
+      title: `¿Desactivar a "${inquilino.razonSocial}"?`,
+      text: 'El inquilino no podrá ser usado en nuevos contratos, pero sus datos y contratos históricos se conservan.',
+      icon: 'warning',
+      confirmButtonText: 'Sí, desactivar',
+    });
+    if (!ok) return;
     setDeleting(true);
     const result = await deleteInquilinoAction(inquilino.id);
     setDeleting(false);

@@ -717,8 +717,9 @@ export class SolicitudesService {
   }
 
   /**
-   * Coherencia categoría/subcategoría (T-080): obligatorias salvo tipo=otro;
-   * subcategoría activa y de la categoría indicada. Retorna prioridad heredada.
+   * Coherencia categoría/subcategoría (T-080, T-V21): obligatorias para TODO
+   * tipo de solicitud (antes `otro` estaba exento). Subcategoría debe estar
+   * activa y pertenecer a la categoría indicada. Retorna prioridad heredada.
    */
   private async resolverSubcategoria(
     tx: Prisma.TransactionClient,
@@ -727,14 +728,12 @@ export class SolicitudesService {
     subcategoriaId: string | undefined | null,
   ): Promise<{ prioridad: 'A' | 'B' | 'C' | 'D' | 'F' }> {
     if (!subcategoriaId) {
-      if (tipo !== 'otro') {
-        throw new BadRequestException({
-          code: 'SUBCATEGORIA_REQUERIDA',
-          title: 'Solicitud inválida',
-          message: 'categoriaId y subcategoriaId son obligatorios salvo tipo=otro.',
-        });
-      }
-      return { prioridad: 'B' }; // default sin subcategoría (S-FS-Prioridad)
+      throw new BadRequestException({
+        code: 'SUBCATEGORIA_REQUERIDA',
+        title: 'Solicitud inválida',
+        message:
+          'categoriaId y subcategoriaId son obligatorios para todo tipo de solicitud (T-V21).',
+      });
     }
     const sub = await tx.subcategoria.findFirst({
       where: { id: subcategoriaId, ...(categoriaId ? { categoria_id: categoriaId } : {}) },

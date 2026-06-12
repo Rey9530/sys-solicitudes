@@ -289,6 +289,7 @@ Renderizado como **Client Component** (requiere DOM).
 - **Tailwind CSS** para utility-first styling.
 - **shadcn/ui** para componentes accesibles (basado en Radix UI).
 - **lucide-react** para iconos.
+- **SweetAlert2** (v11.x) para todos los diálogos de **decisión / confirmación destructiva** (deshabilitar, eliminar, resetear, reactivar). **Prohibido** `window.confirm` / `window.alert` nativos. Wrapper reutilizable en `frontend/src/lib/sweetalert.ts` con `confirmAction({...})`, `notifySuccess(...)`, `notifyError(...)`. Toasts efímeros no modales siguen yendo por `sonner` (más liviano, no bloquea la UI).
 - **Tema:** se usa un tema base con un slot para el **color primario de la plaza** (SUPUESTO — ver `Branding` por plaza).
 - **Responsive:** mobile-first, breakpoints estándar de Tailwind.
 

@@ -62,6 +62,7 @@ const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   area_afectada: 'Área afectada',
   requiere_ingreso_a_local: 'Requiere ingreso al local',
   asistentes_estimados: 'Asistentes estimados',
+  asistentes: 'Asistentes',
   requiere_corte_calle: 'Requiere corte de calle',
   requiere_amplificacion: 'Requiere amplificación',
   requiere_aprobacion_especial: 'Requiere aprobación especial',
@@ -69,8 +70,6 @@ const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   duracion_dias: 'Duración (días)',
   empresa_constructora: 'Empresa constructora',
   monto_presupuesto: 'Monto presupuesto',
-  categoria_libre: 'Categoría libre',
-  descripcion_larga: 'Descripción larga',
 };
 
 const EVENTO_LABEL: Record<string, string> = {
@@ -469,6 +468,28 @@ export function SolicitudDetailAdmin({
 }
 
 function CampoExtra({ k, v }: { k: string; v: unknown }) {
+  // T-V21: `asistentes` es una lista {nombre, documento} → tabla compacta.
+  if (k === 'asistentes' && Array.isArray(v)) {
+    const lista = v as Array<{ nombre?: string; documento?: string }>;
+    return (
+      <div>
+        <div className="dt">{CAMPOS_EXTRA_LABEL[k]}</div>
+        <div className="dd">
+          {lista.length === 0 ? (
+            <span className="muted">—</span>
+          ) : (
+            <ul className="text-sm">
+              {lista.map((a, i) => (
+                <li key={i}>
+                  <b>{a.nombre || '—'}</b> · <span className="muted">{a.documento || '—'}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  }
   return (
     <div>
       <div className="dt">{CAMPOS_EXTRA_LABEL[k] ?? k}</div>

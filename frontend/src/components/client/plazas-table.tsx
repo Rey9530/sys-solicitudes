@@ -11,13 +11,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { formatDateInPlazaTz } from '@/lib/datetime';
+import { confirmAction } from '@/lib/sweetalert';
 
 export function PlazasTable({ plazas }: { plazas: PlazaOutput[] }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const onDeactivate = async (plaza: PlazaOutput) => {
-    if (!confirm(`¿Desactivar la plaza "${plaza.nombreComercial}"?`)) return;
+    const ok = await confirmAction({
+      title: `¿Desactivar la plaza "${plaza.nombreComercial}"?`,
+      text: 'Ningún usuario de la plaza podrá iniciar sesión. Los datos y el historial se conservan.',
+      icon: 'warning',
+      confirmButtonText: 'Sí, desactivar',
+    });
+    if (!ok) return;
     setPendingId(plaza.id);
     const result = await deactivatePlazaAction(plaza.id);
     setPendingId(null);

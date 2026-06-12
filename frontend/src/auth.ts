@@ -102,6 +102,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       // Login inicial: persistimos tokens y metadatos en el JWT de NextAuth.
       if (user) {
+        if (!user.accessToken || !user.refreshToken || !user.expiresIn) {
+          return { ...token, error: 'RefreshTokenError' };
+        }
         token.accessToken = user.accessToken;
         token.refreshToken = user.refreshToken;
         token.accessTokenExpires = Date.now() + user.expiresIn * 1000;
@@ -122,8 +125,23 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         ? await refreshAccessToken(token.refreshToken)
         : null;
       if (!refreshed) {
-        token.error = 'RefreshTokenError';
-        return token;
+        // Refresh falló (token revocado/expirado). Devolvemos un token sin
+        // datos de usuario para que la sesión quede como "no autenticada" y
+        // los layouts (`!session?.user`) redirijan a /login. El cookie se
+        // reescribe con este contenido en la próxima respuesta.
+        return {
+          sub: undefined,
+          email: undefined,
+          name: undefined,
+          rol: undefined,
+          plazaId: null,
+          rolStaffId: null,
+          inquilinoId: null,
+          accessToken: undefined,
+          refreshToken: undefined,
+          accessTokenExpires: 0,
+          error: 'RefreshTokenError',
+        };
       }
       token.accessToken = refreshed.accessToken;
       token.refreshToken = refreshed.refreshToken;
@@ -146,21 +164,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
 declare module 'next-auth' {
   interface User {
-    rol: RolGlobal;
-    plazaId: string | null;
-    rolStaffId: string | null;
-    inquilinoId: string | null;
-    accessToken: string;
-    refreshToken: string;
-    expiresIn: number;
+    rol?: RolGlobal;
+    plazaId?: string | null;
+    rolStaffId?: string | null;
+    inquilinoId?: string | null;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresIn?: number;
   }
   interface Session {
     user: {
       id: string;
-      rol: RolGlobal;
-      plazaId: string | null;
-      rolStaffId: string | null;
-      inquilinoId: string | null;
+      rol?: RolGlobal;
+      plazaId?: string | null;
+      rolStaffId?: string | null;
+      inquilinoId?: string | null;
     } & DefaultSession['user'];
     error?: string;
   }
@@ -171,10 +189,10 @@ declare module 'next-auth/jwt' {
     accessToken?: string;
     refreshToken?: string;
     accessTokenExpires?: number;
-    rol: RolGlobal;
-    plazaId: string | null;
-    rolStaffId: string | null;
-    inquilinoId: string | null;
+    rol?: RolGlobal;
+    plazaId?: string | null;
+    rolStaffId?: string | null;
+    inquilinoId?: string | null;
     error?: string;
   }
 }

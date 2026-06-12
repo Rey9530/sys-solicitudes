@@ -262,3 +262,22 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de inst
 ### Comunicación con el usuario
 
 > **Regla obligatoria:** Si una tarea del plan tiene ambigüedad, conflicto con decisiones previas (T-Vxx), o múltiples interpretaciones razonables, **preguntar al usuario antes de codificar**. No asumir. Las decisiones tomadas en las T-Vxx son vinculantes; si una tarea las contradice, marcar la tarea para revisión.
+
+### Diálogos de decisión en el frontend (SweetAlert2, NO `window.confirm`)
+
+> **Regla obligatoria (adoptada 2026-06-10, refactor de T-059-bis).** Toda confirmación destructiva o de decisión (deshabilitar, eliminar, resetear, reactivar, cerrar contrato, cancelar solicitud, etc.) **debe** usar `confirmAction` desde `frontend/src/lib/sweetalert.ts` (SweetAlert2 v11.x). **Prohibido** `window.confirm(...)` o `window.alert(...)` nativos. Toasts efímeros no modales siguen yendo por `sonner` (`toast.success` / `toast.error`). Detalle y justificación en `docs/07-arquitectura.md` §7.4.5 y `docs/02-stack-tecnologico.md` §2.10.
+
+**Procedimiento al añadir una acción destructiva o de decisión:**
+1. Importar `confirmAction` desde `@/lib/sweetalert`.
+2. Reemplazar el `if (!confirm(...)) return;` por `const ok = await confirmAction({...}); if (!ok) return;`.
+3. Para acciones destructivas usar `icon: 'warning'` (enfoca el botón Cancelar por defecto).
+4. Para decisiones neutras (ej. "reactivar") usar `icon: 'question'`.
+5. En `confirmButtonText` usar la forma afirmativa específica: `"Sí, deshabilitar"`, `"Sí, eliminar"`, `"Sí, reactivar"`, etc. (no solo "Aceptar").
+6. Verificar con `npm run lint` y `npm run type-check` que no quedan llamadas a `window.confirm` / `window.alert` en `src/`.
+
+**Búsqueda rápida para auditoría:**
+```bash
+Get-ChildItem -Path "frontend\src" -Recurse -Include "*.ts","*.tsx" | Select-String -Pattern '\bconfirm\(|\bwindow\.alert\b'
+```
+
+Si aparece algún match en código que NO sea el wrapper `lib/sweetalert.ts` o un comentario JSDoc, es un **bug** que debe corregirse.

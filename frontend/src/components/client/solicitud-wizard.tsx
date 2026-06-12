@@ -2,9 +2,14 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check } from 'lucide-react';
+import { Check, UserPlus, X } from 'lucide-react';
 import { toast } from 'sonner';
-import type { SolicitudDetailOutput, SolicitudListItem, SolicitudTipo } from '@app/contracts';
+import type {
+  Asistente,
+  SolicitudDetailOutput,
+  SolicitudListItem,
+  SolicitudTipo,
+} from '@app/contracts';
 import {
   createSolicitudAction,
   updateSolicitudAction,
@@ -27,23 +32,33 @@ export interface LocalOption {
   codigo: string;
 }
 
-const TIPOS: Array<{ value: SolicitudTipo; label: string }> = [
-  { value: 'mantenimiento', label: 'Mantenimiento' },
-  { value: 'evento', label: 'Evento' },
-  { value: 'remodelacion', label: 'Remodelación' },
-  { value: 'otro', label: 'Otro' },
-];
+/**
+ * T-V20: tipos de solicitud configurables por plaza.
+ * `codigo` es el valor canónico (mismo que el enum `solicitud_tipo` de BD);
+ * `etiqueta` es el label visible que el admin controla. La discriminada union
+ * de `campos_extra` se ramifica por `codigo` (no por etiqueta).
+ */
+export interface TipoOption {
+  codigo: SolicitudTipo;
+  etiqueta: string;
+}
 
 const selectClass = 'select';
 const MAX_ADJUNTOS = 10;
+const MAX_ASISTENTES = 10; // T-V21
 const PASOS = ['Tipo y categoría', 'Detalles', 'Adjuntos y revisión'];
 
 interface CamposExtraState {
   // mantenimiento
   area_afectada: string;
   requiere_ingreso_a_local: boolean;
-  // evento
+  // bloque asistentes (T-V21, transversal a los 4 tipos).
+  // `asistentes` es un map indexado: permite editar el item 3 sin tocar los
+  // anteriores cuando N se reduce. La lista final al enviar se deriva con
+  // `Object.values(asistentes).slice(0, numAsistentes)`.
   asistentes_estimados: string;
+  asistentes: Record<number, Asistente>;
+  // evento
   requiere_corte_calle: boolean;
   requiere_amplificacion: boolean;
   // remodelacion
@@ -51,23 +66,19 @@ interface CamposExtraState {
   duracion_dias: string;
   empresa_constructora: string;
   monto_presupuesto: string;
-  // otro
-  categoria_libre: string;
-  descripcion_larga: string;
 }
 
 const CAMPOS_EXTRA_INICIAL: CamposExtraState = {
   area_afectada: '',
   requiere_ingreso_a_local: false,
   asistentes_estimados: '',
+  asistentes: {},
   requiere_corte_calle: false,
   requiere_amplificacion: false,
   fecha_inicio_estimada: '',
   duracion_dias: '',
   empresa_constructora: '',
   monto_presupuesto: '',
-  categoria_libre: '',
-  descripcion_larga: '',
 };
 
 /**
@@ -88,11 +99,13 @@ export interface WizardPrefill {
 export function SolicitudWizard({
   categorias,
   locales,
+  tipos,
   solicitud,
   prefill,
 }: {
   categorias: CategoriaOption[];
   locales: LocalOption[];
+  tipos: TipoOption[];
   solicitud?: SolicitudDetailOutput;
   prefill?: WizardPrefill;
 }) {
@@ -101,9 +114,16 @@ export function SolicitudWizard({
   const [step, setStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
-  const [tipo, setTipo] = useState<SolicitudTipo>(
-    solicitud?.tipo ?? prefill?.tipo ?? 'mantenimiento',
-  );
+  // T-V20: el default prioriza el tipo del borrador > prefill > primer tipo
+  // activo configurado para la plaza. Si el prefill apunta a un tipo ahora
+  // desactivado, cae al primer activo (en el peor caso, 'mantenimiento').
+  const tiposCodigos = useMemo(() => new Set(tipos.map((t) => t.codigo)), [tipos]);
+  const tipoInicial: SolicitudTipo = (() => {
+    if (solicitud?.tipo) return solicitud.tipo;
+    if (prefill?.tipo && tiposCodigos.has(prefill.tipo)) return prefill.tipo;
+    return tipos[0]?.codigo ?? 'mantenimiento';
+  })();
+  const [tipo, setTipo] = useState<SolicitudTipo>(tipoInicial);
   const [categoriaId, setCategoriaId] = useState(solicitud?.categoriaId ?? '');
   const [subcategoriaId, setSubcategoriaId] = useState(solicitud?.subcategoriaId ?? '');
   const [localId, setLocalId] = useState(solicitud?.localId ?? prefill?.localId ?? '');
@@ -115,16 +135,26 @@ export function SolicitudWizard({
   const [fechaFin, setFechaFin] = useState(solicitud?.fechaEventoFin ?? prefill?.fecha ?? '');
   const [horaInicio, setHoraInicio] = useState(solicitud?.horaInicio ?? prefill?.hora ?? '');
   const [horaFin, setHoraFin] = useState(solicitud?.horaFin ?? '');
-  const [extra, setExtra] = useState<CamposExtraState>({
-    ...CAMPOS_EXTRA_INICIAL,
-    ...(solicitud
-      ? Object.fromEntries(
-          Object.entries(solicitud.camposExtra).map(([k, v]) => [
-            k,
-            typeof v === 'boolean' ? v : String(v ?? ''),
-          ]),
-        )
-      : {}),
+  const [extra, setExtra] = useState<CamposExtraState>(() => {
+    const base: CamposExtraState = { ...CAMPOS_EXTRA_INICIAL };
+    if (!solicitud) return base;
+    // T-V21: hidratamos asistentes como Record<index, Asistente>; el resto
+    // se aplana desde JSONB a string|boolean según el tipo de valor.
+    const parsed: Partial<CamposExtraState> = {};
+    for (const [k, v] of Object.entries(solicitud.camposExtra)) {
+      if (k === 'asistentes' && Array.isArray(v)) {
+        const map: Record<number, Asistente> = {};
+        (v as Asistente[]).forEach((a, i) => {
+          map[i] = { nombre: a.nombre ?? '', documento: a.documento ?? '' };
+        });
+        parsed.asistentes = map;
+      } else if (typeof v === 'boolean') {
+        (parsed as Record<string, unknown>)[k] = v;
+      } else {
+        (parsed as Record<string, unknown>)[k] = String(v ?? '');
+      }
+    }
+    return { ...base, ...parsed };
   });
   const [files, setFiles] = useState<File[]>([]);
   const [duplicados, setDuplicados] = useState<SolicitudListItem[]>([]);
@@ -133,6 +163,18 @@ export function SolicitudWizard({
     () => categorias.find((c) => c.id === categoriaId)?.subcategorias ?? [],
     [categorias, categoriaId],
   );
+
+  // T-V21: el número de asistentes se deriva del input. La lista de items
+  // editados es un `Record<index, Asistente>` en el estado: la entrada i
+  // existe solo si el usuario escribió algo en ella. Al renderizar y al
+  // enviar, derivamos la lista "completa" con `Object.values(asistentes)`.
+  // No usamos un useEffect para "sincronizar" → evitamos el cascading render
+  // que el linter marca como antipatrón.
+  const numAsistentes = useMemo(() => {
+    const n = Number(extra.asistentes_estimados);
+    if (!Number.isFinite(n) || n < 0) return 0;
+    return Math.min(MAX_ASISTENTES, Math.floor(n));
+  }, [extra.asistentes_estimados]);
 
   // T-090: aviso NO bloqueante de duplicados al elegir local (paso 2).
   useEffect(() => {
@@ -151,9 +193,24 @@ export function SolicitudWizard({
 
   const necesitaFechas = tipo === 'evento';
 
+  const validarAsistentes = (): string | null => {
+    if (numAsistentes === 0) return null;
+    for (let i = 0; i < numAsistentes; i += 1) {
+      const a = extra.asistentes[i] ?? { nombre: '', documento: '' };
+      if (!a.nombre.trim() || !a.documento.trim()) {
+        return `Completa el nombre y documento del asistente ${i + 1}.`;
+      }
+      if (a.documento.trim().length < 3 || a.documento.trim().length > 20) {
+        return `El documento del asistente ${i + 1} debe tener entre 3 y 20 caracteres.`;
+      }
+    }
+    return null;
+  };
+
   const validarPaso = (n: number): string | null => {
     if (n === 1) {
-      if (tipo !== 'otro' && (!categoriaId || !subcategoriaId)) {
+      // T-V21: categoría + subcategoría obligatorias para TODO tipo (antes 'otro' exento).
+      if (!categoriaId || !subcategoriaId) {
         return 'Selecciona categoría y subcategoría.';
       }
       return null;
@@ -166,7 +223,11 @@ export function SolicitudWizard({
         return 'Indica el área afectada.';
       }
       if (tipo === 'evento') {
-        if (!Number(extra.asistentes_estimados)) return 'Indica los asistentes estimados.';
+        // En evento el N mínimo es 1 (validado por Zod), pero el input puede
+        // estar vacío. Validamos acá también para mejor UX.
+        if (!Number(extra.asistentes_estimados) || numAsistentes < 1) {
+          return 'Indica al menos 1 asistente estimado.';
+        }
         if (!fechaInicio || !fechaFin) return 'Indica las fechas del evento.';
       }
       if (tipo === 'remodelacion') {
@@ -175,10 +236,10 @@ export function SolicitudWizard({
         if (!extra.empresa_constructora.trim()) return 'Indica la empresa constructora.';
         if (extra.monto_presupuesto === '') return 'Indica el monto del presupuesto.';
       }
-      if (tipo === 'otro') {
-        if (!extra.categoria_libre.trim()) return 'Indica la categoría libre.';
-        if (!extra.descripcion_larga.trim()) return 'Completa la descripción larga.';
-      }
+      // T-V21: validación transversal de la lista de asistentes (aplica a
+      // los 4 tipos si N>0; en evento siempre N>=1).
+      const errAsistentes = validarAsistentes();
+      if (errAsistentes) return errAsistentes;
       return null;
     }
     return null;
@@ -194,15 +255,27 @@ export function SolicitudWizard({
   };
 
   const buildCamposExtra = (): Record<string, unknown> => {
+    // T-V21: derivamos la lista del Record<index, Asistente> → array indexado
+    // 0..numAsistentes-1. Si el usuario nunca tocó el item i, queda {nombre:'', documento:''}
+    // y la validación de paso 2 lo bloquea antes de enviar.
+    const listaAsistentes: Asistente[] = Array.from({ length: numAsistentes }, (_, i) => ({
+      nombre: extra.asistentes[i]?.nombre ?? '',
+      documento: extra.asistentes[i]?.documento ?? '',
+    }));
+    const bloqueAsistentes = {
+      asistentes_estimados: numAsistentes,
+      asistentes: listaAsistentes,
+    };
     switch (tipo) {
       case 'mantenimiento':
         return {
           area_afectada: extra.area_afectada,
           requiere_ingreso_a_local: extra.requiere_ingreso_a_local,
+          ...bloqueAsistentes,
         };
       case 'evento':
         return {
-          asistentes_estimados: Number(extra.asistentes_estimados),
+          ...bloqueAsistentes,
           requiere_corte_calle: extra.requiere_corte_calle,
           requiere_amplificacion: extra.requiere_amplificacion,
         };
@@ -212,12 +285,12 @@ export function SolicitudWizard({
           duracion_dias: Number(extra.duracion_dias),
           empresa_constructora: extra.empresa_constructora,
           monto_presupuesto: Number(extra.monto_presupuesto),
+          ...bloqueAsistentes,
         };
       case 'otro':
-        return {
-          categoria_libre: extra.categoria_libre,
-          descripcion_larga: extra.descripcion_larga,
-        };
+        // T-V21 (Interpretación B): 'otro' ya no tiene categoria_libre/
+        // descripcion_larga; se compone SOLO del bloque de asistentes.
+        return bloqueAsistentes;
     }
   };
 
@@ -233,8 +306,9 @@ export function SolicitudWizard({
       tipo,
       titulo: titulo.trim(),
       descripcion: descripcion.trim(),
-      categoriaId: tipo === 'otro' ? undefined : categoriaId,
-      subcategoriaId: tipo === 'otro' ? undefined : subcategoriaId,
+      // T-V21: cat/sub obligatorios para TODO tipo.
+      categoriaId,
+      subcategoriaId,
       fechaEventoInicio: fechaInicio || undefined,
       fechaEventoFin: fechaFin || undefined,
       horaInicio: horaInicio || undefined,
@@ -332,55 +406,49 @@ export function SolicitudWizard({
                   setSubcategoriaId('');
                 }}
               >
-                {TIPOS.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
+                {tipos.map((t) => (
+                  <option key={t.codigo} value={t.codigo}>
+                    {t.etiqueta}
                   </option>
                 ))}
               </select>
             </div>
-            {tipo !== 'otro' ? (
-              <>
-                <div className="grid gap-1.5">
-                  <Label>Categoría *</Label>
-                  <select
-                    className={selectClass}
-                    value={categoriaId}
-                    onChange={(e) => {
-                      setCategoriaId(e.target.value);
-                      setSubcategoriaId('');
-                    }}
-                  >
-                    <option value="">Selecciona…</option>
-                    {categorias.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nombre}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="grid gap-1.5">
-                  <Label>Subcategoría *</Label>
-                  <select
-                    className={selectClass}
-                    value={subcategoriaId}
-                    onChange={(e) => setSubcategoriaId(e.target.value)}
-                    disabled={!categoriaId}
-                  >
-                    <option value="">Selecciona…</option>
-                    {subcategorias.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.nombre} (prioridad {s.prioridad})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </>
-            ) : (
-              <p className="text-sm text-gray-500">
-                Para «Otro» describirás la categoría libremente en el siguiente paso.
-              </p>
-            )}
+            {/* T-V21: categoría y subcategoría obligatorias para TODO tipo
+                (antes 'otro' se eximía y describía la categoría en texto libre). */}
+            <div className="grid gap-1.5">
+              <Label>Categoría *</Label>
+              <select
+                className={selectClass}
+                value={categoriaId}
+                onChange={(e) => {
+                  setCategoriaId(e.target.value);
+                  setSubcategoriaId('');
+                }}
+              >
+                <option value="">Selecciona…</option>
+                {categorias.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid gap-1.5">
+              <Label>Subcategoría *</Label>
+              <select
+                className={selectClass}
+                value={subcategoriaId}
+                onChange={(e) => setSubcategoriaId(e.target.value)}
+                disabled={!categoriaId}
+              >
+                <option value="">Selecciona…</option>
+                {subcategorias.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.nombre} (prioridad {s.prioridad})
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
@@ -472,16 +540,6 @@ export function SolicitudWizard({
             )}
             {tipo === 'evento' && (
               <div className="wz-extra">
-                <div className="grid gap-1.5">
-                  <Label>Asistentes estimados *</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10000}
-                    value={extra.asistentes_estimados}
-                    onChange={(e) => setX('asistentes_estimados', e.target.value)}
-                  />
-                </div>
                 <label className="flex items-center gap-2 text-sm">
                   <input
                     type="checkbox"
@@ -542,28 +600,16 @@ export function SolicitudWizard({
                 </div>
               </div>
             )}
-            {tipo === 'otro' && (
-              <div className="wz-extra">
-                <div className="grid gap-1.5">
-                  <Label>Categoría libre *</Label>
-                  <Input
-                    maxLength={120}
-                    value={extra.categoria_libre}
-                    onChange={(e) => setX('categoria_libre', e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label>Descripción larga *</Label>
-                  <textarea
-                    rows={4}
-                    maxLength={4000}
-                    className="textarea"
-                    value={extra.descripcion_larga}
-                    onChange={(e) => setX('descripcion_larga', e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
+            {/* T-V21: bloque de asistentes transversal a los 4 tipos. En 'evento'
+                el N mínimo es 1 (validado por Zod al guardar y por
+                validarAsistentes al avanzar); en los demás tipos N es opcional. */}
+            <BloqueAsistentes
+              tipo={tipo}
+              estimados={extra.asistentes_estimados}
+              onChangeEstimados={(v) => setX('asistentes_estimados', v)}
+              lista={extra.asistentes}
+              onChangeLista={(v) => setX('asistentes', v)}
+            />
           </div>
         )}
 
@@ -607,15 +653,24 @@ export function SolicitudWizard({
               </p>
               <dl className="grid grid-cols-2 gap-x-4 gap-y-1" style={{ color: 'var(--text-2)' }}>
                 <dt>Tipo</dt>
-                <dd>{TIPOS.find((t) => t.value === tipo)?.label}</dd>
+                <dd>{tipos.find((t) => t.codigo === tipo)?.etiqueta ?? tipo}</dd>
                 <dt>Local</dt>
                 <dd>{locales.find((l) => l.id === localId)?.codigo ?? '—'}</dd>
                 <dt>Título</dt>
                 <dd>{titulo || '—'}</dd>
-                {tipo !== 'otro' && (
+                {/* T-V21: subcategoría visible para TODO tipo (antes 'otro' la ocultaba). */}
+                <dt>Subcategoría</dt>
+                <dd>{subcategorias.find((s) => s.id === subcategoriaId)?.nombre ?? '—'}</dd>
+                {numAsistentes > 0 && (
                   <>
-                    <dt>Subcategoría</dt>
-                    <dd>{subcategorias.find((s) => s.id === subcategoriaId)?.nombre ?? '—'}</dd>
+                    <dt>Asistentes</dt>
+                    <dd>
+                      {numAsistentes} (
+                      {Array.from({ length: numAsistentes }, (_, i) =>
+                        extra.asistentes[i]?.nombre || `Asistente ${i + 1}`,
+                      ).join(', ')}
+                      )
+                    </dd>
                   </>
                 )}
               </dl>
@@ -655,6 +710,114 @@ export function SolicitudWizard({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Sub-componente: bloque de asistentes (T-V21) ──────────────────────────────
+
+interface BloqueAsistentesProps {
+  tipo: SolicitudTipo;
+  estimados: string;
+  onChangeEstimados: (v: string) => void;
+  lista: Record<number, Asistente>;
+  onChangeLista: (v: Record<number, Asistente>) => void;
+}
+
+/**
+ * T-V21: pide nombre + documento de cada asistente según la cantidad estimada.
+ *
+ *  - `evento` exige mínimo 1 (Zod en el schema).
+ *  - `mantenimiento | remodelacion | otro` permiten 0 (campo opcional).
+ *  - Tope `MAX_ASISTENTES` = 10 (alineado con el schema).
+ *  - El padre guarda los items como `Record<index, Asistente>` (no como array)
+ *    para que cambiar el número N no descarte lo que el usuario ya escribió.
+ */
+function BloqueAsistentes({
+  tipo,
+  estimados,
+  onChangeEstimados,
+  lista,
+  onChangeLista,
+}: BloqueAsistentesProps) {
+  const esEvento = tipo === 'evento';
+  const num = Math.max(0, Math.min(MAX_ASISTENTES, Math.floor(Number(estimados) || 0)));
+
+  const updateAsistente = (i: number, patch: { nombre?: string; documento?: string }) => {
+    const prev = lista[i] ?? { nombre: '', documento: '' };
+    onChangeLista({ ...lista, [i]: { ...prev, ...patch } });
+  };
+
+  return (
+    <div className="wz-extra">
+      <div className="grid gap-1.5">
+        <Label htmlFor="asistentes-estimados">
+          Asistentes estimados {esEvento ? '*' : ''}
+        </Label>
+        <Input
+          id="asistentes-estimados"
+          type="number"
+          min={esEvento ? 1 : 0}
+          max={MAX_ASISTENTES}
+          value={estimados}
+          onChange={(e) => onChangeEstimados(e.target.value)}
+          style={{ width: 160 }}
+        />
+        <p className="text-xs text-gray-500">
+          {esEvento
+            ? `Obligatorio (mínimo 1, máximo ${MAX_ASISTENTES}). Si supera el umbral configurado por la plaza, requerirá aprobación especial.`
+            : `Opcional. Si lo completas, se solicitará el nombre y documento de cada uno (máximo ${MAX_ASISTENTES}).`}
+        </p>
+      </div>
+
+      {num > 0 && (
+        <div className="grid gap-2">
+          <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
+            <UserPlus className="mr-1 inline h-4 w-4" />
+            Detalle de asistentes ({num})
+          </p>
+          <ul className="grid gap-2">
+            {Array.from({ length: num }, (_, i) => {
+              const a = lista[i] ?? { nombre: '', documento: '' };
+              return (
+                <li
+                  key={i}
+                  className="grid grid-cols-1 gap-2 rounded-md border border-gray-200 p-3 md:grid-cols-2"
+                >
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`asistente-${i}-nombre`}>Nombre *</Label>
+                    <Input
+                      id={`asistente-${i}-nombre`}
+                      maxLength={120}
+                      value={a.nombre}
+                      onChange={(e) => updateAsistente(i, { nombre: e.target.value })}
+                      placeholder={`Asistente ${i + 1}`}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor={`asistente-${i}-documento`}>Documento *</Label>
+                    <Input
+                      id={`asistente-${i}-documento`}
+                      minLength={3}
+                      maxLength={20}
+                      value={a.documento}
+                      onChange={(e) => updateAsistente(i, { documento: e.target.value })}
+                      placeholder="DUI, NIT, pasaporte…"
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {num === 0 && esEvento && (
+        <p className="text-xs text-amber-700">
+          <X className="mr-1 inline h-3 w-3" />
+          Para enviar un evento debés indicar al menos 1 asistente.
+        </p>
+      )}
     </div>
   );
 }

@@ -44,6 +44,7 @@ const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   area_afectada: 'Área afectada',
   requiere_ingreso_a_local: 'Requiere ingreso al local',
   asistentes_estimados: 'Asistentes estimados',
+  asistentes: 'Asistentes',
   requiere_corte_calle: 'Requiere corte de calle',
   requiere_amplificacion: 'Requiere amplificación',
   requiere_aprobacion_especial: 'Requiere aprobación especial',
@@ -51,8 +52,6 @@ const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   duracion_dias: 'Duración (días)',
   empresa_constructora: 'Empresa constructora',
   monto_presupuesto: 'Monto presupuesto',
-  categoria_libre: 'Categoría libre',
-  descripcion_larga: 'Descripción larga',
 };
 
 function formatValor(v: unknown): string {
@@ -176,9 +175,33 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
                           </div>
                         </div>
                       )}
-                      {Object.entries(solicitud.camposExtra).map(([k, v]) => (
-                        <Dato key={k} dt={CAMPOS_EXTRA_LABEL[k] ?? k} dd={formatValor(v)} />
-                      ))}
+                      {Object.entries(solicitud.camposExtra).map(([k, v]) => {
+                        // T-V21: lista de asistentes se renderiza como sub-lista,
+                        // no como `String(array)` que daría "[object Object]".
+                        if (k === 'asistentes' && Array.isArray(v)) {
+                          const lista = v as Array<{ nombre?: string; documento?: string }>;
+                          return (
+                            <div key={k}>
+                              <div className="dt">{CAMPOS_EXTRA_LABEL[k]}</div>
+                              <div className="dd">
+                                {lista.length === 0 ? (
+                                  <span className="muted">—</span>
+                                ) : (
+                                  <ul className="text-sm">
+                                    {lista.map((a, i) => (
+                                      <li key={i}>
+                                        <b>{a.nombre || '—'}</b> ·{' '}
+                                        <span className="muted">{a.documento || '—'}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return <Dato key={k} dt={CAMPOS_EXTRA_LABEL[k] ?? k} dd={formatValor(v)} />;
+                      })}
                     </dl>
                   </div>
                 ),

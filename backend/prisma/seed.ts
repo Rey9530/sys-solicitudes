@@ -158,6 +158,24 @@ async function main(): Promise<void> {
     }
     console.log(`✓ Categorías base de la plaza demo (${CATEGORIAS_DEMO.length}).`);
 
+    // ── Tipos de solicitud configurados para la plaza demo (T-V20) ────────────
+    // Inserta las 4 filas canónicas con etiquetas default. El admin puede
+    // luego renombrar/desactivar desde /admin/catalogos/tipos-solicitud.
+    const TIPOS_DEMO: Array<{ codigo: string; etiqueta: string; descripcion: string; orden: number }> = [
+      { codigo: 'mantenimiento', etiqueta: 'Mantenimiento', descripcion: 'Reparaciones y mantenimiento general.', orden: 0 },
+      { codigo: 'evento',        etiqueta: 'Evento',        descripcion: 'Eventos y activaciones en áreas comunes.', orden: 1 },
+      { codigo: 'remodelacion',  etiqueta: 'Remodelación',  descripcion: 'Obras y remodelaciones de locales.', orden: 2 },
+      { codigo: 'otro',          etiqueta: 'Otro',          descripcion: 'Solicitudes que no encajan en las demás (no requiere categoría).', orden: 3 },
+    ];
+    for (const t of TIPOS_DEMO) {
+      await prisma.solicitud_tipo_config.upsert({
+        where: { plaza_id_codigo: { plaza_id: plazaDemo.id, codigo: t.codigo } },
+        update: { etiqueta: t.etiqueta, descripcion: t.descripcion, orden: t.orden, activo: true },
+        create: { plaza_id: plazaDemo.id, ...t, activo: true },
+      });
+    }
+    console.log(`✓ Tipos de solicitud base de la plaza demo (${TIPOS_DEMO.length}).`);
+
     console.log('Seed completado.');
 
     // ── Buckets de MinIO para la plaza demo (T-111) ─────────────────────────────

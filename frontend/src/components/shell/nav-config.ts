@@ -7,9 +7,12 @@ import {
   Inbox,
   LayoutDashboard,
   type LucideIcon,
+  ScrollText,
   Settings,
+  Shapes,
   Store,
   Tags,
+  UserCog,
   UsersRound,
 } from 'lucide-react';
 
@@ -46,12 +49,15 @@ export const NAV: Record<AppRole, NavGroup[]> = {
         { key: 'inquilinos', label: 'Inquilinos', icon: UsersRound, href: '/admin/inquilinos' },
         { key: 'contratos', label: 'Contratos', icon: FileText, href: '/admin/contratos' },
         { key: 'categorias', label: 'Categorías', icon: Tags, href: '/admin/categorias' },
+        { key: 'tipos-solicitud', label: 'Tipos de solicitud', icon: Shapes, href: '/admin/catalogos/tipos-solicitud' },
       ],
     },
     {
       label: 'Plataforma',
       items: [
+        { key: 'usuarios-plaza', label: 'Usuarios de plaza', icon: UserCog, href: '/admin/usuarios-plaza' },
         { key: 'reportes', label: 'Reportes', icon: BarChart3, href: '/admin/reportes' },
+        { key: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/admin/auditoria' },
         { key: 'notificaciones', label: 'Notificaciones', icon: Bell, href: '/admin/notificaciones' },
         { key: 'config', label: 'Configuración', icon: Settings, href: '/admin/configuracion' },
       ],
@@ -79,12 +85,15 @@ export const NAV: Record<AppRole, NavGroup[]> = {
         { key: 'inquilinos', label: 'Inquilinos', icon: UsersRound, href: '/admin/inquilinos' },
         { key: 'contratos', label: 'Contratos', icon: FileText, href: '/admin/contratos' },
         { key: 'categorias', label: 'Categorías', icon: Tags, href: '/admin/categorias' },
+        { key: 'tipos-solicitud', label: 'Tipos de solicitud', icon: Shapes, href: '/admin/catalogos/tipos-solicitud' },
       ],
     },
     {
       label: 'Gestión',
       items: [
+        { key: 'usuarios-plaza', label: 'Usuarios de plaza', icon: UserCog, href: '/admin/usuarios-plaza' },
         { key: 'reportes', label: 'Reportes', icon: BarChart3, href: '/admin/reportes' },
+        { key: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/admin/auditoria' },
         { key: 'notificaciones', label: 'Notificaciones', icon: Bell, href: '/admin/notificaciones' },
         { key: 'config', label: 'Configuración', icon: Settings, href: '/admin/configuracion' },
       ],

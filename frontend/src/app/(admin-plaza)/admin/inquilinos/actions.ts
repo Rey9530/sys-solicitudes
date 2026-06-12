@@ -5,8 +5,10 @@ import { revalidatePath } from 'next/cache';
 import {
   CreateInquilinoSchema,
   UpdateInquilinoSchema,
+  UpdateUsuarioSchema,
   type CreateInquilinoInput,
   type UpdateInquilinoInput,
+  type UpdateUsuarioInput,
 } from '@app/contracts';
 import { auth } from '@/auth';
 import { apiFetch } from '@/lib/api';
@@ -14,6 +16,7 @@ import { apiFetch } from '@/lib/api';
 async function assertAdminPlaza(): Promise<void> {
   const session = await auth();
   const rol = session?.user?.rol;
+  console.log('assertAdminPlaza: user rol:', rol);
   if (rol !== 'admin_plaza' && rol !== 'superadmin') {
     throw new Error('Forbidden');
   }
@@ -99,4 +102,60 @@ export async function altaUsuarioInquilinoAction(input: {
   if (!res.ok) return { ok: false, error: await errorFrom(res, 'No se pudo crear el usuario.') };
   revalidatePath(`/admin/inquilinos/${input.inquilinoId}`);
   return { ok: true, passwordTemporal };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T-059-bis: gestión de usuarios del inquilino desde la pestaña "Usuarios".
+
+/** Deshabilita (soft delete) un usuario. 409 si ya estaba inactivo. */
+export async function disableUsuarioInquilinoAction(
+  usuarioId: string,
+): Promise<ActionResult> {
+  await assertAdminPlaza();
+  const res = await apiFetch(`/usuarios/${usuarioId}`, { method: 'DELETE' });
+  if (!res.ok) return { ok: false, error: await errorFrom(res, 'No se pudo deshabilitar el usuario.') };
+  return { ok: true };
+}
+
+/** Reactiva un usuario previamente deshabilitado. 409 si ya estaba activo. */
+export async function reactivateUsuarioInquilinoAction(
+  usuarioId: string,
+): Promise<ActionResult> {
+  await assertAdminPlaza();
+  const res = await apiFetch(`/usuarios/${usuarioId}/reactivate`, { method: 'POST' });
+  if (!res.ok) return { ok: false, error: await errorFrom(res, 'No se pudo reactivar el usuario.') };
+  return { ok: true };
+}
+
+/** Dispara un reset de contraseña por email (T-029 vía T-059-bis). */
+export async function adminResetUsuarioPasswordAction(
+  usuarioId: string,
+): Promise<ActionResult> {
+  await assertAdminPlaza();
+  const res = await apiFetch(`/usuarios/${usuarioId}/reset-password`, { method: 'POST' });
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: await errorFrom(res, 'No se pudo disparar el reset de contraseña.'),
+    };
+  }
+  return { ok: true };
+}
+
+/** Edita nombre y teléfono de un usuario. */
+export async function updateUsuarioInquilinoAction(
+  usuarioId: string,
+  input: UpdateUsuarioInput,
+): Promise<ActionResult> {
+  await assertAdminPlaza();
+  const parsed = UpdateUsuarioSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
+  const res = await apiFetch(`/usuarios/${usuarioId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(parsed.data),
+  });
+  if (!res.ok) {
+    return { ok: false, error: await errorFrom(res, 'No se pudo actualizar el usuario.') };
+  }
+  return { ok: true };
 }

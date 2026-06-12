@@ -11,13 +11,19 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { confirmAction } from '@/lib/sweetalert';
 
 export function InquilinosTable({ inquilinos }: { inquilinos: InquilinoOutput[] }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const onDelete = async (inquilino: InquilinoOutput) => {
-    if (!confirm(`¿Desactivar a "${inquilino.razonSocial}"?`)) return;
+    const ok = await confirmAction({
+      title: `¿Desactivar a "${inquilino.razonSocial}"?`,
+      icon: 'warning',
+      confirmButtonText: 'Sí, desactivar',
+    });
+    if (!ok) return;
     setPendingId(inquilino.id);
     const result = await deleteInquilinoAction(inquilino.id);
     setPendingId(null);

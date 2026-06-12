@@ -36,6 +36,7 @@ import { AdjuntosService, type UploadedPdf } from '../adjuntos/adjuntos.service'
 const ADJUNTO_HARD_LIMIT_BYTES = 100 * 1024 * 1024;
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { SkipAuditoria } from '../../common/decorators/auditable.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
@@ -51,6 +52,9 @@ export class ContratosController {
 
   @Post('cron/test-alertas')
   @Roles('admin_plaza', 'superadmin')
+  // T-161: consistencia con los 3 crons dev de `aprobaciones` (T-150) que ya
+  // llevan @SkipAuditoria(). Endpoints dev no deben dejar rastro en el log.
+  @SkipAuditoria()
   @ApiOperation({ summary: 'Ejecuta manualmente las alertas T-30/T-7 (solo dev, T-056).' })
   testAlertas() {
     // Gate dev-only: en producción la ruta no existe (404).

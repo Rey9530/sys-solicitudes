@@ -21,6 +21,7 @@ export * from './locales/index.js';
 export * from './contratos/index.js';
 export * from './categorias/index.js';
 export * from './solicitudes/index.js';
+export * from './tipos-solicitud/index.js';
 export * from './adjuntos/index.js';
 export * from './notificaciones/index.js';
 export * from './calendario/index.js';

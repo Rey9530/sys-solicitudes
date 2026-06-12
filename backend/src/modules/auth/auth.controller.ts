@@ -40,6 +40,10 @@ export class AuthController {
   @HttpCode(200)
   // Rate limit más estricto en login: 5 req/min por IP (T-014, override del 'global').
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  // T-161: además de la fila en `auditoria_login` (intentos, lockout T-021),
+  // se persiste en `auditoria` para vista unificada en /admin/auditoria. El
+  // body (email) se redacta por la lista de llaves sensibles del interceptor.
+  @Auditable({ accion: 'auth.login', entidadTipo: 'usuario', omitirBody: true })
   @ApiOperation({ summary: 'Login con email y password. Devuelve access + refresh.' })
   login(
     @Body(new ZodValidationPipe(LoginSchema)) body: LoginInput,
@@ -52,6 +56,10 @@ export class AuthController {
   @Public()
   @Post('refresh')
   @HttpCode(200)
+  // T-161: registro de refresh en `auditoria`. omitirBody: el body trae el
+  // refresh token (ya redactado por la lista de llaves sensibles, pero ni
+  // siquiera se persiste por seguridad).
+  @Auditable({ accion: 'auth.refresh', entidadTipo: 'usuario', omitirBody: true })
   @ApiOperation({ summary: 'Rota el refresh token y emite un nuevo par de tokens.' })
   refresh(
     @Body(new ZodValidationPipe(RefreshSchema)) body: RefreshInput,
@@ -64,6 +72,8 @@ export class AuthController {
   @Post('logout')
   @HttpCode(204)
   @ApiBearerAuth()
+  // T-161: registro de logout. Revoca el refresh token activo.
+  @Auditable({ accion: 'auth.logout', entidadTipo: 'usuario', omitirBody: true })
   @ApiOperation({ summary: 'Revoca el refresh token actual.' })
   async logout(@Body(new ZodValidationPipe(RefreshSchema)) body: RefreshInput): Promise<void> {
     await this.authService.logout(body.refreshToken);
@@ -74,6 +84,13 @@ export class AuthController {
   @HttpCode(200)
   // T-149: 3 req/min — el reset dispara emails; evita abuso de enumeración/spam.
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  // T-161: registro de solicitud de reset (no del confirm, que ya estaba).
+  // Se audita siempre (200 OK exista o no el email) para detectar enumeración.
+  @Auditable({
+    accion: 'auth.password_reset_request',
+    entidadTipo: 'usuario',
+    omitirBody: true,
+  })
   @ApiOperation({ summary: 'Solicita reset de contraseña. Responde 200 exista o no el email.' })
   async resetPassword(
     @Body(new ZodValidationPipe(ResetPasswordRequestSchema)) body: ResetPasswordRequest,
@@ -100,6 +117,11 @@ export class AuthController {
   @Patch('change-password')
   @HttpCode(204)
   @ApiBearerAuth()
+  // T-161: registro de cambio de contraseña con sesión activa. getIdFromResponse
+  // no aplica (el controller no devuelve payload); se usa paramId: 'id' no
+  // presente en la ruta, así que el interceptor deja entidadId null y la fila
+  // queda asociable solo por usuarioId (que sí se extrae del JWT).
+  @Auditable({ accion: 'auth.password_change', entidadTipo: 'usuario', omitirBody: true })
   @ApiOperation({ summary: 'Cambia la contraseña con la sesión activa.' })
   async changePassword(
     @CurrentUser() user: AuthenticatedUser,
