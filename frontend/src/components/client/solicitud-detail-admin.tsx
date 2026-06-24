@@ -194,19 +194,80 @@ export function SolicitudDetailAdmin({
                           {solicitud.decisionAt ? formatDateInPlazaTz(solicitud.decisionAt) : '—'}
                         </div>
                       </div>
-                      {solicitud.fechaEventoInicio && (
-                        <div className="full">
-                          <div className="dt">Fechas del evento</div>
+                      {/* T-V22: fechas del permiso siempre visibles (no condicionales). */}
+                      <div className="full">
+                        <div className="dt">Fechas del permiso</div>
+                        <div className="dd">
+                          {solicitud.fechaEventoInicio} → {solicitud.fechaEventoFin ?? '—'}{' '}
+                          {solicitud.horaInicio ? `(${solicitud.horaInicio}–${solicitud.horaFin})` : ''}
+                        </div>
+                      </div>
+                    </dl>
+
+                    {/* T-V22: bloque transversal empresa ejecutante + emergencia. */}
+                    <div className="mt-6 grid gap-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Empresa ejecutante
+                      </h4>
+                      <dl className="dl c2">
+                        <div>
+                          <div className="dt">Empresa</div>
+                          <div className="dd">{solicitud.empresaNombre || '—'}</div>
+                        </div>
+                        <div>
+                          <div className="dt">Responsable</div>
+                          <div className="dd">{solicitud.empresaResponsable || '—'}</div>
+                        </div>
+                        <div>
+                          <div className="dt">Tel. empresa</div>
+                          <div className="dd">{solicitud.empresaTelefono || '—'}</div>
+                        </div>
+                        <div>
+                          <div className="dt">Email empresa</div>
+                          <div className="dd">{solicitud.empresaEmail || '—'}</div>
+                        </div>
+                      </dl>
+                    </div>
+
+                    <div className="mt-6 grid gap-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Contacto de emergencia
+                      </h4>
+                      <dl className="dl c2">
+                        <div>
+                          <div className="dt">Contacto</div>
+                          <div className="dd">{solicitud.emergenciaContacto || '—'}</div>
+                        </div>
+                        <div>
+                          <div className="dt">Tel. emerg.</div>
+                          <div className="dd">{solicitud.emergenciaTelefono || '—'}</div>
+                        </div>
+                        <div>
+                          <div className="dt">Modo emerg.</div>
                           <div className="dd">
-                            {solicitud.fechaEventoInicio} → {solicitud.fechaEventoFin ?? '—'}{' '}
-                            {solicitud.horaInicio ? `(${solicitud.horaInicio}–${solicitud.horaFin})` : ''}
+                            {solicitud.esEmergencia ? (
+                              <span className="badge b-danger">Sí · máx. 3/mes</span>
+                            ) : (
+                              <span className="badge">No</span>
+                            )}
                           </div>
                         </div>
-                      )}
-                      {Object.entries(solicitud.camposExtra).map(([k, v]) => (
-                        <CampoExtra key={k} k={k} v={v} />
-                      ))}
-                    </dl>
+                      </dl>
+                    </div>
+
+                    {/* T-V22: campos extra + asistentes_estimados como campo individual. */}
+                    <div className="mt-6 grid gap-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Datos específicos
+                      </h4>
+                      <dl className="dl c2">
+                        {Object.entries(solicitud.camposExtra)
+                          .filter(([k]) => k !== 'asistentes_estimados')
+                          .map(([k, v]) => (
+                            <CampoExtra key={k} k={k} v={v} />
+                          ))}
+                      </dl>
+                    </div>
                   </div>
                 ),
               },

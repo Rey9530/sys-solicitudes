@@ -104,7 +104,6 @@ export const NAV: Record<AppRole, NavGroup[]> = {
       label: 'Portal',
       items: [
         { key: 'i-solicitudes', label: 'Mis solicitudes', icon: Inbox, href: '/inquilino/solicitudes' },
-        { key: 'i-contratos', label: 'Mis contratos', icon: FileText, href: '/inquilino/contratos' },
         { key: 'i-calendario', label: 'Calendario', icon: CalendarDays, href: '/inquilino/calendario' },
       ],
     },

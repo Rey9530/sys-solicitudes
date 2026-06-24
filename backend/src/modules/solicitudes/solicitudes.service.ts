@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  UnprocessableEntityException,
 } from '@nestjs/common';
 import type { Prisma, solicitud as SolicitudModel } from '@prisma/client';
 import type {
@@ -83,6 +84,8 @@ export class SolicitudesService {
 
     const solicitud = await this.prisma.withTenant(plazaId, async (tx) => {
       await this.assertLocalDelInquilino(tx, dto.localId, inquilinoId);
+      // T-V22: límite de 3 permisos de emergencia por mes por inquilino.
+      await this.assertLimiteEmergencia(tx, dto, inquilinoId);
       const { prioridad } = await this.resolverSubcategoria(
         tx,
         dto.tipo,
@@ -107,10 +110,18 @@ export class SolicitudesService {
           titulo: sanitizePlainText(dto.titulo),
           descripcion: sanitizeHtml(dto.descripcion),
           campos_extra: camposExtra as Prisma.InputJsonValue,
-          fecha_evento_inicio: dto.fechaEventoInicio ? new Date(dto.fechaEventoInicio) : null,
-          fecha_evento_fin: dto.fechaEventoFin ? new Date(dto.fechaEventoFin) : null,
-          hora_inicio: dto.horaInicio ?? null,
-          hora_fin: dto.horaFin ?? null,
+          fecha_evento_inicio: new Date(dto.fechaEventoInicio),
+          fecha_evento_fin: new Date(dto.fechaEventoFin),
+          hora_inicio: dto.horaInicio,
+          hora_fin: dto.horaFin,
+          // T-V22: bloque transversal empresa ejecutante + modo emergencia.
+          empresa_nombre: sanitizePlainText(dto.empresaNombre),
+          empresa_responsable: sanitizePlainText(dto.empresaResponsable),
+          empresa_telefono: sanitizePlainText(dto.empresaTelefono),
+          empresa_email: sanitizePlainText(dto.empresaEmail),
+          emergencia_contacto: sanitizePlainText(dto.emergenciaContacto),
+          emergencia_telefono: sanitizePlainText(dto.emergenciaTelefono),
+          es_emergencia: dto.esEmergencia,
         },
       });
       await this.state.insertarHistorial(tx, {
@@ -273,6 +284,13 @@ export class SolicitudesService {
         await this.assertLocalDelInquilino(tx, dto.localId, before.inquilino_id);
       }
 
+      // T-V22: si el dto activa el modo emergencia (y la solicitud aún no lo
+      // tenía), re-validar el límite mensual excluyendo esta misma fila.
+      const quiereEmergencia = dto.esEmergencia === true;
+      if (quiereEmergencia && !before.es_emergencia) {
+        await this.assertLimiteEmergencia(tx, { esEmergencia: true }, before.inquilino_id, id);
+      }
+
       // tipo/camposExtra: validar contra el tipo final.
       const tipoFinal = (dto.tipo ?? before.tipo) as SolicitudTipo;
       let camposExtra: Record<string, unknown> | undefined;
@@ -316,13 +334,33 @@ export class SolicitudesService {
             ? { campos_extra: camposExtra as Prisma.InputJsonValue }
             : {}),
           ...(dto.fechaEventoInicio !== undefined
-            ? { fecha_evento_inicio: dto.fechaEventoInicio ? new Date(dto.fechaEventoInicio) : null }
+            ? { fecha_evento_inicio: new Date(dto.fechaEventoInicio) }
             : {}),
           ...(dto.fechaEventoFin !== undefined
-            ? { fecha_evento_fin: dto.fechaEventoFin ? new Date(dto.fechaEventoFin) : null }
+            ? { fecha_evento_fin: new Date(dto.fechaEventoFin) }
             : {}),
           ...(dto.horaInicio !== undefined ? { hora_inicio: dto.horaInicio } : {}),
           ...(dto.horaFin !== undefined ? { hora_fin: dto.horaFin } : {}),
+          // T-V22: bloque transversal empresa ejecutante + modo emergencia.
+          ...(dto.empresaNombre !== undefined
+            ? { empresa_nombre: sanitizePlainText(dto.empresaNombre) }
+            : {}),
+          ...(dto.empresaResponsable !== undefined
+            ? { empresa_responsable: sanitizePlainText(dto.empresaResponsable) }
+            : {}),
+          ...(dto.empresaTelefono !== undefined
+            ? { empresa_telefono: sanitizePlainText(dto.empresaTelefono) }
+            : {}),
+          ...(dto.empresaEmail !== undefined
+            ? { empresa_email: sanitizePlainText(dto.empresaEmail) }
+            : {}),
+          ...(dto.emergenciaContacto !== undefined
+            ? { emergencia_contacto: sanitizePlainText(dto.emergenciaContacto) }
+            : {}),
+          ...(dto.emergenciaTelefono !== undefined
+            ? { emergencia_telefono: sanitizePlainText(dto.emergenciaTelefono) }
+            : {}),
+          ...(dto.esEmergencia !== undefined ? { es_emergencia: dto.esEmergencia } : {}),
         },
       });
       return { before, updated };
@@ -485,10 +523,21 @@ export class SolicitudesService {
           titulo,
           descripcion: original.descripcion,
           campos_extra: original.campos_extra as Prisma.InputJsonValue,
-          fecha_evento_inicio: null, // fechas reseteadas
+          // Fechas y modo emergencia reseteados (T-V22): el duplicado es un
+          // nuevo permiso que debe pasar de nuevo por la cola y el límite
+          // mensual de emergencias.
+          fecha_evento_inicio: null,
           fecha_evento_fin: null,
           hora_inicio: null,
           hora_fin: null,
+          es_emergencia: false,
+          // El bloque empresa ejecutante SÍ se copia para ahorrar tipeo.
+          empresa_nombre: original.empresa_nombre,
+          empresa_responsable: original.empresa_responsable,
+          empresa_telefono: original.empresa_telefono,
+          empresa_email: original.empresa_email,
+          emergencia_contacto: original.emergencia_contacto,
+          emergencia_telefono: original.emergencia_telefono,
         },
       });
       // Adjuntos: NO se copian (decisión UX, evita fugas entre solicitudes).
@@ -770,6 +819,40 @@ export class SolicitudesService {
     const umbral = config?.aprobacion_especial_asistentes_min ?? 200;
     const asistentes = Number(camposExtra.asistentes_estimados ?? 0);
     return { ...camposExtra, requiere_aprobacion_especial: asistentes > umbral };
+  }
+
+  /**
+   * T-V22 (S-SO-Emergencia): si dto.esEmergencia está activo, contar cuántas
+   * solicitudes de emergencia ha creado este inquilino en el mes actual.
+   * Si ya hay 3 (excluyendo la actual si es update), rechaza con 422.
+   * RLS de `solicitud` ya filtra por plaza; el conteo se hace además por
+   * `inquilino_id` para que cada empresa tenga su propio contador.
+   */
+  private async assertLimiteEmergencia(
+    tx: Prisma.TransactionClient,
+    dto: { esEmergencia: boolean },
+    inquilinoId: string,
+    excludeId?: string,
+  ): Promise<void> {
+    if (!dto.esEmergencia) return;
+    const inicioMes = new Date();
+    inicioMes.setUTCDate(1);
+    inicioMes.setUTCHours(0, 0, 0, 0);
+    const count = await tx.solicitud.count({
+      where: {
+        inquilino_id: inquilinoId,
+        es_emergencia: true,
+        created_at: { gte: inicioMes },
+        ...(excludeId ? { NOT: { id: excludeId } } : {}),
+      },
+    });
+    if (count >= 3) {
+      throw new UnprocessableEntityException({
+        code: 'PERMISO_EMERGENCIA_LIMITE',
+        title: 'Límite de emergencias alcanzado',
+        message: 'Solamente tiene un máximo de 3 permisos de emergencia al mes.',
+      });
+    }
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────

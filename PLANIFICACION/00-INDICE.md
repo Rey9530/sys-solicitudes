@@ -16,8 +16,8 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 |---|---|
 | Archivos de planificación | 15 (este + 14 módulos) |
 | Tareas técnicas (T-NNN) | 161 |
-| Tareas de validación de SUPUESTOS (T-VNN) | 15 |
-| **Total de tareas** | **176** |
+| Tareas de validación de SUPUESTOS (T-VNN) | 16 (T-V01..T-V15 + T-V22) |
+| **Total de tareas** | **177** |
 
 ---
 
@@ -475,6 +475,46 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
   - **Tareas dependientes afectadas:** Ninguna tarea técnica cambia. Las tareas de deploy (T-157, T-158, T-159) se mantienen genéricas y compatibles con cualquier proveedor.
   - **Criterios de aceptación modificados:** Los criterios pendientes se marcan como PENDIENTE (decisión comercial). No bloquean T-001.
   - **Próximos pasos para el cliente:** Una vez tenga el primer cliente firmado, contratar hosting + SMTP + dominio. Mientras tanto, el equipo técnico puede desarrollar contra el stack local con MailHog.
+
+### T-V22 — Bloque transversal de empresa ejecutante + modo emergencia
+- **Descripción:** Cambia el modelo de `solicitud` para añadir 7 columnas nuevas (transversales a los 4 tipos): datos de la empresa ejecutante (nombre, responsable, teléfono, email), contacto de emergencia (persona y teléfono) y un flag `es_emergencia` que activa reglas dinámicas de fechas y limita a 3 permisos de emergencia por mes por inquilino. Adicionalmente, las fechas del permiso pasan a ser obligatorias para todos los tipos (antes opcionales y restringidas a `evento`), y el rango de `asistentes_estimados` se amplía de 0-10 a 1-20.
+- **SUPUESTOS nuevos:** **S-SO-Emergencia** (reglas del modo emergencia), **S-SO-DatosEmpresa** (bloque transversal obligatorio), **S-SO-FechasObligatorias** (fechas requeridas para todo tipo).
+- **SUPUESTOS revisados/desviaciones:**
+  - **S-CamposTipo (DESVIACIÓN):** `asistentes_estimados` ahora es obligatorio con rango 1-20 para los 4 tipos. Antes era opcional en `mantenimiento/remodelacion/otro` con tope 10.
+  - **T-079 (DESVIACIÓN):** `fecha_evento_inicio/fin` y `hora_inicio/fin` pasan de opcionales a obligatorios. Antes solo eran obligatorios para `evento`.
+  - **T-V05 (DESVIACIÓN parcial):** `evento` mantiene el umbral de aprobación especial pero el rango cambia a 1-20 (antes 1-10_000).
+- **Origen:** Sesión 2026-06-23 con el cliente.
+- **Criterios de aceptación:**
+  - [x] Migración `20260623000001_solicitud_datos_empresa_emergencia` aplica sin errores sobre la BD local.
+  - [x] `CreateSolicitudSchema` rechaza payload sin los 7 nuevos campos o con `asistentes_estimados < 1 || > 20`.
+  - [x] `SolicitudesService.create()` rechaza con 422 `PERMISO_EMERGENCIA_LIMITE` si ya hay 3 emergencias del inquilino en el mes actual.
+  - [x] `SolicitudesService.update()` re-valida el límite solo si la transición activa el flag (no si ya estaba activo).
+  - [x] `SolicitudesService.duplicar()` resetea `es_emergencia=false` y las fechas (pero copia el bloque empresa).
+  - [x] Frontend: paso 2 muestra fechas siempre con `min`/`max` dinámicos según modo estándar/emergencia.
+  - [x] Frontend: toggle "Emergencia" dispara SweetAlert con texto literal "Solamente tiene un máximo de 3 permisos de emergencia al mes." antes de activar.
+  - [x] Frontend: labels renombrados ("Cantidad de Personal", "Información del personal").
+  - [x] Frontend: paso 3 muestra TODA la información (identificación, empresa, emergencia, fechas, personal, campos extra específicos).
+- **Tareas dependientes potencialmente afectadas:**
+  - **T-080 (en `06-solicitudes.md`):** ⚠️ Revisar — el `data` de `tx.solicitud.create()` cambia para incluir 7 columnas más.
+  - **T-079 (en `06-solicitudes.md`):** ⚠️ Revisar — los schemas Zod per-tipo se modificaron; `AsistentesBloqueSchema` y `CamposExtraEventoSchema` ya validan 1-20.
+  - **T-088 (en `06-solicitudes.md`):** ⚠️ Revisar — el wizard del inquilino (`SolicitudWizard`) se reorganizó: fechas siempre visibles, nuevo bloque empresa, modal de emergencia, paso 3 ampliado.
+  - **docs/04-modelo-de-datos.md §4.3.7 (Solicitud):** ⚠️ Actualizar la tabla con las 7 columnas nuevas.
+  - **docs/05-flujo-de-solicitudes.md:** ⚠️ Actualizar para incluir las reglas de fecha dinámicas (48h lead estándar, 0h lead emergencia, 7 días tope).
+  - **docs/03-modulos-del-sistema.md §3 (RN-SO-*):** ⚠️ Añadir RN-SO-Fechas (obligatorias + lead time) y RN-SO-Emergencia (3/mes).
+- **Prioridad:** Alta.
+- **Estado:** Implementada (2026-06-23). Pendiente validación manual con backend levantado.
+- **Bitácora de cambios:**
+  - **Decisiones técnicas (2026-06-23):**
+    - **Columnas NOT NULL con defaults vacíos** (`''` para strings, `false` para `es_emergencia`): filas existentes quedan con placeholders; la app las sobreescribe al primer edit. Aceptable para dev/staging; en producción se necesitará una migración en 2 pasos (nullable → backfill → SET NOT NULL).
+    - **Índice compuesto `(plaza_id, es_emergencia, created_at)`**: soporta la query `count({ inquilino_id, es_emergencia: true, created_at: { gte: inicioMes } })` dentro del tenant del RLS.
+    - **`momentoElaboracion` congelado al montar** el wizard (`useState(() => new Date())`): evita que el "ahora + 48h" se mueva mientras el usuario completa el formulario.
+    - **Modal SweetAlert2 (`confirmAction`)** para activar emergencia: respeta la regla del proyecto (`frontend/src/lib/sweetalert.ts`).
+    - **`momentoElaboracion` solo se valida al guardar en backend**: el frontend espeja la lógica pero el backend es la fuente de verdad (`CreateSolicitudSchema.superRefine` + `SolicitudesService.assertLimiteEmergencia`).
+    - **Reuso de `sanitizePlainText`** para todos los strings nuevos (T-151 SEC-6 XSS).
+    - **Bloque transversal empresa es top-level** en `solicitud`, NO en `campos_extra` JSONB. Justificación: aplica a los 4 tipos; los tipos en JSONB son discriminados por `tipo` y este bloque no encaja en esa lógica.
+  - **Próximos pasos:**
+    - Verificación manual end-to-end con backend levantado (ver plan de implementación).
+    - Considerar mover el límite 3/mes a `configuracion.max_emergencias_por_mes` (parametrizable por plaza) si el cliente lo pide.
 
 ---
 

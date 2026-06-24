@@ -20,6 +20,18 @@ export const EmailSchema = z
   .email();
 export type Email = z.infer<typeof EmailSchema>;
 
+/** Teléfono internacional/long-distance flexible. Acepta 8-20 chars entre
+ *  dígitos, espacios, paréntesis, guiones y el signo `+` inicial.
+ *  La validación de formato específico por país se hace en la app/backend
+ *  si es necesario (CLDR, libphonenumber, etc.). */
+export const PhoneSchema = z
+  .string()
+  .trim()
+  .min(8)
+  .max(20)
+  .regex(/^[0-9+\-\s()]+$/, 'Teléfono inválido');
+export type Phone = z.infer<typeof PhoneSchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Paginación y orden
 

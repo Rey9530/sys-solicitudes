@@ -231,6 +231,8 @@
 - **Estado:** Completada.
 - **Bitácora de cambios:**
   - **2026-06-06 (rama `feat/modulo-07-aprobaciones`):** `GET /solicitudes/bandeja` con las 3 colas de T-V03 (`enviada`/`asignado`/`en_revision`), orden `prioridad ASC, enviada_at ASC`, filtros (tipo/categoría/subcategoría/local/prioridad/asignadasAMi) y paginación. `sla_status` por item: lee la matview (T-101) y calcula al vuelo (T-100) las filas aún no materializadas. ⚠️ La ruta estática exige que `AprobacionesModule` se registre ANTES de `SolicitudesModule` en `app.module.ts` (si no, cae en `GET /solicitudes/:id`). Verificado con curl (orden y semáforo correctos). RLS: la query siempre corre bajo `withTenant` del JWT.
+  - **actualización 2026-06-23:** ⚠️ Se invierte el orden secundario a `enviada_at DESC` (decisión owner). Ahora la bandeja muestra, dentro de cada prioridad (A→F), la solicitud **más reciente primero**. Se mantiene la agrupación por prioridad (no se aplana). Cambio en `AprobacionesService.bandeja` (`aprobaciones.service.ts:243`) y JSDoc líneas 212-217. El subtítulo de la pantalla `/admin/solicitudes` se actualiza de "prioridad y antigüedad" → "prioridad y más reciente primero". Desviación respecto al spec T-V03 original (que prescribía ASC = "más antiguas primero / más atrasadas en cola").
+  - **actualización 2026-06-23 (bis):** ⚠️ Se amplía el filtro `estado` de `BandejaQuerySchema` a los 8 estados del workflow (`borrador`/`enviada`/`asignado`/`en_revision`/`requerida_subsanacion`/`aprobada`/`rechazada`/`cancelada`); antes se restringía a las 3 colas activas (decisión owner). Se elimina el filtro implícito `{ in: ['enviada', 'asignado', 'en_revision'] }` en `AprobacionesService.bandeja` cuando el cliente no envía `estado` → ahora "sin filtro" significa **todos los estados**. Se añade `.default(true)` a `asignadasAMi` (decisión owner): la bandeja muestra por defecto solo las solicitudes asignadas al admin actual; pasar `?asignadasAMi=false` para ver todas las de la plaza.
 
 ### T-100 — Implementar SLA visual con semáforo (verde/amarillo/rojo)
 
@@ -345,6 +347,8 @@
 - **Estado:** Completada.
 - **Bitácora de cambios:**
   - **2026-06-06 (rama `feat/modulo-07-aprobaciones`):** `/admin/solicitudes`: tabla con código/tipo/título/local/estado/prioridad/semáforo SLA/asignado/fechas, filtros por cola/tipo/prioridad, toggle "Asignadas a mí" y refresco automático cada 60 s (client `AutoRefresh` con `router.refresh()`, mantiene el BFF). ⚠️ El botón "Top 5 por antigüedad" es de T-141 (módulo 11): la bandeja ya ordena por prioridad+antigüedad. Paginación server-side. Build/lint en verde.
+  - **actualización 2026-06-23:** Subtítulo actualizado a "ordenadas por prioridad y más reciente primero" para reflejar el nuevo orden (DESC) de la bandeja. Sin cambios de UX ni de filtros.
+  - **actualización 2026-06-23 (bis):** UX de la bandeja: (1) el toggle "Asignadas a mí" pasa a estar **activo por defecto** al cargar `/admin/solicitudes` (URL sin `asignadasAMi` = true; para ver todas hay que hacer clic en "Todas"); (2) el dropdown de estado se amplía a los 8 estados del workflow con opción "Todos los estados" (vacía); (3) el subtítulo cambia de "X en curso" → "X resultados" porque ahora pueden incluirse terminales (aprobada/rechazada/cancelada).
 
 ### T-107 — Implementar pantalla /admin/solicitudes/[id] con acciones
 

@@ -166,43 +166,84 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
                       <Dato dt="Creada" dd={formatDateInPlazaTz(solicitud.createdAt)} />
                       <Dato dt="Enviada" dd={solicitud.enviadaAt ? formatDateInPlazaTz(solicitud.enviadaAt) : '—'} />
                       <Dato dt="Decisión" dd={solicitud.decisionAt ? formatDateInPlazaTz(solicitud.decisionAt) : '—'} />
-                      {solicitud.fechaEventoInicio && (
-                        <div className="full">
-                          <div className="dt">Fechas del evento</div>
+                      {/* T-V22: fechas del permiso siempre visibles (no condicionales). */}
+                      <div className="full">
+                        <div className="dt">Fechas del permiso</div>
+                        <div className="dd">
+                          {solicitud.fechaEventoInicio} → {solicitud.fechaEventoFin ?? '—'}{' '}
+                          {solicitud.horaInicio ? `(${solicitud.horaInicio}–${solicitud.horaFin})` : ''}
+                        </div>
+                      </div>
+                    </dl>
+
+                    {/* T-V22: bloque transversal empresa ejecutante + emergencia. */}
+                    <div className="mt-6 grid gap-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Empresa ejecutante
+                      </h4>
+                      <dl className="dl c2">
+                        <Dato dt="Empresa" dd={solicitud.empresaNombre} />
+                        <Dato dt="Responsable" dd={solicitud.empresaResponsable} />
+                        <Dato dt="Tel. empresa" dd={solicitud.empresaTelefono} />
+                        <Dato dt="Email empresa" dd={solicitud.empresaEmail} />
+                      </dl>
+                    </div>
+
+                    <div className="mt-6 grid gap-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Contacto de emergencia
+                      </h4>
+                      <dl className="dl c2">
+                        <Dato dt="Contacto" dd={solicitud.emergenciaContacto} />
+                        <Dato dt="Tel. emerg." dd={solicitud.emergenciaTelefono} />
+                        <div>
+                          <div className="dt">Modo emerg.</div>
                           <div className="dd">
-                            {solicitud.fechaEventoInicio} → {solicitud.fechaEventoFin ?? '—'}{' '}
-                            {solicitud.horaInicio ? `(${solicitud.horaInicio}–${solicitud.horaFin})` : ''}
+                            {solicitud.esEmergencia ? (
+                              <span className="badge b-danger">Sí · máx. 3/mes</span>
+                            ) : (
+                              <span className="badge">No</span>
+                            )}
                           </div>
                         </div>
-                      )}
-                      {Object.entries(solicitud.camposExtra).map(([k, v]) => {
-                        // T-V21: lista de asistentes se renderiza como sub-lista,
-                        // no como `String(array)` que daría "[object Object]".
-                        if (k === 'asistentes' && Array.isArray(v)) {
-                          const lista = v as Array<{ nombre?: string; documento?: string }>;
-                          return (
-                            <div key={k}>
-                              <div className="dt">{CAMPOS_EXTRA_LABEL[k]}</div>
-                              <div className="dd">
-                                {lista.length === 0 ? (
-                                  <span className="muted">—</span>
-                                ) : (
-                                  <ul className="text-sm">
-                                    {lista.map((a, i) => (
-                                      <li key={i}>
-                                        <b>{a.nombre || '—'}</b> ·{' '}
-                                        <span className="muted">{a.documento || '—'}</span>
-                                      </li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        }
-                        return <Dato key={k} dt={CAMPOS_EXTRA_LABEL[k] ?? k} dd={formatValor(v)} />;
-                      })}
-                    </dl>
+                      </dl>
+                    </div>
+
+                    {/* T-V22: campos extra + asistentes_estimados como campo individual. */}
+                    <div className="mt-6 grid gap-2">
+                      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Datos específicos
+                      </h4>
+                      <dl className="dl c2">
+                        {Object.entries(solicitud.camposExtra)
+                          .filter(([k]) => k !== 'asistentes_estimados')
+                          .map(([k, v]) => {
+                            if (k === 'asistentes' && Array.isArray(v)) {
+                              const lista = v as Array<{ nombre?: string; documento?: string }>;
+                              return (
+                                <div key={k}>
+                                  <div className="dt">{CAMPOS_EXTRA_LABEL[k]}</div>
+                                  <div className="dd">
+                                    {lista.length === 0 ? (
+                                      <span className="muted">—</span>
+                                    ) : (
+                                      <ul className="text-sm">
+                                        {lista.map((a, i) => (
+                                          <li key={i}>
+                                            <b>{a.nombre || '—'}</b> ·{' '}
+                                            <span className="muted">{a.documento || '—'}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return <Dato key={k} dt={CAMPOS_EXTRA_LABEL[k] ?? k} dd={formatValor(v)} />;
+                          })}
+                      </dl>
+                    </div>
                   </div>
                 ),
               },

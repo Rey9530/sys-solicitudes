@@ -581,6 +581,19 @@ model solicitud {
   fecha_evento_fin    DateTime?           @db.Date
   hora_inicio         String?
   hora_fin            String?
+  // ── Bloque empresa ejecutante (transversal a todos los tipos, T-V22) ──────
+  empresa_nombre      String              @default("")
+  empresa_responsable String              @default("")
+  empresa_telefono    String              @default("")
+  empresa_email       String              @default("")
+  // Contacto de emergencia (en caso de accidente durante el permiso).
+  emergencia_contacto String              @default("")
+  emergencia_telefono String              @default("")
+  // Marca de "permiso de emergencia" (S-SO-Emergencia). Reglas dinámicas:
+  //   - Habilita fechas desde `ahora()` (sin lead time de 48h).
+  //   - Tope fechaFin = ahora() + 7 días.
+  //   - Backend valida máximo 3 por mes por inquilino.
+  es_emergencia       Boolean             @default(false)
   enviada_at          DateTime?           @db.Timestamptz(6)
   asignada_at         DateTime?           @db.Timestamptz(6)
   decision_at         DateTime?           @db.Timestamptz(6)
@@ -606,6 +619,7 @@ model solicitud {
   @@index([plaza_id, fecha_evento_inicio])
   @@index([plaza_id, admin_asignado_id, estado])
   @@index([plaza_id, estado, enviada_at])
+  @@index([plaza_id, es_emergencia, created_at])
   @@map("solicitud")
 }
 

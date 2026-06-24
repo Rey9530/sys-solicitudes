@@ -210,8 +210,14 @@ export class AprobacionesService {
   // ── Bandeja priorizada (T-099) ────────────────────────────────────────────────
 
   /**
-   * Tres colas (T-V03): `enviada` (en espera del cron), `asignado` y
-   * `en_revision`. Orden: prioridad ASC (A primero) + enviada_at ASC.
+   * Bandeja de solicitudes del admin (T-V03 + T-099). Acepta cualquier
+   * estado del workflow (borrador, enviada, asignado, en_revision,
+   * requerida_subsanacion, aprobada, rechazada, cancelada) — decisión owner
+   * 2026-06-23, antes se restringía a las 3 colas activas (enviada/asignado/
+   * en_revision). Por defecto `asignadasAMi=true` → solo las asignadas al
+   * admin actual; pasar `?asignadasAMi=false` para ver todas las de la plaza.
+   * Orden: prioridad ASC (A primero) + enviada_at DESC (más reciente arriba;
+   * decisión owner 2026-06-23 — antes era ASC).
    * `slaStatus` viene de la matview (T-101) y, si la fila aún no existe
    * (solicitud nueva, refresh diario), se calcula al vuelo (T-100).
    */
@@ -223,7 +229,7 @@ export class AprobacionesService {
     const { page, pageSize } = query;
 
     const where: Prisma.solicitudWhereInput = {
-      estado: query.estado ? query.estado : { in: ['enviada', 'asignado', 'en_revision'] },
+      ...(query.estado ? { estado: query.estado } : {}),
       ...(query.tipo ? { tipo: query.tipo } : {}),
       ...(query.categoriaId ? { categoria_id: query.categoriaId } : {}),
       ...(query.subcategoriaId ? { subcategoria_id: query.subcategoriaId } : {}),
@@ -240,7 +246,7 @@ export class AprobacionesService {
             where,
             skip: (page - 1) * pageSize,
             take: pageSize,
-            orderBy: [{ prioridad: 'asc' }, { enviada_at: 'asc' }],
+            orderBy: [{ prioridad: 'asc' }, { enviada_at: 'desc' }],
             include: SOLICITUD_INCLUDE,
           }),
           tx.solicitud.count({ where }),

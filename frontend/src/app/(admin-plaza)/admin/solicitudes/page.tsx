@@ -41,7 +41,7 @@ export default async function AdminSolicitudesPage({
     ? ((await res.json()) as Paginated)
     : { items: [], total: 0, page: 1, totalPages: 0 };
 
-  const asignadasAMi = sp.asignadasAMi === 'true';
+  const asignadasAMi = sp.asignadasAMi !== 'false'; // default true; solo se desactiva con ?asignadasAMi=false
   const hrefFor = (page: number) =>
     `/admin/solicitudes?${new URLSearchParams({ ...sp, page: String(page) }).toString()}`;
 
@@ -52,7 +52,7 @@ export default async function AdminSolicitudesPage({
 
       <PageHeader
         title="Bandeja de solicitudes"
-        subtitle={`${data.total} en curso · ordenadas por prioridad y antigüedad · semáforo SLA.`}
+        subtitle={`${data.total} resultados · ordenadas por prioridad y más reciente primero · semáforo SLA.`}
         actions={
           <>
             <span className="badge b-neutral">
@@ -61,7 +61,7 @@ export default async function AdminSolicitudesPage({
             </span>
             <div className="segment">
               <Link
-                href={`/admin/solicitudes?${new URLSearchParams({ ...sp, asignadasAMi: '', page: '1' }).toString()}`}
+                href={`/admin/solicitudes?${new URLSearchParams({ ...sp, asignadasAMi: 'false', page: '1' }).toString()}`}
                 className={!asignadasAMi ? 'on' : undefined}
               >
                 Todas
@@ -82,10 +82,15 @@ export default async function AdminSolicitudesPage({
           <div className="field">
             <label htmlFor="f-estado">Estado</label>
             <select id="f-estado" name="estado" defaultValue={sp.estado ?? ''} className="select">
-              <option value="">Las 3 colas</option>
-              <option value="enviada">Enviadas (en espera)</option>
-              <option value="asignado">Asignadas</option>
+              <option value="">Todos los estados</option>
+              <option value="borrador">Borrador</option>
+              <option value="enviada">Enviada (en espera)</option>
+              <option value="asignado">Asignada</option>
               <option value="en_revision">En revisión</option>
+              <option value="requerida_subsanacion">Requerida subsanación</option>
+              <option value="aprobada">Aprobada</option>
+              <option value="rechazada">Rechazada</option>
+              <option value="cancelada">Cancelada</option>
             </select>
           </div>
           <div className="field">

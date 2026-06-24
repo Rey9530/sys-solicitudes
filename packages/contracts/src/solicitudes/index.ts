@@ -7,7 +7,7 @@
  *   - Umbral aprobación especial: 200 asistentes (configurable por plaza).
  */
 import { z } from 'zod';
-import { UuidSchema, PaginationSchema } from '../common/index.js';
+import { UuidSchema, PaginationSchema, EmailSchema, PhoneSchema } from '../common/index.js';
 import { SolicitudPrioridadSchema } from '../categorias/index.js';
 import { AdjuntoOutputSchema } from '../adjuntos/index.js';
 
@@ -75,9 +75,11 @@ export type Asistente = z.infer<typeof AsistenteSchema>;
 /**
  * Bloque de asistentes para tipos donde es opcional (mantenimiento, remodelación, otro).
  * `evento` usa una versión estricta con `min(1)` directamente.
+ *
+ * T-V22: mín 1 (antes 0), máx 20 (antes 10). Aplica a los 4 tipos.
  */
 export const AsistentesBloqueSchema = z.object({
-  asistentes_estimados: z.coerce.number().int().min(0).max(10),
+  asistentes_estimados: z.coerce.number().int().min(1).max(20),
   asistentes: z.array(AsistenteSchema),
 });
 export type AsistentesBloque = z.infer<typeof AsistentesBloqueSchema>;
@@ -91,9 +93,9 @@ export const CamposExtraMantenimientoSchema = z
 export type CamposExtraMantenimiento = z.infer<typeof CamposExtraMantenimientoSchema>;
 
 export const CamposExtraEventoSchema = z.object({
-  // evento: mínimo 1 asistente, mismo tope 10 que el resto (antes era 10_000;
-  // se mantiene la regla T-V05 de "umbral aprobación especial" sobre este valor).
-  asistentes_estimados: z.coerce.number().int().min(1).max(10),
+  // T-V22: mínimo 1 asistente, tope 20 (antes 10). Se mantiene la regla
+  // T-V05 de "umbral aprobación especial" sobre este valor (en el service).
+  asistentes_estimados: z.coerce.number().int().min(1).max(20),
   asistentes: z.array(AsistenteSchema),
   requiere_corte_calle: z.boolean(),
   requiere_amplificacion: z.boolean(),
@@ -127,13 +129,23 @@ const BaseSolicitudSchema = z.object({
   tipo: SolicitudTipoSchema,
   titulo: z.string().trim().min(1).max(120),
   descripcion: z.string().trim().min(1).max(4000),
-  fechaEventoInicio: z.iso.date().optional(),
-  fechaEventoFin: z.iso.date().optional(),
-  horaInicio: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
-  horaFin: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
-  // categoriaId y subcategoriaId NO se reciben si tipo=otro
+  // T-V22: fechas obligatorias para todo tipo (antes opcional, solo evento).
+  fechaEventoInicio: z.iso.date(),
+  fechaEventoFin: z.iso.date(),
+  horaInicio: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  horaFin: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
   categoriaId: UuidSchema.optional(),
   subcategoriaId: UuidSchema.optional(),
+  // T-V22: bloque transversal empresa ejecutante.
+  empresaNombre: z.string().trim().min(1).max(160),
+  empresaResponsable: z.string().trim().min(1).max(160),
+  empresaTelefono: PhoneSchema,
+  empresaEmail: EmailSchema,
+  // Contacto de emergencia (en caso de accidente durante el permiso).
+  emergenciaContacto: z.string().trim().min(1).max(160),
+  emergenciaTelefono: PhoneSchema,
+  // Marca de "permiso de emergencia" (S-SO-Emergencia).
+  esEmergencia: z.boolean().default(false),
 });
 
 export const CreateSolicitudSchema = BaseSolicitudSchema.and(
@@ -166,7 +178,64 @@ export const CreateSolicitudSchema = BaseSolicitudSchema.and(
       message: 'La lista de asistentes no coincide con la cantidad estimada.',
       path: ['camposExtra'],
     },
-  );
+  )
+  // T-V22: reglas dinámicas de fecha según modo (estándar vs emergencia).
+  //   - Estándar: fechaInicio >= ahora + 48h; fechaFin <= fechaInicio + 7d.
+  //   - Emergencia: fechaInicio >= ahora; fechaFin <= ahora + 7d.
+  //   - En ambos modos: fechaFin >= fechaInicio (mismo día OK).
+  // El límite de "3 emergencias/mes" se valida en el servicio
+  // (assertLimiteEmergencia, scope: inquilino + mes actual).
+  .superRefine((v, ctx) => {
+    const inicio = new Date(`${v.fechaEventoInicio}T${v.horaInicio}:00`);
+    const fin = new Date(`${v.fechaEventoFin}T${v.horaFin}:00`);
+    if (Number.isNaN(inicio.getTime()) || Number.isNaN(fin.getTime())) return;
+    const ahora = new Date();
+    const HORA = 60 * 60 * 1000;
+    const DIA = 24 * HORA;
+
+    if (fin < inicio) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fechaEventoFin'],
+        message: 'La fecha/hora de fin debe ser posterior al inicio.',
+      });
+    }
+
+    if (v.esEmergencia) {
+      if (inicio < ahora) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fechaEventoInicio'],
+          message: 'La fecha/hora de inicio no puede ser en el pasado.',
+        });
+      }
+      const maxFin = new Date(ahora.getTime() + 7 * DIA);
+      if (fin > maxFin) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fechaEventoFin'],
+          message: 'En modo emergencia la fecha fin no puede exceder 7 días desde hoy.',
+        });
+      }
+    } else {
+      const minInicio = new Date(ahora.getTime() + 48 * HORA);
+      if (inicio < minInicio) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fechaEventoInicio'],
+          message: 'La fecha de inicio debe ser al menos 48 horas después de este momento.',
+        });
+      }
+      const maxFin = new Date(inicio.getTime() + 7 * DIA);
+      if (fin > maxFin) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fechaEventoFin'],
+          message: 'La fecha fin no puede exceder 7 días desde la fecha de inicio.',
+        });
+      }
+    }
+  });
 export type CreateSolicitudInput = z.infer<typeof CreateSolicitudSchema>;
 
 export const UpdateSolicitudSchema = BaseSolicitudSchema.partial().extend({
@@ -221,18 +290,34 @@ export const LiberarSolicitudSchema = z.object({
 });
 export type LiberarSolicitudInput = z.infer<typeof LiberarSolicitudSchema>;
 
-/** T-099: bandeja del admin (colas enviada/asignado/en_revision). */
+/** T-099: bandeja del admin. Acepta cualquier estado del workflow (decisión owner
+ *  2026-06-23 — antes restringido a enviada/asignado/en_revision). */
 export const BandejaQuerySchema = PaginationSchema.extend({
-  estado: z.enum(['enviada', 'asignado', 'en_revision']).optional(),
+  estado: z
+    .enum([
+      'borrador',
+      'enviada',
+      'asignado',
+      'en_revision',
+      'requerida_subsanacion',
+      'aprobada',
+      'rechazada',
+      'cancelada',
+    ])
+    .optional(),
   tipo: SolicitudTipoSchema.optional(),
   categoriaId: UuidSchema.optional(),
   subcategoriaId: UuidSchema.optional(),
   localId: UuidSchema.optional(),
   prioridad: SolicitudPrioridadSchema.optional(),
+  /** Default `true` (decisión owner 2026-06-23): la bandeja muestra por defecto
+   *  las solicitudes asignadas al admin actual. Pasar `false` (o `?asignadasAMi=false`)
+   *  para ver todas las de la plaza. */
   asignadasAMi: z
     .union([z.boolean(), z.string()])
     .transform((v) => v === true || v === 'true')
-    .optional(),
+    .optional()
+    .default(true),
 });
 export type BandejaQuery = z.infer<typeof BandejaQuerySchema>;
 
@@ -321,6 +406,14 @@ export const SolicitudOutputSchema = z.object({
   fechaEventoFin: z.iso.date().nullable(),
   horaInicio: z.string().nullable(),
   horaFin: z.string().nullable(),
+  // T-V22: bloque empresa ejecutante (transversal).
+  empresaNombre: z.string(),
+  empresaResponsable: z.string(),
+  empresaTelefono: z.string(),
+  empresaEmail: z.string(),
+  emergenciaContacto: z.string(),
+  emergenciaTelefono: z.string(),
+  esEmergencia: z.boolean(),
   enviadaAt: z.iso.datetime().nullable(),
   asignadaAt: z.iso.datetime().nullable(),
   decisionAt: z.iso.datetime().nullable(),

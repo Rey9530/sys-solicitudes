@@ -1,8 +1,9 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, UserPlus, X } from 'lucide-react';
+import { Check, UploadCloud, FileText, Image as ImageIcon, AlertCircle, UserPlus, X } from 'lucide-react';
+import { useDropzone, type FileRejection } from 'react-dropzone';
 import { toast } from 'sonner';
 import type {
   Asistente,
@@ -20,6 +21,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { confirmAction } from '@/lib/sweetalert';
+import {
+  MAX_PERSONAL,
+  MIN_PERSONAL,
+  emailBasicoValido,
+  maxFechaFinEmergencia,
+  maxFechaFinEstandar,
+  minFechaInicioEstandar,
+  telefonoBasicoValido,
+  validarRangoFechas,
+} from '@/lib/solicitud-fechas';
 
 export interface CategoriaOption {
   id: string;
@@ -45,7 +57,17 @@ export interface TipoOption {
 
 const selectClass = 'select';
 const MAX_ADJUNTOS = 10;
-const MAX_ASISTENTES = 10; // T-V21
+// T-V22: límites del módulo 08 (adjuntos). Espejan al backend (S-TamañoMax /
+// S-MimeTypes). El backend vuelve a validar en ZodValidationPipe; aquí solo
+// damos feedback rápido al usuario.
+const MAX_ADJUNTO_BYTES = 25 * 1024 * 1024; // 25 MB
+const ADJUNTO_MIME_PERMITIDOS: Record<string, string[]> = {
+  'application/pdf': ['.pdf'],
+  'image/png': ['.png'],
+  'image/jpeg': ['.jpg', '.jpeg'],
+  'image/webp': ['.webp'],
+};
+const MAX_PERSONAL_WIZARD = MAX_PERSONAL; // T-V22: 1-20 (antes 0-10)
 const PASOS = ['Tipo y categoría', 'Detalles', 'Adjuntos y revisión'];
 
 interface CamposExtraState {
@@ -135,6 +157,19 @@ export function SolicitudWizard({
   const [fechaFin, setFechaFin] = useState(solicitud?.fechaEventoFin ?? prefill?.fecha ?? '');
   const [horaInicio, setHoraInicio] = useState(solicitud?.horaInicio ?? prefill?.hora ?? '');
   const [horaFin, setHoraFin] = useState(solicitud?.horaFin ?? '');
+  // T-V22: bloque transversal de empresa ejecutante + contacto de emergencia.
+  const [empresaNombre, setEmpresaNombre] = useState(solicitud?.empresaNombre ?? '');
+  const [empresaResponsable, setEmpresaResponsable] = useState(solicitud?.empresaResponsable ?? '');
+  const [empresaTelefono, setEmpresaTelefono] = useState(solicitud?.empresaTelefono ?? '');
+  const [empresaEmail, setEmpresaEmail] = useState(solicitud?.empresaEmail ?? '');
+  const [emergenciaContacto, setEmergenciaContacto] = useState(solicitud?.emergenciaContacto ?? '');
+  const [emergenciaTelefono, setEmergenciaTelefono] = useState(solicitud?.emergenciaTelefono ?? '');
+  // T-V22: modo emergencia (S-SO-Emergencia). Reduce lead time y permite hasta
+  // 3 permisos/mes. Se valida en backend con PERMISO_EMERGENCIA_LIMITE.
+  const [esEmergencia, setEsEmergencia] = useState<boolean>(solicitud?.esEmergencia ?? false);
+  // T-V22: momento de elaboración del permiso, congelado al montar el wizard
+  // para que el "ahora + 48h" y "ahora + 7d" no cambien al refrescar la pantalla.
+  const [momentoElaboracion] = useState(() => new Date());
   const [extra, setExtra] = useState<CamposExtraState>(() => {
     const base: CamposExtraState = { ...CAMPOS_EXTRA_INICIAL };
     if (!solicitud) return base;
@@ -173,7 +208,7 @@ export function SolicitudWizard({
   const numAsistentes = useMemo(() => {
     const n = Number(extra.asistentes_estimados);
     if (!Number.isFinite(n) || n < 0) return 0;
-    return Math.min(MAX_ASISTENTES, Math.floor(n));
+    return Math.min(MAX_PERSONAL_WIZARD, Math.floor(n));
   }, [extra.asistentes_estimados]);
 
   // T-090: aviso NO bloqueante de duplicados al elegir local (paso 2).
@@ -191,7 +226,24 @@ export function SolicitudWizard({
   const setX = <K extends keyof CamposExtraState>(k: K, v: CamposExtraState[K]) =>
     setExtra((prev) => ({ ...prev, [k]: v }));
 
-  const necesitaFechas = tipo === 'evento';
+  /**
+   * T-V22: abre el modal SweetAlert cuando el usuario quiere activar el modo
+   * emergencia. Si cancela, no se aplica. Si confirma, sí.
+   */
+  const handleEmergenciaToggle = async (next: boolean) => {
+    if (!next) {
+      setEsEmergencia(false);
+      return;
+    }
+    const ok = await confirmAction({
+      title: 'Modo emergencia',
+      text: 'Solamente tiene un máximo de 3 permisos de emergencia al mes.',
+      icon: 'info',
+      confirmButtonText: 'Entendido',
+      cancelButtonText: 'Cancelar',
+    });
+    if (ok) setEsEmergencia(true);
+  };
 
   const validarAsistentes = (): string | null => {
     if (numAsistentes === 0) return null;
@@ -207,6 +259,39 @@ export function SolicitudWizard({
     return null;
   };
 
+  /** T-V22: lista legible de campos_extra específicos del tipo (paso 3). */
+  const renderCamposExtraResumen = (): React.ReactNode => {
+    const rows: Array<[string, string]> = [];
+    switch (tipo) {
+      case 'mantenimiento':
+        if (extra.area_afectada) rows.push(['Área afectada', extra.area_afectada]);
+        rows.push(['Requiere ingreso al local', extra.requiere_ingreso_a_local ? 'Sí' : 'No']);
+        break;
+      case 'evento':
+        rows.push(['Requiere corte de calle', extra.requiere_corte_calle ? 'Sí' : 'No']);
+        rows.push(['Requiere amplificación', extra.requiere_amplificacion ? 'Sí' : 'No']);
+        break;
+      case 'remodelacion':
+        if (extra.fecha_inicio_estimada)
+          rows.push(['Fecha inicio estimada', extra.fecha_inicio_estimada]);
+        if (extra.duracion_dias) rows.push(['Duración (días)', extra.duracion_dias]);
+        if (extra.empresa_constructora)
+          rows.push(['Empresa constructora', extra.empresa_constructora]);
+        if (extra.monto_presupuesto)
+          rows.push(['Monto presupuesto (USD)', extra.monto_presupuesto]);
+        break;
+      case 'otro':
+      default:
+        break;
+    }
+    return rows.map(([k, v]) => (
+      <Fragment key={k}>
+        <dt>{k}</dt>
+        <dd>{v}</dd>
+      </Fragment>
+    ));
+  };
+
   const validarPaso = (n: number): string | null => {
     if (n === 1) {
       // T-V21: categoría + subcategoría obligatorias para TODO tipo (antes 'otro' exento).
@@ -219,16 +304,42 @@ export function SolicitudWizard({
       if (!localId) return 'Selecciona un local.';
       if (!titulo.trim()) return 'El título es obligatorio.';
       if (!descripcion.trim()) return 'La descripción es obligatoria.';
+
+      // T-V22: fechas obligatorias y validadas dinámicamente para TODO tipo.
+      if (!fechaInicio || !fechaFin || !horaInicio || !horaFin) {
+        return 'Indica fecha y hora de inicio y fin del permiso.';
+      }
+      const errFechas = validarRangoFechas(
+        fechaInicio,
+        fechaFin,
+        horaInicio,
+        horaFin,
+        esEmergencia,
+        momentoElaboracion,
+      );
+      if (errFechas) return errFechas;
+
+      // T-V22: bloque transversal de empresa ejecutante.
+      if (!empresaNombre.trim()) return 'Indica el nombre de la empresa ejecutante.';
+      if (!empresaResponsable.trim()) return 'Indica el responsable de la empresa.';
+      if (!empresaTelefono.trim()) return 'Indica el teléfono de la empresa ejecutante.';
+      if (!telefonoBasicoValido(empresaTelefono)) return 'Teléfono de empresa inválido (8-20 dígitos).';
+      if (!empresaEmail.trim()) return 'Indica el email de la empresa ejecutante.';
+      if (!emailBasicoValido(empresaEmail)) return 'Email de empresa inválido.';
+      if (!emergenciaContacto.trim()) return 'Indica el contacto de emergencia.';
+      if (!emergenciaTelefono.trim()) return 'Indica el teléfono de emergencia.';
+      if (!telefonoBasicoValido(emergenciaTelefono)) return 'Teléfono de emergencia inválido (8-20 dígitos).';
+
+      // T-V22: asistentes_estimados ahora 1-20 para todos los tipos.
+      if (!Number(extra.asistentes_estimados) || numAsistentes < MIN_PERSONAL) {
+        return `Indica al menos ${MIN_PERSONAL} persona de personal.`;
+      }
+      if (numAsistentes > MAX_PERSONAL) {
+        return `El máximo de personal es ${MAX_PERSONAL}.`;
+      }
+
       if (tipo === 'mantenimiento' && !extra.area_afectada.trim()) {
         return 'Indica el área afectada.';
-      }
-      if (tipo === 'evento') {
-        // En evento el N mínimo es 1 (validado por Zod), pero el input puede
-        // estar vacío. Validamos acá también para mejor UX.
-        if (!Number(extra.asistentes_estimados) || numAsistentes < 1) {
-          return 'Indica al menos 1 asistente estimado.';
-        }
-        if (!fechaInicio || !fechaFin) return 'Indica las fechas del evento.';
       }
       if (tipo === 'remodelacion') {
         if (!extra.fecha_inicio_estimada) return 'Indica la fecha de inicio estimada.';
@@ -236,8 +347,8 @@ export function SolicitudWizard({
         if (!extra.empresa_constructora.trim()) return 'Indica la empresa constructora.';
         if (extra.monto_presupuesto === '') return 'Indica el monto del presupuesto.';
       }
-      // T-V21: validación transversal de la lista de asistentes (aplica a
-      // los 4 tipos si N>0; en evento siempre N>=1).
+      // T-V21/T-V22: validación transversal de la lista de asistentes (aplica a
+      // los 4 tipos si N>0).
       const errAsistentes = validarAsistentes();
       if (errAsistentes) return errAsistentes;
       return null;
@@ -309,10 +420,19 @@ export function SolicitudWizard({
       // T-V21: cat/sub obligatorios para TODO tipo.
       categoriaId,
       subcategoriaId,
-      fechaEventoInicio: fechaInicio || undefined,
-      fechaEventoFin: fechaFin || undefined,
-      horaInicio: horaInicio || undefined,
-      horaFin: horaFin || undefined,
+      // T-V22: fechas siempre obligatorias para todo tipo.
+      fechaEventoInicio: fechaInicio,
+      fechaEventoFin: fechaFin,
+      horaInicio,
+      horaFin,
+      // T-V22: bloque transversal empresa ejecutante + modo emergencia.
+      empresaNombre: empresaNombre.trim(),
+      empresaResponsable: empresaResponsable.trim(),
+      empresaTelefono: empresaTelefono.trim(),
+      empresaEmail: empresaEmail.trim(),
+      emergenciaContacto: emergenciaContacto.trim(),
+      emergenciaTelefono: emergenciaTelefono.trim(),
+      esEmergencia,
       camposExtra: buildCamposExtra(),
     };
 
@@ -484,13 +604,101 @@ export function SolicitudWizard({
               />
             </div>
 
-            {necesitaFechas && (
+            {/* T-V22: bloque transversal de empresa ejecutante (aplica a los 4 tipos). */}
+            <div className="wz-extra">
+              <p
+                className="mb-1 text-sm font-semibold"
+                style={{ color: 'var(--text)' }}
+              >
+                Datos de la empresa ejecutante
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="empresa-nombre">Nombre de la empresa *</Label>
+                  <Input
+                    id="empresa-nombre"
+                    maxLength={160}
+                    value={empresaNombre}
+                    onChange={(e) => setEmpresaNombre(e.target.value)}
+                    placeholder="Razón social o nombre comercial"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="empresa-responsable">Responsable *</Label>
+                  <Input
+                    id="empresa-responsable"
+                    maxLength={160}
+                    value={empresaResponsable}
+                    onChange={(e) => setEmpresaResponsable(e.target.value)}
+                    placeholder="Persona responsable en sitio"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="empresa-telefono">Teléfono *</Label>
+                  <Input
+                    id="empresa-telefono"
+                    maxLength={20}
+                    value={empresaTelefono}
+                    onChange={(e) => setEmpresaTelefono(e.target.value)}
+                    placeholder="+503 7000 0000"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="empresa-email">Correo electrónico *</Label>
+                  <Input
+                    id="empresa-email"
+                    type="email"
+                    maxLength={254}
+                    value={empresaEmail}
+                    onChange={(e) => setEmpresaEmail(e.target.value)}
+                    placeholder="contacto@empresa.com"
+                  />
+                </div>
+              </div>
+              <p
+                className="mt-2 text-sm font-semibold"
+                style={{ color: 'var(--text)' }}
+              >
+                Contacto en caso de emergencia
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="emergencia-contacto">Persona de contacto *</Label>
+                  <Input
+                    id="emergencia-contacto"
+                    maxLength={160}
+                    value={emergenciaContacto}
+                    onChange={(e) => setEmergenciaContacto(e.target.value)}
+                    placeholder="Nombre y apellido"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="emergencia-telefono">Teléfono de emergencia *</Label>
+                  <Input
+                    id="emergencia-telefono"
+                    maxLength={20}
+                    value={emergenciaTelefono}
+                    onChange={(e) => setEmergenciaTelefono(e.target.value)}
+                    placeholder="+503 7000 0000"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* T-V22: fechas del permiso, siempre visibles para todo tipo.
+                Los `min` y `max` se calculan en función del modo (estándar/emergencia)
+                y del "momento de elaboración" capturado al montar. */}
+            <div className="wz-extra">
+              <p className="mb-1 text-sm font-semibold" style={{ color: 'var(--text)' }}>
+                Fechas del permiso
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label>Fecha inicio *</Label>
                   <Input
                     type="date"
                     value={fechaInicio}
+                    min={esEmergencia ? undefined : minFechaInicioEstandar(momentoElaboracion)}
                     onChange={(e) => setFechaInicio(e.target.value)}
                   />
                 </div>
@@ -499,11 +707,17 @@ export function SolicitudWizard({
                   <Input
                     type="date"
                     value={fechaFin}
+                    min={fechaInicio || undefined}
+                    max={
+                      esEmergencia
+                        ? maxFechaFinEmergencia(momentoElaboracion)
+                        : maxFechaFinEstandar(fechaInicio, momentoElaboracion)
+                    }
                     onChange={(e) => setFechaFin(e.target.value)}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Hora inicio</Label>
+                  <Label>Hora inicio *</Label>
                   <Input
                     type="time"
                     value={horaInicio}
@@ -511,11 +725,37 @@ export function SolicitudWizard({
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Hora fin</Label>
-                  <Input type="time" value={horaFin} onChange={(e) => setHoraFin(e.target.value)} />
+                  <Label>Hora fin *</Label>
+                  <Input
+                    type="time"
+                    value={horaFin}
+                    onChange={(e) => setHoraFin(e.target.value)}
+                  />
                 </div>
               </div>
-            )}
+              {esEmergencia ? (
+                <p className="mt-1 text-xs text-amber-700">
+                  Modo emergencia activo: fechas desde hoy y máximo 7 días.
+                </p>
+              ) : (
+                <p className="mt-1 text-xs text-gray-500">
+                  La fecha de inicio debe ser al menos 48 horas después de este momento; el permiso
+                  puede durar hasta 7 días.
+                </p>
+              )}
+              {/* T-V22: toggle de emergencia. SweetAlert pide confirmación al activarlo. */}
+              <label className="mt-2 flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={esEmergencia}
+                  onChange={(e) => void handleEmergenciaToggle(e.target.checked)}
+                />
+                <span>
+                  <b>Emergencia</b> — habilita fechas desde hoy (sin lead time de 48h) y permite
+                  hasta 3 permisos/mes. El backend rechazará el 4º.
+                </span>
+              </label>
+            </div>
 
             {/* Campos extra dinámicos por tipo (T-079) */}
             {tipo === 'mantenimiento' && (
@@ -614,67 +854,46 @@ export function SolicitudWizard({
         )}
 
         {step === 3 && (
-          <div className="grid gap-4">
+          <div className="mx-auto grid w-full max-w-3xl gap-4">
+            {/* ── Bloque 1: Adjuntos (T-V22) ─────────────────────────── */}
             {!editMode && (
-              <div className="grid gap-1.5">
-                <Label>Adjuntos (máx {MAX_ADJUNTOS})</Label>
-                <input
-                  type="file"
-                  multiple
-                  className="text-sm"
-                  onChange={(e) => {
-                    const nuevos = Array.from(e.target.files ?? []);
-                    setFiles((prev) => [...prev, ...nuevos].slice(0, MAX_ADJUNTOS));
-                  }}
-                />
-                {files.length > 0 && (
-                  <ul className="text-sm text-gray-600">
-                    {files.map((f, i) => (
-                      <li key={`${f.name}-${i}`} className="flex items-center justify-between">
-                        <span>
-                          {f.name} ({Math.ceil(f.size / 1024)} KB)
-                        </span>
-                        <button
-                          type="button"
-                          className="text-red-600 hover:underline"
-                          onClick={() => setFiles((prev) => prev.filter((_, j) => j !== i))}
-                        >
-                          quitar
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+              <AdjuntosCard
+                files={files}
+                onAdd={(nuevos) =>
+                  setFiles((prev) => [...prev, ...nuevos].slice(0, MAX_ADJUNTOS))
+                }
+                onRemove={(i) =>
+                  setFiles((prev) => prev.filter((_, j) => j !== i))
+                }
+              />
             )}
-            <div className="wz-extra text-sm">
-              <p className="mb-1 font-semibold" style={{ color: 'var(--text)' }}>
-                Revisión
-              </p>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-1" style={{ color: 'var(--text-2)' }}>
-                <dt>Tipo</dt>
-                <dd>{tipos.find((t) => t.codigo === tipo)?.etiqueta ?? tipo}</dd>
-                <dt>Local</dt>
-                <dd>{locales.find((l) => l.id === localId)?.codigo ?? '—'}</dd>
-                <dt>Título</dt>
-                <dd>{titulo || '—'}</dd>
-                {/* T-V21: subcategoría visible para TODO tipo (antes 'otro' la ocultaba). */}
-                <dt>Subcategoría</dt>
-                <dd>{subcategorias.find((s) => s.id === subcategoriaId)?.nombre ?? '—'}</dd>
-                {numAsistentes > 0 && (
-                  <>
-                    <dt>Asistentes</dt>
-                    <dd>
-                      {numAsistentes} (
-                      {Array.from({ length: numAsistentes }, (_, i) =>
-                        extra.asistentes[i]?.nombre || `Asistente ${i + 1}`,
-                      ).join(', ')}
-                      )
-                    </dd>
-                  </>
-                )}
-              </dl>
-            </div>
+            {/* ── Bloque 2: Resumen (apilado debajo) ─────────────────── */}
+            <ResumenCard
+              tipo={tipo}
+              tipos={tipos}
+              localId={localId}
+              locales={locales}
+              titulo={titulo}
+              descripcion={descripcion}
+              categoriaId={categoriaId}
+              categorias={categorias}
+              subcategoriaId={subcategoriaId}
+              subcategorias={subcategorias}
+              empresaNombre={empresaNombre}
+              empresaResponsable={empresaResponsable}
+              empresaTelefono={empresaTelefono}
+              empresaEmail={empresaEmail}
+              emergenciaContacto={emergenciaContacto}
+              emergenciaTelefono={emergenciaTelefono}
+              esEmergencia={esEmergencia}
+              fechaInicio={fechaInicio}
+              fechaFin={fechaFin}
+              horaInicio={horaInicio}
+              horaFin={horaFin}
+              numAsistentes={numAsistentes}
+              asistentes={extra.asistentes}
+              camposExtraResumen={renderCamposExtraResumen()}
+            />
           </div>
         )}
       </div>
@@ -725,11 +944,10 @@ interface BloqueAsistentesProps {
 }
 
 /**
- * T-V21: pide nombre + documento de cada asistente según la cantidad estimada.
+ * T-V22: pide nombre + documento de cada persona del personal.
  *
- *  - `evento` exige mínimo 1 (Zod en el schema).
- *  - `mantenimiento | remodelacion | otro` permiten 0 (campo opcional).
- *  - Tope `MAX_ASISTENTES` = 10 (alineado con el schema).
+ *  - Tope `MAX_PERSONAL_WIZARD` = 20 (antes 10 en T-V21).
+ *  - Mínimo 1 para los 4 tipos (antes 0 para mantenimiento/remodelacion/otro).
  *  - El padre guarda los items como `Record<index, Asistente>` (no como array)
  *    para que cambiar el número N no descarte lo que el usuario ya escribió.
  */
@@ -741,7 +959,10 @@ function BloqueAsistentes({
   onChangeLista,
 }: BloqueAsistentesProps) {
   const esEvento = tipo === 'evento';
-  const num = Math.max(0, Math.min(MAX_ASISTENTES, Math.floor(Number(estimados) || 0)));
+  const num = Math.max(
+    0,
+    Math.min(MAX_PERSONAL_WIZARD, Math.floor(Number(estimados) || 0)),
+  );
 
   const updateAsistente = (i: number, patch: { nombre?: string; documento?: string }) => {
     const prev = lista[i] ?? { nombre: '', documento: '' };
@@ -752,21 +973,21 @@ function BloqueAsistentes({
     <div className="wz-extra">
       <div className="grid gap-1.5">
         <Label htmlFor="asistentes-estimados">
-          Asistentes estimados {esEvento ? '*' : ''}
+          Cantidad de Personal *
         </Label>
         <Input
           id="asistentes-estimados"
           type="number"
-          min={esEvento ? 1 : 0}
-          max={MAX_ASISTENTES}
+          min={1}
+          max={MAX_PERSONAL_WIZARD}
           value={estimados}
           onChange={(e) => onChangeEstimados(e.target.value)}
           style={{ width: 160 }}
         />
         <p className="text-xs text-gray-500">
           {esEvento
-            ? `Obligatorio (mínimo 1, máximo ${MAX_ASISTENTES}). Si supera el umbral configurado por la plaza, requerirá aprobación especial.`
-            : `Opcional. Si lo completas, se solicitará el nombre y documento de cada uno (máximo ${MAX_ASISTENTES}).`}
+            ? `Obligatorio (mínimo 1, máximo ${MAX_PERSONAL_WIZARD}). Si supera el umbral configurado por la plaza, requerirá aprobación especial.`
+            : `Obligatorio (mínimo 1, máximo ${MAX_PERSONAL_WIZARD}). Completa nombre y documento de cada persona.`}
         </p>
       </div>
 
@@ -774,7 +995,7 @@ function BloqueAsistentes({
         <div className="grid gap-2">
           <p className="text-sm font-medium" style={{ color: 'var(--text)' }}>
             <UserPlus className="mr-1 inline h-4 w-4" />
-            Detalle de asistentes ({num})
+            Información del personal ({num})
           </p>
           <ul className="grid gap-2">
             {Array.from({ length: num }, (_, i) => {
@@ -791,7 +1012,7 @@ function BloqueAsistentes({
                       maxLength={120}
                       value={a.nombre}
                       onChange={(e) => updateAsistente(i, { nombre: e.target.value })}
-                      placeholder={`Asistente ${i + 1}`}
+                      placeholder={`Persona ${i + 1}`}
                     />
                   </div>
                   <div className="grid gap-1.5">
@@ -812,12 +1033,375 @@ function BloqueAsistentes({
         </div>
       )}
 
-      {num === 0 && esEvento && (
+      {num === 0 && (
         <p className="text-xs text-amber-700">
           <X className="mr-1 inline h-3 w-3" />
-          Para enviar un evento debés indicar al menos 1 asistente.
+          Indicá al menos 1 persona de personal.
         </p>
       )}
     </div>
+  );
+}
+
+// ── Sub-componentes del paso 3 (T-V22: rediseño UX) ─────────────────────────
+
+function formateaBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+}
+
+function iconoPorMime(tipo: string): React.ReactNode {
+  if (tipo.startsWith('image/')) return <ImageIcon className="h-4 w-4" aria-hidden />;
+  return <FileText className="h-4 w-4" aria-hidden />;
+}
+
+interface AdjuntosCardProps {
+  files: File[];
+  onAdd: (nuevos: File[]) => void;
+  onRemove: (index: number) => void;
+}
+
+/** T-V22: dropzone visual para adjuntos. Usa react-dropzone (v15, ya en deps). */
+function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
+  const onDrop = useCallback(
+    (accepted: File[], rejections: FileRejection[]) => {
+      // Reportar rechazos por MIME/tamaño con toast (el backend igual valida
+      // en ZodValidationPipe, pero damos feedback inmediato).
+      for (const r of rejections) {
+        const first = r.errors[0];
+        const msg =
+          first?.code === 'file-too-large'
+            ? `"${r.file.name}" excede 25 MB.`
+            : first?.code === 'file-invalid-type'
+              ? `"${r.file.name}" no es PDF, PNG, JPG o WebP.`
+              : `"${r.file.name}" rechazado.`;
+        toast.error(msg);
+      }
+      if (accepted.length > 0) onAdd(accepted);
+    },
+    [onAdd],
+  );
+
+  const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
+    onDrop,
+    multiple: true,
+    maxSize: MAX_ADJUNTO_BYTES,
+    accept: ADJUNTO_MIME_PERMITIDOS,
+    disabled: files.length >= MAX_ADJUNTOS,
+  });
+
+  const lleno = files.length >= MAX_ADJUNTOS;
+  const restantes = MAX_ADJUNTOS - files.length;
+
+  return (
+    <section
+      aria-labelledby="adjuntos-titulo"
+      className="wz-extra flex flex-col gap-3 rounded-lg border p-4"
+    >
+      <header className="flex items-baseline justify-between">
+        <h3 id="adjuntos-titulo" className="text-base font-semibold" style={{ color: 'var(--text)' }}>
+          Adjuntos
+        </h3>
+        <span className="text-xs text-gray-500">
+          {files.length} / {MAX_ADJUNTOS}
+        </span>
+      </header>
+
+      {/* Dropzone */}
+      <div
+        {...getRootProps({
+          className: [
+            'flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-6 text-center transition-colors',
+            isDragReject
+              ? 'border-red-400 bg-red-50'
+              : isDragActive
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-300 bg-gray-50 hover:bg-gray-100',
+            lleno ? 'pointer-events-none opacity-50' : 'cursor-pointer',
+          ]
+            .filter(Boolean)
+            .join(' '),
+        })}
+        aria-label="Zona para arrastrar y soltar archivos adjuntos"
+      >
+        <input {...getInputProps()} />
+        <UploadCloud
+          className={
+            isDragReject
+              ? 'h-8 w-8 text-red-500'
+              : isDragActive
+                ? 'h-8 w-8 text-blue-600'
+                : 'h-8 w-8 text-gray-400'
+          }
+          aria-hidden
+        />
+        {lleno ? (
+          <p className="text-sm font-medium text-gray-700">
+            Has alcanzado el máximo de {MAX_ADJUNTOS} adjuntos.
+          </p>
+        ) : isDragReject ? (
+          <p className="text-sm font-medium text-red-700">
+            Tipo de archivo no permitido
+          </p>
+        ) : isDragActive ? (
+          <p className="text-sm font-medium text-blue-700">Suelta para añadir</p>
+        ) : (
+          <>
+            <p className="text-sm font-medium text-gray-700">
+              Arrastra archivos aquí o{' '}
+              <span className="text-blue-600 underline">haz clic para seleccionar</span>
+            </p>
+            <p className="text-xs text-gray-500">
+              PDF, PNG, JPG o WebP · máx. 25 MB por archivo · {restantes} restantes
+            </p>
+          </>
+        )}
+      </div>
+
+      {/* Lista de archivos seleccionados */}
+      {files.length > 0 && (
+        <ul className="grid gap-2" aria-label="Archivos seleccionados">
+          {files.map((f, i) => (
+            <li
+              key={`${f.name}-${i}`}
+              className="flex items-center gap-3 rounded-md border border-gray-200 bg-white px-3 py-2"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-gray-100 text-gray-600">
+                {iconoPorMime(f.type)}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-gray-800" title={f.name}>
+                  {f.name}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {f.type || 'tipo desconocido'} · {formateaBytes(f.size)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onRemove(i)}
+                className="shrink-0 rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                aria-label={`Quitar ${f.name}`}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className="flex items-start gap-1.5 text-xs text-gray-500">
+        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+        Los adjuntos son opcionales. Se subirán al bucket de la plaza al enviar
+        la solicitud (modo borrador: solo al enviar).
+      </p>
+    </section>
+  );
+}
+
+interface ResumenCardProps {
+  tipo: SolicitudTipo;
+  tipos: TipoOption[];
+  localId: string;
+  locales: LocalOption[];
+  titulo: string;
+  descripcion: string;
+  categoriaId: string;
+  categorias: CategoriaOption[];
+  subcategoriaId: string;
+  subcategorias: Array<{ id: string; nombre: string }>;
+  empresaNombre: string;
+  empresaResponsable: string;
+  empresaTelefono: string;
+  empresaEmail: string;
+  emergenciaContacto: string;
+  emergenciaTelefono: string;
+  esEmergencia: boolean;
+  fechaInicio: string;
+  fechaFin: string;
+  horaInicio: string;
+  horaFin: string;
+  numAsistentes: number;
+  asistentes: Record<number, Asistente>;
+  camposExtraResumen: React.ReactNode;
+}
+
+/** T-V22: tarjeta de revisión con secciones agrupadas por dominio. */
+function ResumenCard(props: ResumenCardProps) {
+  const {
+    tipo,
+    tipos,
+    localId,
+    locales,
+    titulo,
+    descripcion,
+    categoriaId,
+    categorias,
+    subcategoriaId,
+    subcategorias,
+    empresaNombre,
+    empresaResponsable,
+    empresaTelefono,
+    empresaEmail,
+    emergenciaContacto,
+    emergenciaTelefono,
+    esEmergencia,
+    fechaInicio,
+    fechaFin,
+    horaInicio,
+    horaFin,
+    numAsistentes,
+    asistentes,
+    camposExtraResumen,
+  } = props;
+
+  return (
+    <section
+      aria-labelledby="resumen-titulo"
+      className="wz-extra flex flex-col gap-4 rounded-lg border p-4"
+    >
+      <header className="flex items-baseline justify-between">
+        <h3
+          id="resumen-titulo"
+          className="text-base font-semibold"
+          style={{ color: 'var(--text)' }}
+        >
+          Revisión
+        </h3>
+        <span className="text-xs text-gray-500">Verifica antes de enviar</span>
+      </header>
+
+      <Seccion titulo="Identificación">
+        <Fila label="Tipo" value={tipos.find((t) => t.codigo === tipo)?.etiqueta ?? tipo} />
+        <Fila label="Local" value={locales.find((l) => l.id === localId)?.codigo} />
+        <Fila label="Título" value={titulo} />
+        <Fila
+          label="Descripción"
+          value={
+            <span className="whitespace-pre-wrap break-words">{descripcion}</span>
+          }
+        />
+        <Fila
+          label="Categoría"
+          value={categorias.find((c) => c.id === categoriaId)?.nombre}
+        />
+        <Fila
+          label="Subcategoría"
+          value={subcategorias.find((s) => s.id === subcategoriaId)?.nombre}
+        />
+      </Seccion>
+
+      <Seccion titulo="Empresa ejecutante">
+        <Fila label="Empresa" value={empresaNombre} />
+        <Fila label="Responsable" value={empresaResponsable} />
+        <Fila label="Tel. empresa" value={empresaTelefono} />
+        <Fila label="Email empresa" value={empresaEmail} />
+      </Seccion>
+
+      <Seccion titulo="Contacto de emergencia">
+        <Fila label="Contacto" value={emergenciaContacto} />
+        <Fila label="Tel. emerg." value={emergenciaTelefono} />
+        <Fila
+          label="Modo emerg."
+          value={
+            esEmergencia ? (
+              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                Sí · máx. 3/mes
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                No
+              </span>
+            )
+          }
+        />
+      </Seccion>
+
+      <Seccion titulo="Fechas del permiso">
+        <Fila
+          label="Inicio"
+          value={
+            fechaInicio
+              ? `${fechaInicio} ${horaInicio || ''}`.trim()
+              : null
+          }
+        />
+        <Fila
+          label="Fin"
+          value={
+            fechaFin ? `${fechaFin} ${horaFin || ''}`.trim() : null
+          }
+        />
+      </Seccion>
+
+      <Seccion titulo="Personal">
+        <Fila label="Cantidad" value={numAsistentes > 0 ? numAsistentes : null} />
+        {numAsistentes > 0 && (
+          <Fragment>
+            <dt className="text-gray-500">Detalle</dt>
+            <dd>
+              <ul className="grid gap-1">
+                {Array.from({ length: numAsistentes }, (_, i) => {
+                  const a = asistentes[i];
+                  return (
+                    <li
+                      key={i}
+                      className="flex items-center gap-2 rounded border border-gray-200 bg-white px-2 py-1 text-xs"
+                    >
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200 text-[10px] font-semibold text-gray-700">
+                        {i + 1}
+                      </span>
+                      <span className="font-medium text-gray-800">
+                        {a?.nombre || `Persona ${i + 1}`}
+                      </span>
+                      <span className="text-gray-500">·</span>
+                      <span className="text-gray-600">
+                        {a?.documento || 's/doc'}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </dd>
+          </Fragment>
+        )}
+      </Seccion>
+
+      {/* Campos extra específicos del tipo (mantenimiento/evento/remodelacion). */}
+      <Seccion titulo="Datos del tipo">
+        {camposExtraResumen}
+      </Seccion>
+    </section>
+  );
+}
+
+// Helpers top-level (T-V22: declarados fuera de render para cumplir
+// `react-hooks/static-components`).
+function Seccion({
+  titulo,
+  children,
+}: {
+  titulo: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-2">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {titulo}
+      </h4>
+      <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
+        {children}
+      </dl>
+    </div>
+  );
+}
+
+function Fila({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <Fragment>
+      <dt className="font-medium text-gray-600">{label}</dt>
+      <dd className="text-gray-900">{value || '—'}</dd>
+    </Fragment>
   );
 }
