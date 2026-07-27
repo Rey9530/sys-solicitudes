@@ -8,12 +8,15 @@ import { Store } from 'lucide-react';
 import type { LocalOutput } from '@app/contracts';
 import { deleteLocalAction } from '@/app/(admin-plaza)/admin/locales/actions';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { LocalEstadoBadge } from '@/components/estado-badge';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
+import {
+  ResponsiveDataView,
+  type ResponsiveColumn,
+} from '@/components/client/responsive/responsive-data-view';
 
 export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
   const router = useRouter();
@@ -49,51 +52,66 @@ export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
     );
   }
 
+  const columns: ResponsiveColumn<LocalOutput>[] = [
+    {
+      key: 'codigo',
+      header: 'Código',
+      cardLabel: 'Código',
+      primary: true,
+      cell: (l) => (
+        <Link href={`/admin/locales/${l.id}`} className="cellcode">
+          {l.codigo}
+        </Link>
+      ),
+    },
+    { key: 'nombre', header: 'Nombre', cardLabel: 'Nombre', className: 'lead', cell: (l) => l.nombre ?? '—' },
+    { key: 'piso', header: 'Piso', cardLabel: 'Piso', className: 'muted', cell: (l) => l.piso ?? '—' },
+    { key: 'sector', header: 'Sector', cardLabel: 'Sector', className: 'muted', cell: (l) => l.sector ?? '—' },
+    { key: 'metraje', header: 'm²', cardLabel: 'm²', className: 'num muted', cell: (l) => l.metrajeM2 ?? '—' },
+    {
+      key: 'estado',
+      header: 'Estado',
+      cardLabel: 'Estado',
+      cell: (l) => <LocalEstadoBadge estado={l.estado} />,
+    },
+    {
+      key: 'acciones',
+      header: 'Acciones',
+      className: 'actions',
+      cell: (l) => (
+        <Can permiso="locales.deshabilitar">
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={pendingId === l.id}
+            onClick={() => onDelete(l)}
+          >
+            {pendingId === l.id ? 'Desactivando…' : 'Desactivar'}
+          </Button>
+        </Can>
+      ),
+      actions: (l) => (
+        <Can permiso="locales.deshabilitar">
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={pendingId === l.id}
+            onClick={() => onDelete(l)}
+          >
+            {pendingId === l.id ? 'Desactivando…' : 'Desactivar'}
+          </Button>
+        </Can>
+      ),
+    },
+  ];
+
   return (
     <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Código</TableHead>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Piso</TableHead>
-            <TableHead>Sector</TableHead>
-            <TableHead className="num">m²</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="actions">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {locales.map((l) => (
-            <TableRow key={l.id}>
-              <TableCell>
-                <Link href={`/admin/locales/${l.id}`} className="cellcode">
-                  {l.codigo}
-                </Link>
-              </TableCell>
-              <TableCell className="lead">{l.nombre ?? '—'}</TableCell>
-              <TableCell className="muted">{l.piso ?? '—'}</TableCell>
-              <TableCell className="muted">{l.sector ?? '—'}</TableCell>
-              <TableCell className="num muted">{l.metrajeM2 ?? '—'}</TableCell>
-              <TableCell>
-                <LocalEstadoBadge estado={l.estado} />
-              </TableCell>
-              <TableCell className="actions">
-                <Can permiso="locales.deshabilitar">
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    disabled={pendingId === l.id}
-                    onClick={() => onDelete(l)}
-                  >
-                    {pendingId === l.id ? 'Desactivando…' : 'Desactivar'}
-                  </Button>
-                </Can>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <ResponsiveDataView
+        rows={locales}
+        columns={columns}
+        rowKey={(l) => l.id}
+      />
     </Card>
   );
 }

@@ -7,29 +7,16 @@ import { PowerOff, ShieldX } from 'lucide-react';
 import type { RolStaffOutput } from '@app/contracts';
 import { disableRolStaffAction } from '@/app/(admin-plaza)/admin/usuarios-plaza/actions';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { RolStaffFormDialog } from '@/components/client/rol-staff-form-dialog';
 import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
+import {
+  ResponsiveDataView,
+  type ResponsiveColumn,
+} from '@/components/client/responsive/responsive-data-view';
 
-/**
- * Catálogo de `rol_staff` de la plaza (T-035). Cada fila expone:
- *  - nombre, código, descripción, estado (activo/inactivo)
- *  - badge con nº de usuarios asignados (RN-RS-3)
- *  - acciones: editar (reabre el form) y desactivar (soft delete)
- *
- * Si un rol desactivado tiene usuarios asignados, el backend devuelve
- * `usuariosAsignados > 0` y el FE lo refleja con un warning explícito.
- */
 export function RolesStaffTable({
   roles,
   usuariosAsignadosPorRol,
@@ -76,82 +63,99 @@ export function RolesStaffTable({
     );
   }
 
+  const columns: ResponsiveColumn<RolStaffOutput>[] = [
+    { key: 'codigo', header: 'Código', cardLabel: 'Código', primary: true, className: 'mono', cell: (r) => r.codigo },
+    { key: 'nombre', header: 'Nombre', cardLabel: 'Nombre', className: 'lead', cell: (r) => r.nombre },
+    { key: 'descripcion', header: 'Descripción', cardLabel: 'Descripción', className: 'muted', cell: (r) => r.descripcion ?? '—' },
+    {
+      key: 'usuarios',
+      header: 'Usuarios asignados',
+      cardLabel: 'Usuarios asignados',
+      cell: (r) => {
+        const asignados = usuariosAsignadosPorRol[r.id] ?? 0;
+        return asignados > 0 ? (
+          <span className="badge b-info">
+            <span className="bdot" />
+            {asignados}
+          </span>
+        ) : (
+          <span className="muted">0</span>
+        );
+      },
+    },
+    {
+      key: 'estado',
+      header: 'Estado',
+      cardLabel: 'Estado',
+      cell: (r) =>
+        r.activo ? (
+          <span className="badge b-ok">
+            <span className="bdot" />
+            Activo
+          </span>
+        ) : (
+          <span className="badge b-neutral">
+            <span className="bdot" />
+            Inactivo
+          </span>
+        ),
+    },
+    {
+      key: 'acciones',
+      header: 'Acciones',
+      className: 'actions',
+      cell: (r) => (
+        <div className="inline-flex gap-1">
+          <Can permiso="roles_staff.editar">
+            <RolStaffFormDialog
+              mode="edit"
+              rol={{
+                id: r.id,
+                codigo: r.codigo,
+                nombre: r.nombre,
+                descripcion: r.descripcion,
+                activo: r.activo,
+              }}
+            />
+          </Can>
+          {r.activo && (
+            <Can permiso="roles_staff.deshabilitar">
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={pendingId === r.id}
+                onClick={() => onDisable(r)}
+              >
+                <PowerOff />
+                {pendingId === r.id ? 'Desactivando…' : 'Desactivar'}
+              </Button>
+            </Can>
+          )}
+        </div>
+      ),
+      actions: (r) => (
+        <div className="flex flex-wrap gap-1">
+          {r.activo && (
+            <Can permiso="roles_staff.deshabilitar">
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={pendingId === r.id}
+                onClick={() => onDisable(r)}
+              >
+                <PowerOff />
+                Desactivar
+              </Button>
+            </Can>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Código</TableHead>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Descripción</TableHead>
-            <TableHead>Usuarios asignados</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="actions">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {roles.map((r) => {
-            const asignados = usuariosAsignadosPorRol[r.id] ?? 0;
-            return (
-              <TableRow key={r.id}>
-                <TableCell className="mono">{r.codigo}</TableCell>
-                <TableCell className="lead">{r.nombre}</TableCell>
-                <TableCell className="muted">{r.descripcion ?? '—'}</TableCell>
-                <TableCell>
-                  {asignados > 0 ? (
-                    <span className="badge b-info">
-                      <span className="bdot" />
-                      {asignados}
-                    </span>
-                  ) : (
-                    <span className="muted">0</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {r.activo ? (
-                    <span className="badge b-ok">
-                      <span className="bdot" />
-                      Activo
-                    </span>
-                  ) : (
-                    <span className="badge b-neutral">
-                      <span className="bdot" />
-                      Inactivo
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="actions">
-                  <Can permiso="roles_staff.editar">
-                    <RolStaffFormDialog
-                      mode="edit"
-                      rol={{
-                        id: r.id,
-                        codigo: r.codigo,
-                        nombre: r.nombre,
-                        descripcion: r.descripcion,
-                        activo: r.activo,
-                      }}
-                    />
-                  </Can>
-                  {r.activo && (
-                    <Can permiso="roles_staff.deshabilitar">
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        disabled={pendingId === r.id}
-                        onClick={() => onDisable(r)}
-                      >
-                        <PowerOff />
-                        {pendingId === r.id ? 'Desactivando…' : 'Desactivar'}
-                      </Button>
-                    </Can>
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+      <ResponsiveDataView rows={roles} columns={columns} rowKey={(r) => r.id} />
     </Card>
   );
 }

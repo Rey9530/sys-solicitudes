@@ -8,11 +8,14 @@ import { Tags } from 'lucide-react';
 import type { CategoriaOutput } from '@app/contracts';
 import { deleteCategoriaAction } from '@/app/(admin-plaza)/admin/categorias/actions';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
+import {
+  ResponsiveDataView,
+  type ResponsiveColumn,
+} from '@/components/client/responsive/responsive-data-view';
 
 export function CategoriasTable({ categorias }: { categorias: CategoriaOutput[] }) {
   const router = useRouter();
@@ -45,55 +48,84 @@ export function CategoriasTable({ categorias }: { categorias: CategoriaOutput[] 
     );
   }
 
+  const columns: ResponsiveColumn<CategoriaOutput>[] = [
+    {
+      key: 'nombre',
+      header: 'Nombre',
+      cardLabel: 'Nombre',
+      primary: true,
+      cell: (c) => (
+        <Link href={`/admin/categorias/${c.id}`} className="lead" style={{ color: 'var(--text)' }}>
+          {c.nombre}
+        </Link>
+      ),
+    },
+    {
+      key: 'descripcion',
+      header: 'Descripción',
+      cardLabel: 'Descripción',
+      className: 'muted max-w-sm truncate',
+      cell: (c) => c.descripcion ?? '—',
+    },
+    {
+      key: 'estado',
+      header: 'Estado',
+      cardLabel: 'Estado',
+      cell: (c) => (
+        <span className={`badge ${c.activo ? 'b-ok' : 'b-neutral'}`}>
+          <span className="bdot" />
+          {c.activo ? 'Activa' : 'Inactiva'}
+        </span>
+      ),
+    },
+    {
+      key: 'acciones',
+      header: 'Acciones',
+      className: 'actions',
+      cell: (c) => (
+        <div className="flex justify-end gap-2">
+          <Link href={`/admin/categorias/${c.id}/subcategorias`} className="btn btn-ghost btn-sm">
+            Subcategorías
+          </Link>
+          {c.activo && (
+            <Can permiso="categorias.deshabilitar">
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={pendingId === c.id}
+                onClick={() => onDelete(c)}
+              >
+                Desactivar
+              </Button>
+            </Can>
+          )}
+        </div>
+      ),
+      actions: (c) => (
+        <div className="flex flex-wrap gap-1">
+          <Link href={`/admin/categorias/${c.id}/subcategorias`} className="btn btn-ghost btn-sm">
+            Subcategorías
+          </Link>
+          {c.activo && (
+            <Can permiso="categorias.deshabilitar">
+              <Button
+                variant="danger"
+                size="sm"
+                disabled={pendingId === c.id}
+                onClick={() => onDelete(c)}
+              >
+                Desactivar
+              </Button>
+            </Can>
+          )}
+        </div>
+      ),
+    },
+  ];
+
   return (
     <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Descripción</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="actions">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {categorias.map((c) => (
-            <TableRow key={c.id}>
-              <TableCell>
-                <Link href={`/admin/categorias/${c.id}`} className="lead" style={{ color: 'var(--text)' }}>
-                  {c.nombre}
-                </Link>
-              </TableCell>
-              <TableCell className="muted max-w-sm truncate">{c.descripcion ?? '—'}</TableCell>
-              <TableCell>
-                <span className={`badge ${c.activo ? 'b-ok' : 'b-neutral'}`}>
-                  <span className="bdot" />
-                  {c.activo ? 'Activa' : 'Inactiva'}
-                </span>
-              </TableCell>
-              <TableCell className="actions">
-                <div className="flex justify-end gap-2">
-                  <Link href={`/admin/categorias/${c.id}/subcategorias`} className="btn btn-ghost btn-sm">
-                    Subcategorías
-                  </Link>
-                  {c.activo && (
-                    <Can permiso="categorias.deshabilitar">
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        disabled={pendingId === c.id}
-                        onClick={() => onDelete(c)}
-                      >
-                        Desactivar
-                      </Button>
-                    </Can>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <ResponsiveDataView rows={categorias} columns={columns} rowKey={(c) => c.id} />
     </Card>
   );
 }

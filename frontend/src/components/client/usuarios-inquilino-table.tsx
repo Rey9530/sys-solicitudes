@@ -11,40 +11,20 @@ import {
   reactivateUsuarioInquilinoAction,
 } from '@/app/(admin-plaza)/admin/inquilinos/actions';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { EditarUsuarioInquilinoDialog } from '@/components/client/editar-usuario-inquilino-dialog';
 import { confirmAction } from '@/lib/sweetalert';
+import {
+  ResponsiveDataView,
+  type ResponsiveColumn,
+} from '@/components/client/responsive/responsive-data-view';
 
 type UsuarioRow = UsuarioOutput & {
   rolStaffActivo: boolean | null;
   rolStaffNombre: string | null;
 };
 
-/**
- * Tabla de usuarios asociados a un inquilino (T-059-bis). Muestra los usuarios
- * (rol `inquilino` por defecto) y permite al admin gestionarlos:
- *  - Editar nombre y teléfono
- *  - Disparar reset de contraseña por email
- *  - Deshabilitar (soft delete)
- *  - Reactivar un usuario deshabilitado
- *
- * El server component padre (`page.tsx`) hace el fetch con RSC y pasa la lista
- * ya materializada para evitar waterfalls desde el cliente. Tras cada acción
- * se llama `router.refresh()` para que el padre re-fetchee con la nueva lista.
- *
- * Convenciones UI: todas las decisiones destructivas (deshabilitar, resetear)
- * usan `confirmAction` (SweetAlert2) — NUNCA `window.confirm` nativo. Ver
- * `lib/sweetalert.ts` y `docs/02-stack-tecnologico.md` §UI.
- */
 export function UsuariosInquilinoTable({ usuarios }: { usuarios: UsuarioRow[] }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
@@ -118,95 +98,139 @@ export function UsuariosInquilinoTable({ usuarios }: { usuarios: UsuarioRow[] })
     );
   }
 
+  const renderEstado = (inactivo: boolean, emailInvalido: boolean | null | undefined) => {
+    if (inactivo) {
+      return (
+        <span className="badge b-neutral">
+          <span className="bdot" />
+          Inactivo
+        </span>
+      );
+    }
+    if (emailInvalido) {
+      return (
+        <span className="badge b-warn">
+          <span className="bdot" />
+          Email inválido
+        </span>
+      );
+    }
+    return (
+      <span className="badge b-ok">
+        <span className="bdot" />
+        Activo
+      </span>
+    );
+  };
+
+  const columns: ResponsiveColumn<UsuarioRow>[] = [
+    { key: 'nombre', header: 'Nombre', cardLabel: 'Nombre', primary: true, className: 'lead', cell: (u) => u.nombre },
+    { key: 'email', header: 'Email', cardLabel: 'Email', className: 'mono muted', cell: (u) => u.email },
+    { key: 'telefono', header: 'Teléfono', cardLabel: 'Teléfono', className: 'muted', cell: (u) => u.telefono ?? '—' },
+    { key: 'rol', header: 'Rol staff', cardLabel: 'Rol staff', className: 'muted', cell: (u) => u.rolStaffNombre ?? '—' },
+    {
+      key: 'ultimo',
+      header: 'Último acceso',
+      cardLabel: 'Último acceso',
+      className: 'muted',
+      cell: (u) => (u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Nunca'),
+    },
+    {
+      key: 'estado',
+      header: 'Estado',
+      cardLabel: 'Estado',
+      cell: (u) => renderEstado(u.deletedAt !== null, u.emailInvalido),
+    },
+    {
+      key: 'acciones',
+      header: 'Acciones',
+      className: 'actions',
+      cell: (u) => {
+        if (u.deletedAt !== null) {
+          return (
+            <Button
+              variant="success"
+              size="sm"
+              disabled={pendingId === u.id}
+              onClick={() => onReactivate(u)}
+            >
+              <Power />
+              {pendingId === u.id ? 'Reactivando…' : 'Reactivar'}
+            </Button>
+          );
+        }
+        return (
+          <div className="inline-flex items-center gap-1">
+            <EditarUsuarioInquilinoDialog
+              usuarioId={u.id}
+              nombreInicial={u.nombre}
+              telefonoInicial={u.telefono}
+              email={u.email}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pendingId === u.id}
+              onClick={() => onReset(u)}
+            >
+              <KeyRound />
+              {pendingId === u.id ? 'Enviando…' : 'Resetear clave'}
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={pendingId === u.id}
+              onClick={() => onDisable(u)}
+            >
+              <PowerOff />
+              {pendingId === u.id ? 'Deshabilitando…' : 'Deshabilitar'}
+            </Button>
+          </div>
+        );
+      },
+      actions: (u) => {
+        if (u.deletedAt !== null) {
+          return (
+            <Button
+              variant="success"
+              size="sm"
+              disabled={pendingId === u.id}
+              onClick={() => onReactivate(u)}
+            >
+              <Power />
+              {pendingId === u.id ? 'Reactivando…' : 'Reactivar'}
+            </Button>
+          );
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pendingId === u.id}
+              onClick={() => onReset(u)}
+            >
+              <KeyRound />
+              Resetear
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              disabled={pendingId === u.id}
+              onClick={() => onDisable(u)}
+            >
+              <PowerOff />
+              Deshabilitar
+            </Button>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Teléfono</TableHead>
-            <TableHead>Rol staff</TableHead>
-            <TableHead>Último acceso</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="actions">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {usuarios.map((u) => {
-            const inactivo = u.deletedAt !== null;
-            return (
-              <TableRow key={u.id}>
-                <TableCell className="lead">{u.nombre}</TableCell>
-                <TableCell className="mono muted">{u.email}</TableCell>
-                <TableCell className="muted">{u.telefono ?? '—'}</TableCell>
-                <TableCell className="muted">{u.rolStaffNombre ?? '—'}</TableCell>
-                <TableCell className="muted">
-                  {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Nunca'}
-                </TableCell>
-                <TableCell>
-                  {inactivo ? (
-                    <span className="badge b-neutral">
-                      <span className="bdot" />
-                      Inactivo
-                    </span>
-                  ) : u.emailInvalido ? (
-                    <span className="badge b-warn">
-                      <span className="bdot" />
-                      Email inválido
-                    </span>
-                  ) : (
-                    <span className="badge b-ok">
-                      <span className="bdot" />
-                      Activo
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="actions">
-                  {inactivo ? (
-                    <Button
-                      variant="success"
-                      size="sm"
-                      disabled={pendingId === u.id}
-                      onClick={() => onReactivate(u)}
-                    >
-                      <Power />
-                      {pendingId === u.id ? 'Reactivando…' : 'Reactivar'}
-                    </Button>
-                  ) : (
-                    <div className="inline-flex items-center gap-1">
-                      <EditarUsuarioInquilinoDialog
-                        usuarioId={u.id}
-                        nombreInicial={u.nombre}
-                        telefonoInicial={u.telefono}
-                        email={u.email}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pendingId === u.id}
-                        onClick={() => onReset(u)}
-                      >
-                        <KeyRound />
-                        {pendingId === u.id ? 'Enviando…' : 'Resetear clave'}
-                      </Button>
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        disabled={pendingId === u.id}
-                        onClick={() => onDisable(u)}
-                      >
-                        <PowerOff />
-                        {pendingId === u.id ? 'Deshabilitando…' : 'Deshabilitar'}
-                      </Button>
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+      <ResponsiveDataView rows={usuarios} columns={columns} rowKey={(u) => u.id} />
     </Card>
   );
 }

@@ -8,11 +8,14 @@ import { UsersRound } from 'lucide-react';
 import type { InquilinoOutput } from '@app/contracts';
 import { deleteInquilinoAction } from '@/app/(admin-plaza)/admin/inquilinos/actions';
 import { Button } from '@/components/ui/button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
+import {
+  ResponsiveDataView,
+  type ResponsiveColumn,
+} from '@/components/client/responsive/responsive-data-view';
 
 export function InquilinosTable({ inquilinos }: { inquilinos: InquilinoOutput[] }) {
   const router = useRouter();
@@ -48,45 +51,73 @@ export function InquilinosTable({ inquilinos }: { inquilinos: InquilinoOutput[] 
     );
   }
 
+  const columns: ResponsiveColumn<InquilinoOutput>[] = [
+    {
+      key: 'razon',
+      header: 'Razón social',
+      cardLabel: 'Razón social',
+      primary: true,
+      cell: (i) => (
+        <Link href={`/admin/inquilinos/${i.id}`} className="lead" style={{ color: 'var(--text)' }}>
+          {i.razonSocial}
+        </Link>
+      ),
+    },
+    {
+      key: 'identificacion',
+      header: 'Identificación',
+      cardLabel: 'Identificación',
+      className: 'mono muted',
+      cell: (i) => i.identificacion ?? '—',
+    },
+    {
+      key: 'contacto',
+      header: 'Contacto',
+      cardLabel: 'Contacto',
+      className: 'muted',
+      cell: (i) => i.contactoNombre ?? '—',
+    },
+    {
+      key: 'email',
+      header: 'Email',
+      cardLabel: 'Email',
+      className: 'muted',
+      cell: (i) => i.contactoEmail ?? '—',
+    },
+    {
+      key: 'acciones',
+      header: 'Acciones',
+      className: 'actions',
+      cell: (i) => (
+        <Can permiso="inquilinos.deshabilitar">
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={pendingId === i.id}
+            onClick={() => onDelete(i)}
+          >
+            {pendingId === i.id ? 'Desactivando…' : 'Desactivar'}
+          </Button>
+        </Can>
+      ),
+      actions: (i) => (
+        <Can permiso="inquilinos.deshabilitar">
+          <Button
+            variant="danger"
+            size="sm"
+            disabled={pendingId === i.id}
+            onClick={() => onDelete(i)}
+          >
+            {pendingId === i.id ? 'Desactivando…' : 'Desactivar'}
+          </Button>
+        </Can>
+      ),
+    },
+  ];
+
   return (
     <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Razón social</TableHead>
-            <TableHead>Identificación</TableHead>
-            <TableHead>Contacto</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead className="actions">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {inquilinos.map((i) => (
-            <TableRow key={i.id}>
-              <TableCell>
-                <Link href={`/admin/inquilinos/${i.id}`} className="lead" style={{ color: 'var(--text)' }}>
-                  {i.razonSocial}
-                </Link>
-              </TableCell>
-              <TableCell className="mono muted">{i.identificacion ?? '—'}</TableCell>
-              <TableCell className="muted">{i.contactoNombre ?? '—'}</TableCell>
-              <TableCell className="muted">{i.contactoEmail ?? '—'}</TableCell>
-              <TableCell className="actions">
-                <Can permiso="inquilinos.deshabilitar">
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    disabled={pendingId === i.id}
-                    onClick={() => onDelete(i)}
-                  >
-                    {pendingId === i.id ? 'Desactivando…' : 'Desactivar'}
-                  </Button>
-                </Can>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <ResponsiveDataView rows={inquilinos} columns={columns} rowKey={(i) => i.id} />
     </Card>
   );
 }

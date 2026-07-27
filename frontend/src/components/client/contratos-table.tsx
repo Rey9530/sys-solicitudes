@@ -3,10 +3,13 @@
 import Link from 'next/link';
 import { FileText } from 'lucide-react';
 import type { ContratoListItem } from '@app/contracts';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ContratoEstadoBadge } from '@/components/estado-badge';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import {
+  ResponsiveDataView,
+  type ResponsiveColumn,
+} from '@/components/client/responsive/responsive-data-view';
 
 export function ContratosTable({ contratos }: { contratos: ContratoListItem[] }) {
   if (contratos.length === 0) {
@@ -21,40 +24,57 @@ export function ContratosTable({ contratos }: { contratos: ContratoListItem[] })
     );
   }
 
+  const columns: ResponsiveColumn<ContratoListItem>[] = [
+    {
+      key: 'local',
+      header: 'Local',
+      cardLabel: 'Local',
+      primary: true,
+      cell: (c) => (
+        <Link href={`/admin/contratos/${c.id}`} className="cellcode">
+          {c.localCodigo ?? c.localId.slice(0, 8)}
+        </Link>
+      ),
+    },
+    {
+      key: 'inquilino',
+      header: 'Inquilino',
+      cardLabel: 'Inquilino',
+      className: 'lead',
+      cell: (c) => c.inquilinoRazonSocial ?? '—',
+    },
+    {
+      key: 'inicio',
+      header: 'Inicio',
+      cardLabel: 'Inicio',
+      className: 'muted',
+      cell: (c) => c.fechaInicio,
+    },
+    {
+      key: 'fin',
+      header: 'Fin',
+      cardLabel: 'Fin',
+      className: 'muted',
+      cell: (c) => c.fechaFin ?? 'Indefinido',
+    },
+    {
+      key: 'monto',
+      header: 'Monto',
+      cardLabel: 'Monto',
+      className: 'num muted',
+      cell: (c) => (c.montoMensual !== null ? `${c.moneda} ${c.montoMensual}` : '—'),
+    },
+    {
+      key: 'estado',
+      header: 'Estado',
+      cardLabel: 'Estado',
+      cell: (c) => <ContratoEstadoBadge estado={c.estado} />,
+    },
+  ];
+
   return (
     <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Local</TableHead>
-            <TableHead>Inquilino</TableHead>
-            <TableHead>Inicio</TableHead>
-            <TableHead>Fin</TableHead>
-            <TableHead className="num">Monto</TableHead>
-            <TableHead>Estado</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {contratos.map((c) => (
-            <TableRow key={c.id}>
-              <TableCell>
-                <Link href={`/admin/contratos/${c.id}`} className="cellcode">
-                  {c.localCodigo ?? c.localId.slice(0, 8)}
-                </Link>
-              </TableCell>
-              <TableCell className="lead">{c.inquilinoRazonSocial ?? '—'}</TableCell>
-              <TableCell className="muted">{c.fechaInicio}</TableCell>
-              <TableCell className="muted">{c.fechaFin ?? 'Indefinido'}</TableCell>
-              <TableCell className="num muted">
-                {c.montoMensual !== null ? `${c.moneda} ${c.montoMensual}` : '—'}
-              </TableCell>
-              <TableCell>
-                <ContratoEstadoBadge estado={c.estado} />
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+      <ResponsiveDataView rows={contratos} columns={columns} rowKey={(c) => c.id} />
     </Card>
   );
 }

@@ -61,9 +61,12 @@ export function ResponsiveDataView<T>({
             const visible = columns.filter(
               (c) => c.key !== primary?.key && !c.hideOnCard,
             );
+            // Acciones: las de la columna primaria en la cabecera;
+            // el resto se agrupa en una barra inferior de acciones.
             const primaryActions = primary?.actions;
-            const otherActions = columns.find((c) => c.actions && c.key !== primary?.key)
-              ?.actions;
+            const otherActions = columns.filter(
+              (c) => c.actions && c.key !== primary?.key,
+            );
             return (
               <li key={rowKey(row)} className="rdv-card">
                 <div className="rdv-card-head">
@@ -80,9 +83,13 @@ export function ResponsiveDataView<T>({
                     ))}
                   </dl>
                 )}
-                {otherActions && (
+                {otherActions.length > 0 && (
                   <div className="rdv-card-actions row-actions">
-                    {otherActions(row)}
+                    {otherActions.map((c) => (
+                      <React.Fragment key={c.key}>
+                        {c.actions!(row)}
+                      </React.Fragment>
+                    ))}
                   </div>
                 )}
               </li>

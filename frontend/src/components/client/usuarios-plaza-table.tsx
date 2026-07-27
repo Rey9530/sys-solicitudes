@@ -3,48 +3,29 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import {
-  KeyRound,
-  Power,
-  UserX,
-} from 'lucide-react';
+import { KeyRound, Power, UserX } from 'lucide-react';
 import type { RolStaffOutput, UsuarioOutput } from '@app/contracts';
 import {
   adminResetUsuarioPlazaAction,
   reactivateUsuarioPlazaAction,
 } from '@/app/(admin-plaza)/admin/usuarios-plaza/actions';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { EditarUsuarioPlazaDialog } from '@/components/client/editar-usuario-plaza-dialog';
 import { DeshabilitarUsuarioPlazaDialog } from '@/components/client/deshabilitar-usuario-plaza-dialog';
 import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
+import {
+  ResponsiveDataView,
+  type ResponsiveColumn,
+} from '@/components/client/responsive/responsive-data-view';
 
 type UsuarioRow = UsuarioOutput & {
   rolStaffActivo: boolean | null;
   rolStaffNombre: string | null;
 };
 
-/**
- * Tabla de usuarios `admin_plaza` de la plaza (T-059-ter). Permite al admin
- * gestionar a otros admins:
- *  - Editar nombre, teléfono y rol_staff
- *  - Disparar reset de contraseña por email
- *  - Deshabilitar con motivo obligatorio (RN-AU-5 protege al último admin)
- *  - Reactivar
- *
- * El Server Component padre materializa la lista con RSC; tras cada acción
- * se llama `router.refresh()` para re-fetchear.
- */
 export function UsuariosPlazaTable({
   usuarios,
   rolesStaff,
@@ -105,119 +86,169 @@ export function UsuariosPlazaTable({
     );
   }
 
+  const renderRolStaff = (u: UsuarioRow) => {
+    if (!u.rolStaffNombre) {
+      return <span className="muted">—</span>;
+    }
+    if (u.rolStaffActivo === false) {
+      return (
+        <span className="badge b-warn" title="El rol de staff está inactivo">
+          <span className="bdot" />
+          {u.rolStaffNombre} (inactivo)
+        </span>
+      );
+    }
+    return (
+      <span className="badge b-ok">
+        <span className="bdot" />
+        {u.rolStaffNombre}
+      </span>
+    );
+  };
+
+  const renderEstado = (inactivo: boolean, emailInvalido: boolean | null | undefined) => {
+    if (inactivo) {
+      return (
+        <span className="badge b-neutral">
+          <span className="bdot" />
+          Inactivo
+        </span>
+      );
+    }
+    if (emailInvalido) {
+      return (
+        <span className="badge b-warn">
+          <span className="bdot" />
+          Email inválido
+        </span>
+      );
+    }
+    return (
+      <span className="badge b-ok">
+        <span className="bdot" />
+        Activo
+      </span>
+    );
+  };
+
+  const columns: ResponsiveColumn<UsuarioRow>[] = [
+    { key: 'nombre', header: 'Nombre', cardLabel: 'Nombre', primary: true, className: 'lead', cell: (u) => u.nombre },
+    { key: 'email', header: 'Email', cardLabel: 'Email', className: 'mono muted', cell: (u) => u.email },
+    { key: 'telefono', header: 'Teléfono', cardLabel: 'Teléfono', className: 'muted', cell: (u) => u.telefono ?? '—' },
+    { key: 'rol', header: 'Rol de staff', cardLabel: 'Rol de staff', cell: (u) => renderRolStaff(u) },
+    {
+      key: 'ultimo',
+      header: 'Último acceso',
+      cardLabel: 'Último acceso',
+      className: 'muted',
+      cell: (u) => (u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Nunca'),
+    },
+    {
+      key: 'estado',
+      header: 'Estado',
+      cardLabel: 'Estado',
+      cell: (u) => renderEstado(u.deletedAt !== null, u.emailInvalido),
+    },
+    {
+      key: 'acciones',
+      header: 'Acciones',
+      className: 'actions',
+      cell: (u) => {
+        if (u.deletedAt !== null) {
+          return (
+            <Can permiso="usuarios_plaza.reactivar">
+              <Button
+                variant="success"
+                size="sm"
+                disabled={pendingId === u.id}
+                onClick={() => onReactivate(u)}
+              >
+                <Power />
+                {pendingId === u.id ? 'Reactivando…' : 'Reactivar'}
+              </Button>
+            </Can>
+          );
+        }
+        return (
+          <div className="inline-flex items-center gap-1">
+            <Can permiso="usuarios_plaza.editar">
+              <EditarUsuarioPlazaDialog
+                usuarioId={u.id}
+                nombreInicial={u.nombre}
+                telefonoInicial={u.telefono}
+                email={u.email}
+                rolStaffIdInicial={u.rolStaffId}
+                rolesStaff={rolesStaff}
+              />
+            </Can>
+            <Can permiso="usuarios_plaza.resetear_clave">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pendingId === u.id}
+                onClick={() => onReset(u)}
+              >
+                <KeyRound />
+                {pendingId === u.id ? 'Enviando…' : 'Resetear clave'}
+              </Button>
+            </Can>
+            <Can permiso="usuarios_plaza.deshabilitar">
+              <DeshabilitarUsuarioPlazaDialog
+                usuarioId={u.id}
+                nombre={u.nombre}
+                email={u.email}
+                onDisabled={() => router.refresh()}
+              />
+            </Can>
+          </div>
+        );
+      },
+      actions: (u) => {
+        if (u.deletedAt !== null) {
+          return (
+            <Can permiso="usuarios_plaza.reactivar">
+              <Button
+                variant="success"
+                size="sm"
+                disabled={pendingId === u.id}
+                onClick={() => onReactivate(u)}
+              >
+                <Power />
+                Reactivar
+              </Button>
+            </Can>
+          );
+        }
+        return (
+          <div className="flex flex-wrap gap-1">
+            <Can permiso="usuarios_plaza.resetear_clave">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={pendingId === u.id}
+                onClick={() => onReset(u)}
+              >
+                <KeyRound />
+                Resetear
+              </Button>
+            </Can>
+            <Can permiso="usuarios_plaza.deshabilitar">
+              <DeshabilitarUsuarioPlazaDialog
+                usuarioId={u.id}
+                nombre={u.nombre}
+                email={u.email}
+                onDisabled={() => router.refresh()}
+              />
+            </Can>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Nombre</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Teléfono</TableHead>
-            <TableHead>Rol de staff</TableHead>
-            <TableHead>Último acceso</TableHead>
-            <TableHead>Estado</TableHead>
-            <TableHead className="actions">Acciones</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {usuarios.map((u) => {
-            const inactivo = u.deletedAt !== null;
-            const rolStaffInactivo = u.rolStaffActivo === false;
-            return (
-              <TableRow key={u.id}>
-                <TableCell className="lead">{u.nombre}</TableCell>
-                <TableCell className="mono muted">{u.email}</TableCell>
-                <TableCell className="muted">{u.telefono ?? '—'}</TableCell>
-                <TableCell>
-                  {u.rolStaffNombre ? (
-                    rolStaffInactivo ? (
-                      <span className="badge b-warn" title="El rol de staff está inactivo">
-                        <span className="bdot" />
-                        {u.rolStaffNombre} (inactivo)
-                      </span>
-                    ) : (
-                      <span className="badge b-ok">
-                        <span className="bdot" />
-                        {u.rolStaffNombre}
-                      </span>
-                    )
-                  ) : (
-                    <span className="muted">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="muted">
-                  {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Nunca'}
-                </TableCell>
-                <TableCell>
-                  {inactivo ? (
-                    <span className="badge b-neutral">
-                      <span className="bdot" />
-                      Inactivo
-                    </span>
-                  ) : u.emailInvalido ? (
-                    <span className="badge b-warn">
-                      <span className="bdot" />
-                      Email inválido
-                    </span>
-                  ) : (
-                    <span className="badge b-ok">
-                      <span className="bdot" />
-                      Activo
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell className="actions">
-                  {inactivo ? (
-                    <Can permiso="usuarios_plaza.reactivar">
-                      <Button
-                        variant="success"
-                        size="sm"
-                        disabled={pendingId === u.id}
-                        onClick={() => onReactivate(u)}
-                      >
-                        <Power />
-                        {pendingId === u.id ? 'Reactivando…' : 'Reactivar'}
-                      </Button>
-                    </Can>
-                  ) : (
-                    <div className="inline-flex items-center gap-1">
-                      <Can permiso="usuarios_plaza.editar">
-                        <EditarUsuarioPlazaDialog
-                          usuarioId={u.id}
-                          nombreInicial={u.nombre}
-                          telefonoInicial={u.telefono}
-                          email={u.email}
-                          rolStaffIdInicial={u.rolStaffId}
-                          rolesStaff={rolesStaff}
-                        />
-                      </Can>
-                      <Can permiso="usuarios_plaza.resetear_clave">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={pendingId === u.id}
-                          onClick={() => onReset(u)}
-                        >
-                          <KeyRound />
-                          {pendingId === u.id ? 'Enviando…' : 'Resetear clave'}
-                        </Button>
-                      </Can>
-                      <Can permiso="usuarios_plaza.deshabilitar">
-                        <DeshabilitarUsuarioPlazaDialog
-                          usuarioId={u.id}
-                          nombre={u.nombre}
-                          email={u.email}
-                          onDisabled={() => router.refresh()}
-                        />
-                      </Can>
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+      <ResponsiveDataView rows={usuarios} columns={columns} rowKey={(u) => u.id} />
     </Card>
   );
 }
