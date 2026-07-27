@@ -16,6 +16,14 @@
   --color-primary-foreground: #ffffff;
   --font-sans: 'General Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* Breakpoints de referencia (alineados con escala Bootstrap 5):
+       sm 576, md 768, lg 992, xl 1200, 2xl 1400. El drawer del shell
+       conserva su corte a 920 px (ver regla más abajo). */
+  --bp-sm: 576px;
+  --bp-md: 768px;
+  --bp-lg: 992px;
+  --bp-xl: 1200px;
+  --bp-xxl: 1400px;
 }
 
 @layer base {
@@ -898,8 +906,9 @@
   }
   .page-head {
     display: flex;
-    align-items: flex-start;
-    gap: 18px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
     margin-bottom: 24px;
   }
   .page-head .ph-main {
@@ -925,7 +934,21 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    flex: none;
+    flex-wrap: wrap;
+    width: 100%;
+  }
+
+  @media (min-width: 768px) {
+    .page-head {
+      flex-direction: row;
+      align-items: flex-start;
+      gap: 18px;
+    }
+    .page-actions {
+      width: auto;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
   }
 
   /* utility helpers del handoff */
@@ -1363,15 +1386,19 @@
     gap: 18px;
   }
   .form-grid.c2 {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
   .form-grid.c3 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr;
   }
-  @media (max-width: 640px) {
-    .form-grid.c2,
+  @media (min-width: 576px) {
+    .form-grid.c2 {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+  @media (min-width: 768px) {
     .form-grid.c3 {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(3, 1fr);
     }
   }
   .form-actions {
@@ -1649,20 +1676,32 @@
   .kpi-grid {
     display: grid;
     gap: 16px;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: 1fr;
   }
   .kpi-grid.c3 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: 1fr;
   }
-  @media (max-width: 1100px) {
+  @media (min-width: 576px) {
+    .kpi-grid.c3 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (min-width: 768px) {
     .kpi-grid {
       grid-template-columns: repeat(2, 1fr);
     }
   }
-  @media (max-width: 560px) {
-    .kpi-grid,
+  @media (min-width: 992px) {
+    .kpi-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+  @media (min-width: 1200px) {
+    .kpi-grid {
+      grid-template-columns: repeat(5, 1fr);
+    }
     .kpi-grid.c3 {
-      grid-template-columns: 1fr;
+      grid-template-columns: repeat(3, 1fr);
     }
   }
   .kpi {
@@ -2143,23 +2182,23 @@
   /* two-column detail layout */
   .detail-grid {
     display: grid;
-    grid-template-columns: 1fr 320px;
+    grid-template-columns: 1fr;
     gap: 20px;
     align-items: start;
   }
   .detail-grid .side-panel {
-    position: sticky;
-    top: 84px;
+    position: static;
     display: flex;
     flex-direction: column;
     gap: 16px;
   }
-  @media (max-width: 980px) {
+  @media (min-width: 992px) {
     .detail-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr) 320px;
     }
     .detail-grid .side-panel {
-      position: static;
+      position: sticky;
+      top: 84px;
     }
   }
 
@@ -2221,17 +2260,19 @@
   .grid-two {
     display: grid;
     gap: 18px;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
   }
   .grid-split {
     display: grid;
     gap: 18px;
-    grid-template-columns: 1.4fr 1fr;
+    grid-template-columns: 1fr;
   }
-  @media (max-width: 860px) {
-    .grid-two,
+  @media (min-width: 768px) {
+    .grid-two {
+      grid-template-columns: 1fr 1fr;
+    }
     .grid-split {
-      grid-template-columns: 1fr;
+      grid-template-columns: 1.4fr 1fr;
     }
   }
 
@@ -2419,13 +2460,13 @@
   /* calendar (estática; FullCalendar se re-tematiza aparte) */
   .cal-wrap {
     display: grid;
-    grid-template-columns: 240px 1fr;
+    grid-template-columns: 1fr;
     gap: 16px;
     align-items: start;
   }
-  @media (max-width: 880px) {
+  @media (min-width: 992px) {
     .cal-wrap {
-      grid-template-columns: 1fr;
+      grid-template-columns: 240px minmax(0, 1fr);
     }
   }
   .cal-grid {
@@ -2578,6 +2619,183 @@
     border-top: none;
     margin-top: 0;
   }
+
+  /* ---------------------------------------------------------
+     RESPONSIVE UTILITIES
+     Principios mobile-first de Bootstrap 5 aplicados al
+     design system. El breakpoint del shell (.shell) conserva
+     su corte a 920 px (definido en su propia media query).
+     --------------------------------------------------------- */
+
+  /* Evita scroll horizontal accidental del documento. */
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Evita que tarjetas o grids principales crezcan más allá
+     del contenedor y fuercen overflow. */
+  .page,
+  .card,
+  .main,
+  .main-col,
+  .shell {
+    min-width: 0;
+  }
+
+  /* Container reutilizable con padding y max-width progresivos. */
+  .container-x {
+    width: 100%;
+    max-width: 1320px;
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+  @media (min-width: 576px) {
+    .container-x {
+      padding-inline: 1.25rem;
+    }
+  }
+  @media (min-width: 992px) {
+    .container-x {
+      padding-inline: 1.5rem;
+    }
+  }
+  @media (min-width: 1200px) {
+    .container-x {
+      max-width: 1180px;
+    }
+  }
+  @media (min-width: 1400px) {
+    .container-x {
+      max-width: 1320px;
+    }
+  }
+
+  /* Acciones de fila (tablas, tarjetas, headers). */
+  .row-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  @media (min-width: 576px) {
+    .row-actions {
+      gap: 0.75rem;
+    }
+  }
+
+  /* Vista responsive de ResponsiveDataView: tarjetas en móvil,
+     tabla desde md (768 px). */
+  .responsive-data-cards {
+    display: grid;
+    gap: 12px;
+  }
+  .responsive-data-table {
+    display: none;
+  }
+  @media (min-width: 768px) {
+    .responsive-data-cards {
+      display: none;
+    }
+    .responsive-data-table {
+      display: block;
+      min-width: 0;
+    }
+  }
+
+  /* Tarjeta de la vista responsive. */
+  .rdv-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 12px;
+    box-shadow: var(--shadow-xs);
+    min-width: 0;
+  }
+  .rdv-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+  }
+  .rdv-card-head .rdv-primary {
+    min-width: 0;
+    font-size: 13.5px;
+    font-weight: 600;
+    color: var(--text);
+    overflow-wrap: anywhere;
+  }
+  .rdv-card-head .row-actions {
+    flex-shrink: 0;
+  }
+  .rdv-card-meta {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 6px 12px;
+    margin-top: 8px;
+  }
+  @media (min-width: 480px) {
+    .rdv-card-meta {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  .rdv-meta-row {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    min-width: 0;
+  }
+  .rdv-meta-row dt {
+    flex-shrink: 0;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+  }
+  .rdv-meta-row dd {
+    min-width: 0;
+    color: var(--text-2);
+    font-size: 12.5px;
+    overflow-wrap: anywhere;
+  }
+  .rdv-card-actions {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-2);
+  }
+
+  /* Matriz de permisos: scroll horizontal con primera columna sticky. */
+  .matriz-scroll {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .matriz-tbl th:first-child,
+  .matriz-tbl td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--surface);
+  }
+  .matriz-tbl thead th:first-child {
+    z-index: 2;
+  }
+
+  /* Stepper compacto en móvil. */
+  .stepper {
+    flex-wrap: wrap;
+  }
+  @media (max-width: 575.98px) {
+    .stepper .step {
+      flex: 1 1 100%;
+      min-width: 0;
+    }
+    .stepper .step-line {
+      display: none;
+    }
+  }
 }
 
 /* ============================================================
@@ -2586,15 +2804,25 @@
 @layer components {
   .auth {
     display: grid;
-    grid-template-columns: 1.05fr 1fr;
+    grid-template-columns: 1fr;
     min-height: 100vh;
+  }
+  .auth-brand {
+    display: none;
+  }
+  @media (min-width: 992px) {
+    .auth {
+      grid-template-columns: 1.05fr 1fr;
+    }
+    .auth-brand {
+      display: flex;
+    }
   }
   .auth-brand {
     position: relative;
     overflow: hidden;
     background: var(--side-grad);
     color: #fff;
-    display: flex;
     flex-direction: column;
     justify-content: space-between;
     padding: 38px 46px;
@@ -2734,12 +2962,8 @@
     margin-right: 2px;
   }
   @media (max-width: 860px) {
-    .auth {
-      grid-template-columns: 1fr;
-    }
-    .auth-brand {
-      display: none;
-    }
+    /* Conservado por compatibilidad con overrides internos;
+       las reglas equivalentes viven ahora en mobile-first. */
   }
 
   .home-entry {
