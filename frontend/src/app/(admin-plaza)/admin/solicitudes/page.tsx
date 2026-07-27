@@ -88,6 +88,7 @@ export default async function AdminSolicitudesPage({
               <option value="asignado">Asignada</option>
               <option value="en_revision">En revisión</option>
               <option value="requerida_subsanacion">Requerida subsanación</option>
+              <option value="pausada">Pausada</option>
               <option value="aprobada">Aprobada</option>
               <option value="rechazada">Rechazada</option>
               <option value="cancelada">Cancelada</option>

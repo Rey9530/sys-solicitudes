@@ -26,10 +26,12 @@ export const SolicitudEstadoSchema = z.enum([
   'rechazada',
   'cancelada',
   'requerida_subsanacion',
+  'pausada', // T-091d-pausar: reversible desde asignado|en_revision, vuelve a en_revision.
 ]);
 export type SolicitudEstado = z.infer<typeof SolicitudEstadoSchema>;
 
-/** Estados desde los que aún se puede transicionar. */
+/** Estados desde los que aún se puede transicionar. `pausada` se omite: ya
+ *  no requiere acción humana (SLA congelado); pero sigue siendo "viva". */
 export const SOLICITUD_ESTADOS_ACTIVOS = [
   'borrador',
   'enviada',
@@ -51,6 +53,8 @@ export const SolicitudHistorialEventoSchema = z.enum([
   'comentario',
   'adjunto_agregado',
   'prioridad_cambiada',
+  'pausada', // T-091d-pausar
+  'reanudada', // T-091d-pausar
 ]);
 export type SolicitudHistorialEvento = z.infer<typeof SolicitudHistorialEventoSchema>;
 
@@ -95,10 +99,11 @@ export type CamposExtraMantenimiento = z.infer<typeof CamposExtraMantenimientoSc
 export const CamposExtraEventoSchema = z.object({
   // T-V22: mínimo 1 asistente, tope 20 (antes 10). Se mantiene la regla
   // T-V05 de "umbral aprobación especial" sobre este valor (en el service).
+  // T-091d-remove: removidos requiere_corte_calle y requiere_amplificacion
+  // (decisión cliente 2026-07-27). Sin impacto en datos: sistema no en
+  // producción.
   asistentes_estimados: z.coerce.number().int().min(1).max(20),
   asistentes: z.array(AsistenteSchema),
-  requiere_corte_calle: z.boolean(),
-  requiere_amplificacion: z.boolean(),
 });
 export type CamposExtraEvento = z.infer<typeof CamposExtraEventoSchema>;
 
@@ -290,6 +295,14 @@ export const LiberarSolicitudSchema = z.object({
 });
 export type LiberarSolicitudInput = z.infer<typeof LiberarSolicitudSchema>;
 
+/** T-091d-pausar: pausar solicitud activa. Motivo opcional (visible para el
+ *  equipo). Solo transitable desde `asignado` o `en_revision` (validado en
+ *  backend). `pausada` NO es terminal: se reanuda con `POST :id/reanudar`. */
+export const PausarSolicitudSchema = z.object({
+  motivo: z.string().trim().max(1000).optional(),
+});
+export type PausarSolicitudInput = z.infer<typeof PausarSolicitudSchema>;
+
 /** T-099: bandeja del admin. Acepta cualquier estado del workflow (decisión owner
  *  2026-06-23 — antes restringido a enviada/asignado/en_revision). */
 export const BandejaQuerySchema = PaginationSchema.extend({
@@ -300,6 +313,7 @@ export const BandejaQuerySchema = PaginationSchema.extend({
       'asignado',
       'en_revision',
       'requerida_subsanacion',
+      'pausada', // T-091d-pausar: filtro explícito para ver pausadas
       'aprobada',
       'rechazada',
       'cancelada',

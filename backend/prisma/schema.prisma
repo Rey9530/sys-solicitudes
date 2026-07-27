@@ -558,13 +558,17 @@ model solicitud_tipo_config {
 ///   borrador → enviada → (cron 15 min) asignado → (tomar) en_revision
 ///   en_revision → aprobada | rechazada | requerida_subsanacion
 ///   requerida_subsanacion → enviada (reenvío, vuelve a la cola)
+///   en_revision|asignado → pausada → en_revision (T-091d-pausar, reversible)
 ///   * no terminal → cancelada
+/// `pausada` NO es terminal: el SLA queda congelado (sin semáforo) y la
+/// solicitud sigue visible en la bandeja con filtro explícito. Sin emails.
 enum solicitud_estado {
   borrador
   enviada
   asignado
   en_revision
   requerida_subsanacion
+  pausada
   aprobada
   rechazada
   cancelada
@@ -580,6 +584,8 @@ enum solicitud_tipo {
 
 /// Eventos del historial (T-075). `asignada` es la auto-asignación del cron
 /// (T-091b); `tomada` es el admin pasando a revisión (T-091c).
+/// T-091d-pausar: `pausada` y `reanudada` son nuevas para registrar el
+/// ciclo de pausa del estado `pausada`.
 enum solicitud_historial_evento {
   creada
   enviada
@@ -593,6 +599,8 @@ enum solicitud_historial_evento {
   comentario
   adjunto_agregado
   prioridad_cambiada
+  pausada
+  reanudada
 }
 
 /// Tipos de comentario (T-077).

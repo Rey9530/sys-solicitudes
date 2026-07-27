@@ -288,7 +288,7 @@ visual, densidad alta y nula personalidad de marca** — es el principal objetiv
 - **Paso 1 — Tipo y categoría:** Tipo* (Mantenimiento/Evento/Remodelación/Otro). Si ≠ otro: Categoría* + Subcategoría* (dependiente). Si = otro: se omiten.
 - **Paso 2 — Detalles + campos extra dinámicos:** Local*, Título*, Descripción* + campos según tipo:
   - *Mantenimiento:* Área afectada*, checkbox "Requiere ingreso al local".
-  - *Evento:* Asistentes estimados*, Fecha inicio*/fin, Hora inicio/fin, checkboxes "corte de calle" / "amplificación".
+  - *Evento:* Asistentes estimados*, Fecha inicio*/fin, Hora inicio/fin.
   - *Remodelación:* Fecha inicio estimada*, Duración (días)*, Empresa constructora*, Monto presupuesto*.
   - *Otro:* Categoría libre*, Descripción larga*.
   - **Aviso de duplicados** no bloqueante (caja ámbar) si hay solicitudes similares recientes.

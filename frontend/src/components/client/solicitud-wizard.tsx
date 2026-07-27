@@ -80,9 +80,6 @@ interface CamposExtraState {
   // `Object.values(asistentes).slice(0, numAsistentes)`.
   asistentes_estimados: string;
   asistentes: Record<number, Asistente>;
-  // evento
-  requiere_corte_calle: boolean;
-  requiere_amplificacion: boolean;
   // remodelacion
   fecha_inicio_estimada: string;
   duracion_dias: string;
@@ -95,8 +92,6 @@ const CAMPOS_EXTRA_INICIAL: CamposExtraState = {
   requiere_ingreso_a_local: false,
   asistentes_estimados: '',
   asistentes: {},
-  requiere_corte_calle: false,
-  requiere_amplificacion: false,
   fecha_inicio_estimada: '',
   duracion_dias: '',
   empresa_constructora: '',
@@ -268,8 +263,8 @@ export function SolicitudWizard({
         rows.push(['Requiere ingreso al local', extra.requiere_ingreso_a_local ? 'Sí' : 'No']);
         break;
       case 'evento':
-        rows.push(['Requiere corte de calle', extra.requiere_corte_calle ? 'Sí' : 'No']);
-        rows.push(['Requiere amplificación', extra.requiere_amplificacion ? 'Sí' : 'No']);
+        // Sin campos específicos propios: los datos relevantes para el evento
+        // se recogen en los bloques transversales (fechas, personal).
         break;
       case 'remodelacion':
         if (extra.fecha_inicio_estimada)
@@ -385,11 +380,10 @@ export function SolicitudWizard({
           ...bloqueAsistentes,
         };
       case 'evento':
-        return {
-          ...bloqueAsistentes,
-          requiere_corte_calle: extra.requiere_corte_calle,
-          requiere_amplificacion: extra.requiere_amplificacion,
-        };
+        // T-091d-remove: removidos requiere_corte_calle y requiere_amplificacion
+        // (decisión cliente 2026-07-27). Queda solo el bloque transversal de
+        // asistentes.
+        return bloqueAsistentes;
       case 'remodelacion':
         return {
           fecha_inicio_estimada: extra.fecha_inicio_estimada,
@@ -775,26 +769,6 @@ export function SolicitudWizard({
                     onChange={(e) => setX('requiere_ingreso_a_local', e.target.checked)}
                   />
                   Requiere ingreso al local
-                </label>
-              </div>
-            )}
-            {tipo === 'evento' && (
-              <div className="wz-extra">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={extra.requiere_corte_calle}
-                    onChange={(e) => setX('requiere_corte_calle', e.target.checked)}
-                  />
-                  Requiere corte de calle
-                </label>
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={extra.requiere_amplificacion}
-                    onChange={(e) => setX('requiere_amplificacion', e.target.checked)}
-                  />
-                  Requiere amplificación
                 </label>
               </div>
             )}

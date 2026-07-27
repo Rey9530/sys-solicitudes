@@ -8,6 +8,7 @@ import {
   SubsanarSolicitudAdminSchema,
   ReasignarSolicitudSchema,
   LiberarSolicitudSchema,
+  PausarSolicitudSchema,
   UpdatePrioridadSchema,
   CreateComentarioSchema,
 } from '@app/contracts';
@@ -84,6 +85,20 @@ export async function liberarAction(id: string, motivo?: string): Promise<Action
   const parsed = LiberarSolicitudSchema.safeParse({ motivo: motivo || undefined });
   if (!parsed.success) return { ok: false, error: 'Motivo inválido' };
   return postAccion(id, 'liberar', parsed.data, 'No se pudo liberar.', 'solicitudes.liberar');
+}
+
+/** T-091d-pausar: pausar solicitud activa (asignado|en_revision). */
+export async function pausarAction(id: string, motivo?: string): Promise<ActionResult> {
+  const denied = await ensureCan(['solicitudes.pausar']);
+  if (denied) return denied;
+  const parsed = PausarSolicitudSchema.safeParse({ motivo: motivo?.trim() || undefined });
+  if (!parsed.success) return { ok: false, error: 'Motivo inválido' };
+  return postAccion(id, 'pausar', parsed.data, 'No se pudo pausar.', 'solicitudes.pausar');
+}
+
+/** T-091d-pausar: reanudar solicitud pausada (vuelve a en_revision). */
+export async function reanudarAction(id: string): Promise<ActionResult> {
+  return postAccion(id, 'reanudar', {}, 'No se pudo reanudar.', 'solicitudes.reanudar');
 }
 
 export async function aprobarAction(id: string, comentario?: string): Promise<ActionResult> {

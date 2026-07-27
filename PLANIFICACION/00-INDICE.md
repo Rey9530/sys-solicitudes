@@ -173,7 +173,7 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 - **Criterios de aceptación:**
   - [x] Confirmados los campos extra por cada tipo:
     - `mantenimiento`: `area_afectada` (texto), `requiere_ingreso_a_local` (bool).
-    - `evento`: `asistentes_estimados` (int), `requiere_corte_calle` (bool), `requiere_amplificacion` (bool).
+    - `evento`: `asistentes_estimados` (int), `asistentes` (array).
     - `remodelacion`: `fecha_inicio_estimada` (date), `duracion_dias` (int), `empresa_constructora` (texto), `monto_presupuesto` (decimal).
     - `otro`: `categoria_libre` (texto), `descripcion_larga` (texto).
   - [x] Confirmado el umbral de "evento con > 200 asistentes requiere aprobación especial" — **configurable por plaza**.
@@ -195,6 +195,7 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
     - **T-088 (en `06-solicitudes.md`):** Simplificar el wizard de nueva solicitud: el paso de recurrencia se omite. Solo paso único con todos los campos.
   - **Criterios de aceptación modificados:**
     - [x] Original: "Confirmada la recurrencia de eventos" — **MODIFICADO a NO en v1**.
+  - **Actualización 2026-07-27:** se removieron `requiere_corte_calle` y `requiere_amplificacion` del schema `evento` por decisión del cliente. El sistema aún no estaba en producción, sin impacto en datos existentes. Afecta: `frontend/src/components/client/solicitud-wizard.tsx`, `solicitud-detail-admin.tsx`, `solicitud-detail-inquilino.tsx`, `backend/src/modules/reportes/reportes.service.ts`, `packages/contracts/src/solicitudes/index.ts`.
 
 ### T-V06 — Validar política de adjuntos
 - **Descripción:** Confirmar el límite de 25 MB por archivo, la lista cerrada de MIME (PDF/JPEG/PNG/WEBP/XLSX/DOCX/DWG), la versión simple de adjuntos, la cuarentena 30 días, y la previsualización inline para PDF e imágenes.

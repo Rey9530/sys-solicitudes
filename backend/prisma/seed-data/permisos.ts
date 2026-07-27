@@ -63,6 +63,8 @@ export const PERMISOS_CATALOG: readonly PermisoCatalogo[] = [
   { codigo: 'solicitudes.reasignar', modulo: 'solicitudes', accion: 'reasignar', descripcion: 'Reasignar una solicitud a otro admin de la plaza.' },
   { codigo: 'solicitudes.cambiar_prioridad', modulo: 'solicitudes', accion: 'cambiar_prioridad', descripcion: 'Cambiar la prioridad de una solicitud (A-F).' },
   { codigo: 'solicitudes.cancelar', modulo: 'solicitudes', accion: 'cancelar', descripcion: 'Cancelar una solicitud en estado no terminal.' },
+  { codigo: 'solicitudes.pausar', modulo: 'solicitudes', accion: 'pausar', descripcion: 'Pausar una solicitud activa (asignado|en_revision). Congela el SLA.' },
+  { codigo: 'solicitudes.reanudar', modulo: 'solicitudes', accion: 'reanudar', descripcion: 'Reanudar una solicitud pausada (vuelve a en_revision conservando el asignado).' },
   { codigo: 'solicitudes.comentar', modulo: 'solicitudes', accion: 'comentar', descripcion: 'Añadir comentarios a una solicitud.' },
   { codigo: 'solicitudes.adjuntos.subir', modulo: 'solicitudes', accion: 'adjuntos_subir', descripcion: 'Subir adjuntos a una solicitud.' },
   { codigo: 'solicitudes.adjuntos.descargar', modulo: 'solicitudes', accion: 'adjuntos_descargar', descripcion: 'Descargar adjuntos de una solicitud.' },

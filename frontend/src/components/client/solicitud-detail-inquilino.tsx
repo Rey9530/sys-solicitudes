@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/client/tabs';
 import { AdjuntoUploader } from '@/components/client/adjunto-uploader';
 import { Avatar } from '@/components/ui/avatar';
+import { Banner } from '@/components/ui/banner';
 import { Breadcrumb } from '@/components/ui/page-header';
 import {
   SolicitudEstadoBadge,
@@ -45,8 +46,6 @@ const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   requiere_ingreso_a_local: 'Requiere ingreso al local',
   asistentes_estimados: 'Asistentes estimados',
   asistentes: 'Asistentes',
-  requiere_corte_calle: 'Requiere corte de calle',
-  requiere_amplificacion: 'Requiere amplificación',
   requiere_aprobacion_especial: 'Requiere aprobación especial',
   fecha_inicio_estimada: 'Fecha de inicio estimada',
   duracion_dias: 'Duración (días)',
@@ -72,6 +71,8 @@ const EVENTO_LABEL: Record<string, string> = {
   comentario: 'Comentario',
   adjunto_agregado: 'Adjunto agregado',
   prioridad_cambiada: 'Prioridad cambiada',
+  pausada: 'Pausada',
+  reanudada: 'Reanudada',
 };
 
 /** Detalle de solicitud del inquilino (T-089): tabs + acciones por estado. */
@@ -121,6 +122,10 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
   const estado = solicitud.estado;
   const esBorrador = estado === 'borrador';
   const esSubsanacion = estado === 'requerida_subsanacion';
+  // T-091d-pausar: el inquilino no edita/reenvía/cancela cuando su solicitud
+  // está pausada — debe esperar a que el admin la reanude. Sigue pudiendo
+  // comentar y adjuntar (no se bloquea aquí).
+  const esPausada = estado === 'pausada';
   const esTerminal = ['aprobada', 'rechazada', 'cancelada'].includes(estado);
   const puedeAdjuntar = esBorrador || esSubsanacion;
 
@@ -147,6 +152,15 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
           </Button>
         </div>
       </div>
+
+      {esPausada && (
+        <div className="mb-4">
+          <Banner tone="info">
+            Esta solicitud está pausada por la administración. No puedes editarla ni reenviarla
+            hasta que sea reanudada.
+          </Banner>
+        </div>
+      )}
 
       <div className="detail-grid">
         <div className="min-w-0">
@@ -353,7 +367,7 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
                   </Button>
                 </>
               )}
-              {esSubsanacion && (
+              {esSubsanacion && !esPausada && (
                 <>
                   <Link href={`/inquilino/solicitudes/${solicitud.id}/editar`} className="btn btn-secondary btn-block">
                     Editar
@@ -372,7 +386,7 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
               <Button variant="secondary" size="block" disabled={pending} onClick={() => void onDuplicar()}>
                 Duplicar
               </Button>
-              {!esTerminal && (
+              {!esTerminal && !esPausada && (
                 <Button
                   variant="danger"
                   size="block"

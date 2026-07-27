@@ -63,6 +63,7 @@ const SOLICITUD_ESTADO_TONE: Record<SolicitudEstado, string> = {
   asignado: 'b-indigo',
   en_revision: 'b-warn',
   requerida_subsanacion: 'b-orange',
+  pausada: 'b-cyan', // T-091d-pausar: estado congelado, distintivo de los demás.
   aprobada: 'b-ok',
   rechazada: 'b-danger',
   cancelada: 'b-neutral',
@@ -74,6 +75,7 @@ export const SOLICITUD_ESTADO_LABEL: Record<SolicitudEstado, string> = {
   asignado: 'Asignada',
   en_revision: 'En revisión',
   requerida_subsanacion: 'Requiere subsanación',
+  pausada: 'Pausada',
   aprobada: 'Aprobada',
   rechazada: 'Rechazada',
   cancelada: 'Cancelada',

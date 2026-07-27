@@ -35,11 +35,12 @@ Este documento define:
 | `asignado` | **(NUEVO, T-V03)** Auto-asignada al responsable de la subcategoría (o reasignada manualmente); el admin aún no empieza la revisión. Sin timeout: el asignado la "toma" cuando quiera. | No |
 | `en_revision` | El admin asignado la tomó y la está revisando. | No |
 | `requerida_subsanacion` | El admin pidió cambios al inquilino. | No |
+| `pausada` | **(NUEVO, T-091d-pausar)** Congelada temporalmente por el admin asignado mientras espera algo externo (perito, proveedor, etc.). El SLA queda congelado y no aparece en KPIs `pendientes`. Reversible con `reanudar` (vuelve a `en_revision`). | **No** (reversible) |
 | `aprobada` | Aprobada por el admin_plaza. | **Sí** |
 | `rechazada` | Rechazada por el admin_plaza. | **Sí** |
 | `cancelada` | Cancelada por el inquilino o por el admin. | **Sí** |
 
-> **SUPUESTO:** el cliente puede requerir un estado `pausada` o `en_ejecucion` para distinguir entre "aprobada" y "ya ejecutada". Esto se aborda en una posible v1.1.
+> **T-091d-pausar (introducido 2026-07-27):** el estado `pausada` se incorpora a v1 con semántica mínima (solo cambia `solicitud.estado`, sin emails, sin tocar calendario ni local). Detalle completo en `PLANIFICACION/14-pausar-solicitudes.md`. El SUPUESTO S-FS-I original (que excluía `pausada` y `en_ejecucion` de v1) se reemplaza por esta decisión. El estado `en_ejecucion` sigue fuera de v1.
 >
 > **S-AutoAsignacion (REVISADO en T-V03):** al enviar, la solicitud queda en `enviada` (cola). Un cron (cada 1 min) transiciona `enviada → asignado` cuando `enviada_at` supera los **15 minutos**, asignando al `responsable_id` ACTUAL de la subcategoría y notificando a responsable y supervisores. Las solicitudes sin subcategoría (tipo=`otro`) o cuya subcategoría no tiene responsable válido permanecen en `enviada` para toma manual desde la bandeja.
 
@@ -68,7 +69,13 @@ stateDiagram-v2
     en_revision --> requerida_subsanacion : Admin pide subsanación (comentario obligatorio)
     en_revision --> en_revision : Reasignación manual (T12, T-V04)
     en_revision --> enviada : El asignado la libera
+    en_revision --> pausada : Admin asignado pausa (T-091d, motivo opcional)
     en_revision --> cancelada : Inquilino o admin cancela
+
+    asignada_cancelada: ... asignado --> cancelada : Inquilino o admin cancela
+    asignado --> pausada : Admin asignado pausa (T-091d)
+    pausada --> en_revision : Admin asignado reanuda (T-091d)
+    pausada --> cancelada : Inquilino o admin cancela
 
     requerida_subsanacion --> enviada : Inquilino subsana y reenvía (vuelve a la cola)
     requerida_subsanacion --> cancelada : Inquilino cancela
@@ -99,6 +106,8 @@ stateDiagram-v2
 | T10 | `requerida_subsanacion → cancelada` | Inquilino | — | Historial `cancelada`. |
 | **T12 (REVISADO T-V04)** | `asignado\|en_revision → (mismo estado)` (reasignación) | Cualquier `admin_plaza` | `nuevo_responsable_id` cumple SC-6; mismo asignado → `400 SAME_ASSIGNEE`. **Sin lock que transferir** (T-V03). | `admin_asignado_id = nuevo`; `asignada_at = now()`; historial `reasignada` (estado se conserva); email `solicitud-reasignada` al nuevo. ⚠️ T-V04: cambiar el responsable de una subcategoría reasigna TODAS sus solicitudes en `asignado`/`en_revision`. |
 | **T13 (NUEVO)** | `asignado\|en_revision → enviada` (liberar) | Solo el admin asignado | `403 NOT_ASSIGNED_ADMIN` si no. | `admin_asignado_id = NULL`; `enviada_at` NO se resetea (el SLA cuenta desde el envío original); vuelve a la cola del cron. |
+| **T14 (NUEVO, T-091d-pausar)** | `asignado\|en_revision → pausada` (pausar) | Solo el admin asignado | `403 NOT_ASSIGNED_ADMIN` si no; motivo opcional. | `admin_asignado_id` y `asignada_at` se CONSERVAN; historial `pausada` con motivo opcional; SLA congelado (matview `solicitud_sla_view` excluye el estado); sin email (silencioso). |
+| **T15 (NUEVO, T-091d-pausar)** | `pausada → en_revision` (reanudar) | Solo el admin asignado | `403 NOT_ASSIGNED_ADMIN` si no. | `admin_asignado_id` y `asignada_at` se conservan (sin reset); historial `reanudada`; SLA retoma el conteo desde el envío original; sin email. |
 | T11 | Reversión (caso excepcional) | Superadmin (no UI) | Solo mediante intervención directa en BD. | Registrado en `auditoria`. **No se documenta como flujo de UI.** |
 
 > **S-LockTimeout (ELIMINADO en T-V03):** el lock de 30 minutos NO existe. Lo que existe es la espera de 15 minutos en `enviada` antes de la auto-asignación (T2b). Una vez en `asignado` no hay timeout: el asignado toma cuando quiera, otro admin puede reasignar (T12) y el asignado puede liberar (T13).
@@ -116,7 +125,7 @@ stateDiagram-v2
 | T8 (`→ requerida_subsanacion`) | `solicitud-subsanacion` | Usuario creador. | Encolado. |
 | T9 (reenvío) | — (sin email inmediato) | El email llega con la re-asignación del cron (T2b). | — |
 | **T12 (reasignación manual o por cambio de responsable)** | `solicitud-reasignada` | Nuevo responsable. | Encolado. |
-| T2/T3/T5/T13 (enviar, cancelar, liberar) | — | Sin email (T-V03: enviar no notifica; cancelación silenciosa). | — |
+| T2/T3/T5/T13/T14/T15 (enviar, cancelar, liberar, pausar, reanudar) | — | Sin email (T-V03: enviar no notifica; cancelación silenciosa; pausa y reanudación también silenciosas en v1). | — |
 
 **Todas las notificaciones se registran en `email_log`** con `estado`, `reintentos`, `last_error` y se procesan por el worker con reintentos exponenciales.
 
@@ -130,7 +139,7 @@ Por cada transición, se inserta una fila con:
 |---|---|
 | `solicitud_id` | El id de la solicitud. |
 | `usuario_id` | El usuario que causó el evento. |
-| `evento` | Uno de: `creada`, `enviada`, `tomada`, `aprobada`, `rechazada`, `subsanada`, `cancelada`, `comentario`, `adjunto_agregado`. |
+| `evento` | Uno de: `creada`, `enviada`, `tomada`, `aprobada`, `rechazada`, `subsanada`, `cancelada`, `comentario`, `adjunto_agregado`, `pausada`, `reanudada`. |
 | `estado_anterior` | El estado antes. |
 | `estado_nuevo` | El estado después (NULL para `comentario` y `adjunto_agregado`). |
 | `comentario` | El comentario asociado, si aplica. |
@@ -287,12 +296,12 @@ El SLA se precalcula en la vista materializada `solicitud_sla_view`, refrescada 
 
 | Métrica | Cálculo |
 |---|---|
-| **Solicitudes pendientes** | `COUNT` donde `estado IN ('enviada','en_revision','requerida_subsanacion')`. |
+| **Solicitudes pendientes** | `COUNT` donde `estado IN ('enviada','en_revision','requerida_subsanacion')`. **`pausada` NO cuenta como pendiente`** (T-091d-pausar). |
 | **Tasa de aprobación** | `aprobadas / (aprobadas + rechazadas)` en el período. |
 | **Tiempo medio de respuesta** | `AVG(decision_at - enviada_at)` filtrado por estados terminales. |
 | **Solicitudes con subsanación** | `COUNT` donde hubo paso por `requerida_subsanacion`. |
 | **Eventos próximos (7 días)** | `COUNT` en `evento_calendario` con `inicio BETWEEN now AND now+7d`. |
-| **Top 5 por antigüedad** | `ORDER BY enviada_at ASC LIMIT 5 WHERE estado IN ('enviada','en_revision')`. |
+| **Top 5 por antigüedad** | `ORDER BY enviada_at ASC LIMIT 5 WHERE estado IN ('enviada','en_revision')`. **`pausada` NO se incluye** (T-091d-pausar). |
 
 ---
 
@@ -308,7 +317,7 @@ El SLA se precalcula en la vista materializada `solicitud_sla_view`, refrescada 
 | S-FS-F | Cambio de local permitido solo en `borrador` y `requerida_subsanacion`. |
 | S-FS-G | 10 adjuntos máximo por solicitud. |
 | S-FS-H | No se bloquean duplicados; se avisa. |
-| S-FS-I | Estados `pausada` y `en_ejecucion` no se contemplan en v1. |
+| S-FS-I | **REVISADO (2026-07-27, T-091d-pausar):** estado `pausada` introducido en v1 con semántica mínima (ver T14/T15). Estado `en_ejecucion` sigue excluido de v1. |
 | S-FS-AutoAsignacion | **REVISADO (T-V03):** al enviar queda en cola (`enviada`); el cron asigna a los 15 min al responsable ACTUAL de la subcategoría y notifica a responsable + supervisores. |
 | S-FS-Prioridad | La `prioridad ∈ {A,B,C,D,F}` se hereda de la subcategoría al crear; modificable por `admin_plaza` con `PATCH /solicitudes/:id`. |
 | S-FS-Supervisores | Una subcategoría puede tener entre 0 y 5 supervisores (enforced por trigger PG `tg_subcategoria_max_5_supervisores`). |

@@ -12,7 +12,7 @@ interface ConfiguracionSla {
   sla_multiplicador_por_prioridad: unknown;
 }
 
-const TERMINALES = ['aprobada', 'rechazada', 'cancelada'];
+const TERMINALES = ['aprobada', 'rechazada', 'cancelada', 'pausada'];
 
 /**
  * Semáforo SLA (T-100, S-SLA / S-SLA-Prioridad, revisado T-V03):

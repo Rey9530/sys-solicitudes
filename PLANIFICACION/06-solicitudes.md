@@ -111,7 +111,7 @@
 
 - **Descripción:** Definir los schemas Zod para los `campos_extra` JSONB por cada tipo de solicitud. Materializa S-SO-A y S-CamposTipo. Campos:
 - `mantenimiento`: `area_afectada` (texto), `requiere_ingreso_a_local` (bool).
-- `evento`: `asistentes_estimados` (int 1-10000), `requiere_corte_calle` (bool), `requiere_amplificacion` (bool).
+- `evento`: `asistentes_estimados` (int 1-10000), `asistentes` (array de {nombre, documento}).
 - `remodelacion`: `fecha_inicio_estimada` (date), `duracion_dias` (int 1-365), `empresa_constructora` (texto), `monto_presupuesto` (decimal ≥ 0).
 - `otro`: `categoria_libre` (texto), `descripcion_larga` (texto ≤ 4000).
 - **Criterios de aceptación:**

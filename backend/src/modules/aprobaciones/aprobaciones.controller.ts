@@ -17,12 +17,14 @@ import {
   SubsanarSolicitudAdminSchema,
   ReasignarSolicitudSchema,
   LiberarSolicitudSchema,
+  PausarSolicitudSchema,
   BandejaQuerySchema,
   type AprobarSolicitudInput,
   type RechazarSolicitudInput,
   type SubsanarSolicitudAdminInput,
   type ReasignarSolicitudInput,
   type LiberarSolicitudInput,
+  type PausarSolicitudInput,
   type BandejaQuery,
 } from '@app/contracts';
 import { AprobacionesService, type RequestMeta } from './aprobaciones.service';
@@ -200,6 +202,41 @@ export class AprobacionesController {
     @Headers('x-request-id') requestId: string | undefined,
   ) {
     return this.service.reasignar(id, body, user, this.meta(ip, userAgent, requestId));
+  }
+
+  @Post(':id/pausar')
+  @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.pausar')
+  @ApiOperation({
+    summary:
+      'Pausar (T-091d-pausar): asignado|en_revision → pausada. Cualquier admin_plaza con permiso. SLA congelado.',
+  })
+  pausar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(PausarSolicitudSchema)) body: PausarSolicitudInput,
+    @CurrentUser() user: AuthenticatedUser,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+  ) {
+    return this.service.pausar(id, body, user, this.meta(ip, userAgent, requestId));
+  }
+
+  @Post(':id/reanudar')
+  @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.reanudar')
+  @ApiOperation({
+    summary:
+      'Reanudar (T-091d-pausar): pausada → en_revision. Cualquier admin_plaza con permiso. Conserva admin_asignado_id.',
+  })
+  reanudar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+  ) {
+    return this.service.reanudar(id, user, this.meta(ip, userAgent, requestId));
   }
 
   private meta(

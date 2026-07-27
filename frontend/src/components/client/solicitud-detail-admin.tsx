@@ -11,6 +11,8 @@ import {
   rechazarAction,
   pedirSubsanacionAction,
   reasignarAction,
+  pausarAction,
+  reanudarAction,
   cancelarAdminAction,
   cambiarPrioridadAction,
   comentarAdminAction,
@@ -64,8 +66,6 @@ const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   requiere_ingreso_a_local: 'Requiere ingreso al local',
   asistentes_estimados: 'Asistentes estimados',
   asistentes: 'Asistentes',
-  requiere_corte_calle: 'Requiere corte de calle',
-  requiere_amplificacion: 'Requiere amplificación',
   requiere_aprobacion_especial: 'Requiere aprobación especial',
   fecha_inicio_estimada: 'Fecha de inicio estimada',
   duracion_dias: 'Duración (días)',
@@ -86,6 +86,8 @@ const EVENTO_LABEL: Record<string, string> = {
   comentario: 'Comentario',
   adjunto_agregado: 'Adjunto agregado',
   prioridad_cambiada: 'Prioridad cambiada',
+  pausada: 'Pausada',
+  reanudada: 'Reanudada',
 };
 
 /**
@@ -104,12 +106,16 @@ export function SolicitudDetailAdmin({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [comentario, setComentario] = useState('');
-  const [modal, setModal] = useState<'aprobar' | 'rechazar' | 'subsanar' | 'reasignar' | null>(null);
+  const [motivoPausa, setMotivoPausa] = useState('');
+  const [modal, setModal] = useState<'aprobar' | 'rechazar' | 'subsanar' | 'reasignar' | 'pausar' | null>(null);
 
   const estado = solicitud.estado;
   const soyAsignado = solicitud.adminAsignadoId === miUsuarioId;
   const soyCreador = solicitud.usuarioCreadorId === miUsuarioId; // SC-4
   const esTerminal = ['aprobada', 'rechazada', 'cancelada'].includes(estado);
+  // T-091d-pausar: `pausada` NO es terminal (es reversible), pero tampoco
+  // admite las acciones de decisión (aprobar/rechazar/pedir subsanación).
+  const esPausada = estado === 'pausada';
 
   const run = async (fn: () => Promise<{ ok: boolean; error?: string }>, okMsg: string) => {
     setPending(true);
@@ -416,6 +422,27 @@ export function SolicitudDetailAdmin({
                   </Can>
                 </>
               )}
+              {(estado === 'asignado' || estado === 'en_revision') && !esTerminal && (
+                <Can permiso="solicitudes.pausar">
+                  <Button variant="outline" size="block" disabled={pending} onClick={() => setModal('pausar')}>
+                    Pausar
+                  </Button>
+                </Can>
+              )}
+              {esPausada && (
+                <Can permiso="solicitudes.reanudar">
+                  <Button variant="success" size="block" disabled={pending} onClick={() => void run(() => reanudarAction(solicitud.id), 'Reanudada')}>
+                    Reanudar
+                  </Button>
+                </Can>
+              )}
+              {esPausada && (
+                <p className="muted text-sm">
+                  Solicitud pausada
+                  {solicitud.adminAsignado?.nombre ? ` por ${solicitud.adminAsignado.nombre}` : ''}. Cualquier
+                  admin de la plaza puede reanudarla.
+                </p>
+              )}
               {esTerminal && (
                 <p className="muted text-sm">
                   Solicitud {SOLICITUD_ESTADO_LABEL[estado].toLowerCase()}. No hay acciones pendientes.
@@ -531,6 +558,39 @@ export function SolicitudDetailAdmin({
             }
           }}
         />
+      )}
+      {modal === 'pausar' && (
+        <Dialog open onOpenChange={(open) => !open && setModal(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Pausar solicitud</DialogTitle>
+              <DialogDescription>
+                La solicitud volverá a tu revisión al reanudarla. El SLA queda congelado mientras esté pausada.
+              </DialogDescription>
+            </DialogHeader>
+            <textarea
+              rows={3}
+              maxLength={1000}
+              autoFocus
+              placeholder="Motivo (opcional, visible para el equipo)…"
+              className="textarea"
+              value={motivoPausa}
+              onChange={(e) => setMotivoPausa(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setModal(null)}>
+                Cancelar
+              </Button>
+              <Button
+                variant="secondary"
+                disabled={pending}
+                onClick={() => void run(() => pausarAction(solicitud.id, motivoPausa), 'Solicitud pausada')}
+              >
+                Pausar
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
       {modal === 'reasignar' && (
         <ReasignarDialog

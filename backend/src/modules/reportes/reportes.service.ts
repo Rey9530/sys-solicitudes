@@ -78,8 +78,6 @@ const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   requiere_ingreso_a_local: 'Requiere ingreso al local',
   asistentes_estimados: 'Asistentes estimados',
   asistentes: 'Asistentes',
-  requiere_corte_calle: 'Requiere corte de calle',
-  requiere_amplificacion: 'Requiere amplificación',
   fecha_inicio_estimada: 'Fecha de inicio estimada',
   duracion_dias: 'Duración (días)',
   empresa_constructora: 'Empresa constructora',

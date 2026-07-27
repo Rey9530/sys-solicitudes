@@ -20,9 +20,11 @@ const ESTADOS_TERMINALES: solicitud_estado[] = ['aprobada', 'rechazada', 'cancel
  *   en_revision ──pedirSubsanacion──▶ requerida_subsanacion
  *   requerida_subsanacion ──reenviar(inquilino)──▶ enviada
  *   asignado|en_revision ──liberar/reasignar──▶ enviada | (mismo estado)
+ *   asignado|en_revision ──pausar──▶ pausada ──reanudar(permiso)──▶ en_revision
  *   cualquier no-terminal ──cancelar──▶ cancelada
  *
  * ⚠️ T-V03: NO existe lock de 30 min ni `lock_expira_at`.
+ * T-091d-pausar: `pausada` es reversible y congela el SLA.
  */
 const TRANSICIONES: Record<string, { desde: solicitud_estado[]; hacia: solicitud_estado }> = {
   enviar: { desde: ['borrador'], hacia: 'enviada' },
@@ -34,8 +36,10 @@ const TRANSICIONES: Record<string, { desde: solicitud_estado[]; hacia: solicitud
   reenviar: { desde: ['requerida_subsanacion'], hacia: 'enviada' },
   reasignar: { desde: ['asignado', 'en_revision'], hacia: 'asignado' },
   liberar: { desde: ['asignado', 'en_revision'], hacia: 'enviada' },
+  pausar: { desde: ['asignado', 'en_revision'], hacia: 'pausada' },
+  reanudar: { desde: ['pausada'], hacia: 'en_revision' },
   cancelar: {
-    desde: ['borrador', 'enviada', 'asignado', 'en_revision', 'requerida_subsanacion'],
+    desde: ['borrador', 'enviada', 'asignado', 'en_revision', 'requerida_subsanacion', 'pausada'],
     hacia: 'cancelada',
   },
 };
@@ -394,6 +398,65 @@ export class SolicitudStateService {
       estadoAnterior: solicitud.estado,
       estadoNuevo: 'enviada',
       comentario: motivo?.trim() ? `Liberada: ${motivo.trim()}` : 'Liberada por el asignado',
+    });
+    return updated;
+  }
+
+  /**
+   * T-091d-pausar: `asignado|en_revision → pausada`. Cualquier admin de la
+   * plaza con permiso `solicitudes.pausar` puede pausar (no se restringe
+   * al admin_asignado: si este está de vacaciones, otro admin puede
+   * cubrirlo sin reasignar). El SLA queda congelado (la matview
+   * `solicitud_sla_view` no incluye `pausada` y `calcularSlaStatus`
+   * retorna null). El admin_asignado_id se CONSERVA — al reanudar, sigue
+   * siendo el responsable. Sin email (silencioso, como liberar).
+   */
+  async pausar(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    actor: AuthenticatedUser,
+    motivo?: string,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'pausar');
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: { estado: 'pausada' },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: actor.sub,
+      evento: 'pausada',
+      estadoAnterior: solicitud.estado,
+      estadoNuevo: 'pausada',
+      comentario: motivo?.trim() || null,
+    });
+    return updated;
+  }
+
+  /**
+   * T-091d-pausar: `pausada → en_revision`. Cualquier admin de la plaza con
+   * permiso `solicitudes.reanudar` puede reanudar. El admin_asignado_id y
+   * asignada_at se conservan (sin reset) — el SLA retoma el conteo desde
+   * el envío original. Sin email.
+   */
+  async reanudar(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    actor: AuthenticatedUser,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'reanudar');
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: { estado: 'en_revision' },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: actor.sub,
+      evento: 'reanudada',
+      estadoAnterior: 'pausada',
+      estadoNuevo: 'en_revision',
     });
     return updated;
   }

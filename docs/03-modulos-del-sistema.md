@@ -343,7 +343,7 @@ Permitir a los inquilinos registrar formalmente cualquier petición que requiera
 - **RN-SO-5:** **campos extra por tipo** (SUPUESTO S-CamposTipo):
   - `mantenimiento`, `evento`, `remodelacion`: requieren **`categoria_id` y `subcategoria_id` no NULL** (elegidos de los catálogos activos de la plaza).
   - `otro`: `categoria_libre` (texto libre, opcional) y `descripcion_larga`; `categoria_id` y `subcategoria_id` pueden ser NULL.
-  - Campos extra adicionales: `mantenimiento` → `area_afectada`, `requiere_ingreso_a_local` (bool); `evento` → `asistentes_estimados`, `requiere_corte_calle` (bool), `requiere_amplificacion` (bool); `remodelacion` → `fecha_inicio_estimada`, `duracion_dias`, `empresa_constructora`, `monto_presupuesto` (referencial).
+  - Campos extra adicionales: `mantenimiento` → `area_afectada`, `requiere_ingreso_a_local` (bool); `evento` → `asistentes_estimados`, `asistentes`; `remodelacion` → `fecha_inicio_estimada`, `duracion_dias`, `empresa_constructora`, `monto_presupuesto` (referencial).
 - **RN-SO-6:** un `evento` con `asistentes_estimados > X` puede requerir aprobación especial (SUPUESTO: `X = 200`, configurable por plaza).
 - **RN-SO-7:** el título es obligatorio y máximo 120 caracteres; la descripción máximo 4000.
 - **RN-SO-8:** al menos 1 adjunto es opcional. (SUPUESTO — el cliente puede requerir obligatoriedad por tipo; configurable.)

@@ -1,0 +1,107 @@
+// lib/features/solicitudes/data/solicitudes_seed.dart
+//
+// Datos seed para desarrollo mientras el backend no está corriendo.
+// En Fase 9 se reemplaza por SolicitudesRepository que consume la API real.
+
+import '../domain/solicitud.dart';
+
+final List<Solicitud> kSolicitudesSeed = [
+  Solicitud(
+    id: 'sol-001',
+    codigo: 'SOL-2026-00042',
+    tipo: 'mantenimiento',
+    subcategoria: 'Fuga de agua en techo',
+    descripcion:
+        'Goteo continuo en la zona del probador 3, cerca del techo. Ya se colocó un balde pero está afectando la operación.',
+    prioridad: 'A',
+    estado: 'en_revision',
+    localCodigo: 'L-204',
+    localNombre: 'Local 204 — Zara',
+    adminAsignadoNombre: 'María González',
+    creadoPorNombre: 'Juan Pérez',
+    creadaEn: DateTime.now().subtract(const Duration(hours: 6)),
+    enviadaEn: DateTime.now().subtract(const Duration(hours: 5)),
+    slaVenceEn: DateTime.now().add(const Duration(hours: 3)),
+    adjuntos: [
+      Adjunto(
+        id: 'a1',
+        nombre: 'foto_fuga_1.jpg',
+        mime: 'image/jpeg',
+        sizeBytes: 432100,
+        url: '',
+      ),
+      Adjunto(
+        id: 'a2',
+        nombre: 'foto_fuga_2.jpg',
+        mime: 'image/jpeg',
+        sizeBytes: 387000,
+        url: '',
+      ),
+    ],
+  ),
+  Solicitud(
+    id: 'sol-002',
+    codigo: 'SOL-2026-00041',
+    tipo: 'evento',
+    subcategoria: 'Activación de marca',
+    descripcion:
+        'Solicitud de autorización para una activación de marca el sábado 2 de agosto, de 11 a 19 hs, en el atrio central.',
+    prioridad: 'C',
+    estado: 'aprobada',
+    localCodigo: 'L-118',
+    localNombre: 'Local 118 — Adidas',
+    adminAsignadoNombre: 'Carlos Ruiz',
+    creadoPorNombre: 'Lucía Méndez',
+    creadaEn: DateTime.now().subtract(const Duration(days: 4)),
+    enviadaEn: DateTime.now().subtract(const Duration(days: 4)),
+    slaVenceEn: DateTime.now().subtract(const Duration(days: 2)),
+  ),
+  Solicitud(
+    id: 'sol-003',
+    codigo: 'SOL-2026-00040',
+    tipo: 'remodelacion',
+    subcategoria: 'Cambio de piso',
+    descripcion:
+        'Renovación del piso del local. Incluye retiro del piso actual y colocación de porcelanato nuevo.',
+    prioridad: 'B',
+    estado: 'requerida_subsanacion',
+    localCodigo: 'L-310',
+    localNombre: 'Local 310 — Starbucks',
+    adminAsignadoNombre: 'María González',
+    creadoPorNombre: 'Roberto Vega',
+    creadaEn: DateTime.now().subtract(const Duration(days: 2)),
+    enviadaEn: DateTime.now().subtract(const Duration(days: 2)),
+    slaVenceEn: DateTime.now().add(const Duration(days: 1)),
+  ),
+  Solicitud(
+    id: 'sol-004',
+    codigo: 'SOL-2026-00039',
+    tipo: 'mantenimiento',
+    subcategoria: 'Cambio de luminaria',
+    descripcion: 'Tubo fluorescente quemado en el pasillo de fondos.',
+    prioridad: 'D',
+    estado: 'enviada',
+    localCodigo: 'L-105',
+    localNombre: 'Local 105 — Farmacia',
+    creadoPorNombre: 'Roberto Vega',
+    creadaEn: DateTime.now().subtract(const Duration(minutes: 30)),
+    enviadaEn: DateTime.now().subtract(const Duration(minutes: 25)),
+    slaVenceEn: DateTime.now().add(const Duration(days: 5)),
+  ),
+  Solicitud(
+    id: 'sol-005',
+    codigo: 'SOL-2026-00038',
+    tipo: 'otro',
+    subcategoria: 'Solicitud de calcomanía',
+    descripcion: 'Reposición de calcomanía del logo en la vidriera.',
+    prioridad: 'F',
+    estado: 'aprobada',
+    localCodigo: 'L-220',
+    localNombre: 'Local 220 — Natura',
+    adminAsignadoNombre: 'Carlos Ruiz',
+    creadoPorNombre: 'Lucía Méndez',
+    creadaEn: DateTime.now().subtract(const Duration(days: 7)),
+    enviadaEn: DateTime.now().subtract(const Duration(days: 7)),
+    slaVenceEn: DateTime.now().subtract(const Duration(days: 4)),
+  ),
+];

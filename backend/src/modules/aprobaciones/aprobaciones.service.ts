@@ -6,6 +6,7 @@ import type {
   SubsanarSolicitudAdminInput,
   ReasignarSolicitudInput,
   LiberarSolicitudInput,
+  PausarSolicitudInput,
   BandejaQuery,
   SolicitudOutput,
   SolicitudListItem,
@@ -84,6 +85,37 @@ export class AprobacionesService {
       return this.state.liberar(tx, solicitud, actor, dto.motivo);
     });
     await this.audit('solicitud.liberar', id, plazaId, actor, meta, { estado: updated.estado });
+    return solicitudToOutput(updated);
+  }
+
+  // ── Pausar / Reanudar (T-091d-pausar) ────────────────────────────────────────
+
+  async pausar(
+    id: string,
+    dto: PausarSolicitudInput,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<SolicitudOutput> {
+    const plazaId = this.requirePlaza(actor);
+    const updated = await this.prisma.withTenant(plazaId, async (tx) => {
+      const solicitud = await this.assertSolicitud(tx, id);
+      return this.state.pausar(tx, solicitud, actor, dto.motivo);
+    });
+    await this.audit('solicitud.pausar', id, plazaId, actor, meta, { estado: updated.estado });
+    return solicitudToOutput(updated);
+  }
+
+  async reanudar(
+    id: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<SolicitudOutput> {
+    const plazaId = this.requirePlaza(actor);
+    const updated = await this.prisma.withTenant(plazaId, async (tx) => {
+      const solicitud = await this.assertSolicitud(tx, id);
+      return this.state.reanudar(tx, solicitud, actor);
+    });
+    await this.audit('solicitud.reanudar', id, plazaId, actor, meta, { estado: updated.estado });
     return solicitudToOutput(updated);
   }
 
