@@ -79,7 +79,7 @@ export function NuevoContratoForm({
         </select>
         {errors.inquilinoId && <p className="text-xs text-red-600">Selecciona un inquilino</p>}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="fechaInicio">Fecha de inicio *</Label>
           <Input id="fechaInicio" type="date" {...register('fechaInicio')} />
@@ -91,7 +91,7 @@ export function NuevoContratoForm({
           {errors.fechaFin && <p className="text-xs text-red-600">{errors.fechaFin.message}</p>}
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="montoMensual">Monto mensual *</Label>
           <Input id="montoMensual" type="number" step="0.01" {...register('montoMensual')} />

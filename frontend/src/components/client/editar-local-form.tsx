@@ -74,7 +74,7 @@ export function EditarLocalForm({
       className="card card-pad grid max-w-lg gap-4"
       noValidate
     >
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label>Código</Label>
           <Input value={local.codigo} disabled />

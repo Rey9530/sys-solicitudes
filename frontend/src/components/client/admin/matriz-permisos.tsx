@@ -193,11 +193,18 @@ export function MatrizPermisos({ catalogo, roles, permisosPorRol, rolesSistemaId
               </div>
             </div>
           </div>
-          <div className="card-body" style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+          <div className="card-body matriz-scroll">
+            <table className="matriz-tbl" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+              <colgroup>
+                <col className="matriz-col-permiso" />
+                {roles.map((r) => (
+                  <col key={r.id} className="matriz-col-rol" />
+                ))}
+              </colgroup>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--border)' }}>
                   <th
+                    className="matriz-th-permiso"
                     style={{
                       textAlign: 'left',
                       padding: '8px 12px',
@@ -274,7 +281,7 @@ export function MatrizPermisos({ catalogo, roles, permisosPorRol, rolesSistemaId
               <tbody>
                 {m.permisos.map((p) => (
                   <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '8px 12px', verticalAlign: 'top' }}>
+                    <td className="matriz-td-permiso" style={{ padding: '8px 12px', verticalAlign: 'top' }}>
                       <div className="mono" style={{ fontWeight: 500 }}>
                         {p.codigo}
                       </div>

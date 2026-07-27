@@ -692,7 +692,7 @@ export function SolicitudWizard({
               <p className="mb-1 text-sm font-semibold" style={{ color: 'var(--text)' }}>
                 Fechas del permiso
               </p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label>Fecha inicio *</Label>
                   <Input
@@ -800,7 +800,7 @@ export function SolicitudWizard({
             )}
             {tipo === 'remodelacion' && (
               <div className="wz-extra">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="grid gap-1.5">
                     <Label>Fecha inicio estimada *</Label>
                     <Input
@@ -982,7 +982,7 @@ function BloqueAsistentes({
           max={MAX_PERSONAL_WIZARD}
           value={estimados}
           onChange={(e) => onChangeEstimados(e.target.value)}
-          style={{ width: 160 }}
+          className="w-full max-w-[10rem]"
         />
         <p className="text-xs text-gray-500">
           {esEvento

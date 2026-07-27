@@ -74,7 +74,7 @@ export function RenovarContratoDialog({ contrato }: { contrato: ContratoOutput }
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-3" noValidate>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="nuevaFechaInicio">Nueva fecha de inicio *</Label>
               <Input id="nuevaFechaInicio" type="date" {...register('nuevaFechaInicio')} />

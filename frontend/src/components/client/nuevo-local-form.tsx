@@ -38,7 +38,7 @@ export function NuevoLocalForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="card card-pad grid gap-4" noValidate>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="codigo">Código *</Label>
           <Input id="codigo" placeholder="L-101" {...register('codigo')} />
@@ -55,7 +55,7 @@ export function NuevoLocalForm() {
         <Input id="nombre" {...register('nombre')} />
         {errors.nombre && <p className="text-xs text-red-600">{errors.nombre.message}</p>}
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="piso">Piso</Label>
           <Input id="piso" {...register('piso')} />

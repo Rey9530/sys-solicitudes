@@ -1488,6 +1488,10 @@
     gap: 12px;
     padding: 14px 16px;
   }
+  .filters > .grid {
+    min-width: 0;
+    flex: 1 1 140px;
+  }
   .filters .field {
     gap: 5px;
   }
@@ -2694,23 +2698,17 @@
     }
   }
 
-  /* Vista responsive de ResponsiveDataView: tarjetas en móvil,
-     tabla desde md (768 px). */
+  /* Vista responsive de ResponsiveDataView.
+     El componente decide QUÉ renderizar según el viewport (useEffect +
+     matchMedia), por lo que aquí solo quedan los estilos de cada vista:
+       - `.responsive-data-cards` → layout grid de tarjetas.
+       - `.responsive-data-table` → wrapper con scroll horizontal. */
   .responsive-data-cards {
     display: grid;
     gap: 12px;
   }
   .responsive-data-table {
-    display: none;
-  }
-  @media (min-width: 768px) {
-    .responsive-data-cards {
-      display: none;
-    }
-    .responsive-data-table {
-      display: block;
-      min-width: 0;
-    }
+    min-width: 0;
   }
 
   /* Tarjeta de la vista responsive. */

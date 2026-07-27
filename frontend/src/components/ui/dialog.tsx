@@ -28,7 +28,7 @@ export const DialogContent = React.forwardRef<
         boxShadow: 'var(--shadow-lg)',
       }}
       className={cn(
-        'fixed left-1/2 top-1/2 grid max-h-[88vh] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border p-6',
+        'fixed left-1/2 top-1/2 grid max-h-[92vh] w-[calc(100%-1rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 overflow-y-auto border p-4 sm:p-6',
         className,
       )}
       {...props}

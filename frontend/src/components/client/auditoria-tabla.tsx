@@ -4,19 +4,9 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ScrollText, ExternalLink } from 'lucide-react';
 import type { AuditoriaOutput } from '@app/contracts';
-import {
-  Card,
-} from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
@@ -25,21 +15,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { formatInPlazaTz } from '@/lib/datetime';
-
-/**
- * T-161: tabla del log de auditoría + drawer con diff antes/después.
- *
- * Decisiones:
- * - Click en fila abre un modal (Dialog) con la entrada completa: timestamp,
- *   usuario, acción, entidad (con link al detalle si aplica), IP, user-agent
- *   y los JSON `antes`/`después` formateados.
- * - El "diff" se hace de forma naïve por super-conjunto de keys: las keys
- *   que solo aparecen en `despues` se marcan como añadidas, las que solo
- *   en `antes` como eliminadas, las presentes en ambos con valor distinto
- *   como modificadas. Sin librería externa — la lógica es trivial.
- * - Las acciones con `omitirBody: true` (auth) llegan con `despues: null`;
- *   se renderiza el placeholder correspondiente.
- */
+import {
+  ResponsiveDataView,
+  type ResponsiveColumn,
+} from '@/components/client/responsive/responsive-data-view';
 
 const ACCION_TONE: Record<string, string> = {
   create: 'b-ok',
@@ -48,7 +27,6 @@ const ACCION_TONE: Record<string, string> = {
 };
 
 function accionTone(accion: string): string {
-  // accion suele ser `entidad.verbo` (e.g. `local.update`); cae al sufijo.
   const suffix = accion.split('.').pop() ?? '';
   return ACCION_TONE[suffix] ?? 'b-neutral';
 }
@@ -61,7 +39,6 @@ function accionLabel(accion: string): string {
   return accion;
 }
 
-/** Mapea `entidad_tipo` a una ruta del admin (si tiene vista de detalle). */
 function entidadHref(entidadTipo: string, entidadId: string | null): string | null {
   if (!entidadId) return null;
   const map: Record<string, string> = {
@@ -248,58 +225,80 @@ export function AuditoriaTabla({ items }: { items: AuditoriaOutput[] }) {
     );
   }
 
+  const columns: ResponsiveColumn<AuditoriaOutput>[] = [
+    {
+      key: 'fecha',
+      header: 'Fecha y hora',
+      cardLabel: 'Fecha',
+      primary: true,
+      className: 'muted',
+      cell: (a) => formatInPlazaTz(a.createdAt, 'dd/MM/yyyy HH:mm'),
+    },
+    {
+      key: 'usuario',
+      header: 'Usuario',
+      cardLabel: 'Usuario',
+      className: 'lead',
+      cell: (a) => (a.usuario ? a.usuario.nombre : <span className="muted">sistema</span>),
+    },
+    {
+      key: 'accion',
+      header: 'Acción',
+      cardLabel: 'Acción',
+      cell: (a) => (
+        <span className={`badge ${accionTone(a.accion)}`}>
+          <span className="bdot" />
+          {accionLabel(a.accion)}
+        </span>
+      ),
+    },
+    {
+      key: 'entidad',
+      header: 'Entidad',
+      cardLabel: 'Entidad',
+      className: 'muted',
+      cell: (a) => (
+        <>
+          {a.entidadTipo}
+          {a.entidadId ? `: ${a.entidadId.slice(0, 8)}` : ''}
+        </>
+      ),
+    },
+    {
+      key: 'ver',
+      header: 'Ver',
+      className: 'actions',
+      cell: (a) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelected(a);
+          }}
+        >
+          Detalle
+        </Button>
+      ),
+      actions: (a) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            setSelected(a);
+          }}
+        >
+          Ver detalle
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <>
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Fecha y hora</TableHead>
-              <TableHead>Usuario</TableHead>
-              <TableHead>Acción</TableHead>
-              <TableHead>Entidad</TableHead>
-              <TableHead className="actions">Ver</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {items.map((a) => (
-              <TableRow
-                key={a.id}
-                onClick={() => setSelected(a)}
-                style={{ cursor: 'pointer' }}
-              >
-                <TableCell className="muted">
-                  {formatInPlazaTz(a.createdAt, 'dd/MM/yyyy HH:mm')}
-                </TableCell>
-                <TableCell className="lead">
-                  {a.usuario ? a.usuario.nombre : <span className="muted">sistema</span>}
-                </TableCell>
-                <TableCell>
-                  <span className={`badge ${accionTone(a.accion)}`}>
-                    <span className="bdot" />
-                    {accionLabel(a.accion)}
-                  </span>
-                </TableCell>
-                <TableCell className="muted">
-                  {a.entidadTipo}
-                  {a.entidadId ? `: ${a.entidadId.slice(0, 8)}` : ''}
-                </TableCell>
-                <TableCell className="actions">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelected(a);
-                    }}
-                  >
-                    Detalle
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <ResponsiveDataView rows={items} columns={columns} rowKey={(a) => a.id} />
       </Card>
       <DetalleDialog item={selected} onClose={() => setSelected(null)} />
     </>

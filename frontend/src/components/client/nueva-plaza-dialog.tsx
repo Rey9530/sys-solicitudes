@@ -108,7 +108,7 @@ export function NuevaPlazaDialog() {
               <p className="text-xs text-red-600">{errors.nombreComercial.message}</p>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="slug">Slug</Label>
               <Input id="slug" {...register('slug')} />
@@ -119,7 +119,7 @@ export function NuevaPlazaDialog() {
               <Input id="colorPrimario" type="color" className="h-9 p-1" {...register('colorPrimario')} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label htmlFor="emailContacto">Email de contacto</Label>
               <Input id="emailContacto" type="email" {...register('emailContacto')} />
@@ -138,7 +138,7 @@ export function NuevaPlazaDialog() {
               Administrador inicial
             </p>
             <div className="grid gap-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
                   <Label htmlFor="adminNombre">Nombre</Label>
                   <Input id="adminNombre" {...register('adminNombre')} />

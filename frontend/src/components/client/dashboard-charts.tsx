@@ -113,7 +113,8 @@ export function DashboardCharts({ data }: { data: DashboardChartsOutput }) {
                   nameKey="prioridad"
                   cx="50%"
                   cy="50%"
-                  outerRadius={80}
+                  innerRadius="40%"
+                  outerRadius="70%"
                   label={(entry) => `${String(entry.name)}: ${String(entry.value)}`}
                 >
                   {data.porPrioridad.map((p) => (

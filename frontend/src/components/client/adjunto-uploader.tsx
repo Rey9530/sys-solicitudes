@@ -215,18 +215,21 @@ export function AdjuntoUploader({
       ) : (
         <ul className="card divide-y">
           {adjuntos.map((a) => (
-            <li key={a.id} className="flex items-center justify-between gap-3 p-3 text-sm">
+            <li
+              key={a.id}
+              className="flex flex-col gap-2 p-3 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+            >
               <div className="flex min-w-0 items-center gap-3">
                 <AdjuntoIcon mime={a.mimeType} />
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{a.nombreOriginal}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="break-all font-medium sm:truncate">{a.nombreOriginal}</p>
                   <p className="muted text-xs">
                     {formatBytes(a.tamanoBytes)} · {a.mimeType} ·{' '}
                     {formatDateInPlazaTz(a.createdAt)}
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2 sm:flex-nowrap">
                 <Button
                   variant="ghost"
                   size="sm"

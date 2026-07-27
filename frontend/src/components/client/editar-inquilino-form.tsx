@@ -81,7 +81,7 @@ export function EditarInquilinoForm({
       className="card card-pad grid max-w-lg gap-4"
       noValidate
     >
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label>Razón social</Label>
           <Input value={inquilino.razonSocial} disabled />
@@ -98,7 +98,7 @@ export function EditarInquilinoForm({
         <Label htmlFor="direccion">Dirección</Label>
         <Input id="direccion" {...register('direccion')} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="contactoNombre">Contacto</Label>
           <Input id="contactoNombre" {...register('contactoNombre')} />

@@ -66,6 +66,12 @@ export function CalendarioView({
   const [slotNuevo, setSlotNuevo] = useState<{ fecha: string; hora?: string } | null>(null);
   const [slotOcupado, setSlotOcupado] = useState(false);
   const eventosCache = useRef<CalendarioEventoOutput[]>([]);
+  // Vista inicial según ancho (móvil → lista). Calculada solo en cliente para
+  // evitar mismatch de hidratación.
+  const [vistaInicial] = useState<'dayGridMonth' | 'listWeek'>(() => {
+    if (typeof window === 'undefined') return 'dayGridMonth';
+    return window.matchMedia('(max-width: 767.98px)').matches ? 'listWeek' : 'dayGridMonth';
+  });
 
   // ── Filtros desde la URL (T-134: compartibles por link) ─────────────────────
   const filtroLocales = useMemo(
@@ -194,7 +200,7 @@ export function CalendarioView({
     `/inquilino/solicitudes/nueva?tipo=evento&fecha=${fecha}${hora ? `&hora=${hora}` : ''}`;
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[230px_1fr]">
+    <div className="grid gap-4 lg:grid-cols-[230px_1fr] cal-wrap">
       {/* ── Panel lateral de filtros (T-134) ── */}
       <aside className="card card-pad space-y-4 text-sm">
         <div>
@@ -293,7 +299,7 @@ export function CalendarioView({
         <FullCalendar
           ref={calendarRef}
           plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin, luxon3Plugin]}
-          initialView="dayGridMonth"
+          initialView={vistaInicial}
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
