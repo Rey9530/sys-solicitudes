@@ -23,6 +23,7 @@ import {
 } from '@app/contracts';
 import { RolesStaffService, type RequestMeta } from './roles-staff.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
@@ -44,6 +45,7 @@ export class RolesStaffController {
 
   @Get('con-asignaciones')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('roles_staff.listar')
   @ApiOperation({
     summary: 'Listar roles de staff con conteo de usuarios asignados (admin plaza).',
   })
@@ -52,6 +54,7 @@ export class RolesStaffController {
   }
 
   @Get()
+  @RequirePermission('roles_staff.listar')
   @ApiOperation({ summary: 'Listar roles de staff de la plaza (paginado).' })
   findAll(
     @Query(new ZodValidationPipe(ListRolesStaffQuerySchema)) query: ListRolesStaffQuery,
@@ -62,6 +65,7 @@ export class RolesStaffController {
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('roles_staff.crear')
   @ApiOperation({ summary: 'Crear rol de staff en la plaza.' })
   create(
     @Body(new ZodValidationPipe(CreateRolStaffSchema)) body: CreateRolStaffInput,
@@ -74,6 +78,7 @@ export class RolesStaffController {
   }
 
   @Get(':id')
+  @RequirePermission('roles_staff.listar')
   @ApiOperation({ summary: 'Detalle de un rol de staff.' })
   findOne(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -84,6 +89,7 @@ export class RolesStaffController {
 
   @Patch(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('roles_staff.editar')
   @ApiOperation({ summary: 'Editar rol de staff (nombre/descripcion/activo).' })
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -98,6 +104,7 @@ export class RolesStaffController {
 
   @Delete(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('roles_staff.deshabilitar')
   @HttpCode(200)
   @ApiOperation({
     summary: 'Desactivar rol de staff (soft delete; RN-RS-3: devuelve usuariosAsignados).',

@@ -18,11 +18,39 @@ import {
 
 export type AppRole = 'admin_plaza' | 'superadmin' | 'inquilino';
 
+/**
+ * T-RBAC-1 · Permisos por ítem de navegación.
+ *
+ * Convención: los códigos coinciden EXACTAMENTE con el catálogo de
+ * `backend/prisma/seed-data/permisos.ts` (formato `<modulo>.<accion>`).
+ * Si un ítem NO lleva `permisoRequerido` significa que es visible para
+ * todos los usuarios del rol (ej. Dashboard).
+ */
+export type PermisoCodigo =
+  | 'usuarios_plaza.listar'
+  | 'solicitudes.bandeja.ver'
+  | 'calendario.ver'
+  | 'locales.listar'
+  | 'inquilinos.listar'
+  | 'contratos.listar'
+  | 'categorias.listar'
+  | 'tipos_solicitud.listar'
+  | 'reportes.dashboard.ver'
+  | 'auditoria.ver'
+  | 'notificaciones.ver_log'
+  | 'configuracion.ver';
+
 export interface NavItem {
   key: string;
   label: string;
   icon: LucideIcon;
   href: string;
+  /**
+   * Permiso granular requerido para que el ítem sea visible en la sidebar.
+   * Si es `undefined` → siempre visible para el rol correspondiente.
+   * Si el usuario NO lo tiene (y no es superadmin), el ítem se oculta.
+   */
+  permisoRequerido?: PermisoCodigo;
 }
 
 export interface NavGroup {
@@ -38,28 +66,100 @@ export const NAV: Record<AppRole, NavGroup[]> = {
     {
       label: 'Operación',
       items: [
-        { key: 'solicitudes', label: 'Solicitudes', icon: Inbox, href: '/admin/solicitudes' },
-        { key: 'calendario', label: 'Calendario', icon: CalendarDays, href: '/admin/calendario' },
+        {
+          key: 'solicitudes',
+          label: 'Solicitudes',
+          icon: Inbox,
+          href: '/admin/solicitudes',
+          permisoRequerido: 'solicitudes.bandeja.ver',
+        },
+        {
+          key: 'calendario',
+          label: 'Calendario',
+          icon: CalendarDays,
+          href: '/admin/calendario',
+          permisoRequerido: 'calendario.ver',
+        },
       ],
     },
     {
       label: 'Catálogo',
       items: [
-        { key: 'locales', label: 'Locales', icon: Store, href: '/admin/locales' },
-        { key: 'inquilinos', label: 'Inquilinos', icon: UsersRound, href: '/admin/inquilinos' },
-        { key: 'contratos', label: 'Contratos', icon: FileText, href: '/admin/contratos' },
-        { key: 'categorias', label: 'Categorías', icon: Tags, href: '/admin/categorias' },
-        { key: 'tipos-solicitud', label: 'Tipos de solicitud', icon: Shapes, href: '/admin/catalogos/tipos-solicitud' },
+        {
+          key: 'locales',
+          label: 'Locales',
+          icon: Store,
+          href: '/admin/locales',
+          permisoRequerido: 'locales.listar',
+        },
+        {
+          key: 'inquilinos',
+          label: 'Inquilinos',
+          icon: UsersRound,
+          href: '/admin/inquilinos',
+          permisoRequerido: 'inquilinos.listar',
+        },
+        {
+          key: 'contratos',
+          label: 'Contratos',
+          icon: FileText,
+          href: '/admin/contratos',
+          permisoRequerido: 'contratos.listar',
+        },
+        {
+          key: 'categorias',
+          label: 'Categorías',
+          icon: Tags,
+          href: '/admin/categorias',
+          permisoRequerido: 'categorias.listar',
+        },
+        {
+          key: 'tipos-solicitud',
+          label: 'Tipos de solicitud',
+          icon: Shapes,
+          href: '/admin/catalogos/tipos-solicitud',
+          permisoRequerido: 'tipos_solicitud.listar',
+        },
       ],
     },
     {
       label: 'Plataforma',
       items: [
-        { key: 'usuarios-plaza', label: 'Usuarios de plaza', icon: UserCog, href: '/admin/usuarios-plaza' },
-        { key: 'reportes', label: 'Reportes', icon: BarChart3, href: '/admin/reportes' },
-        { key: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/admin/auditoria' },
-        { key: 'notificaciones', label: 'Notificaciones', icon: Bell, href: '/admin/notificaciones' },
-        { key: 'config', label: 'Configuración', icon: Settings, href: '/admin/configuracion' },
+        {
+          key: 'usuarios-plaza',
+          label: 'Usuarios de plaza',
+          icon: UserCog,
+          href: '/admin/usuarios-plaza',
+          permisoRequerido: 'usuarios_plaza.listar',
+        },
+        {
+          key: 'reportes',
+          label: 'Reportes',
+          icon: BarChart3,
+          href: '/admin/reportes',
+          permisoRequerido: 'reportes.dashboard.ver',
+        },
+        {
+          key: 'auditoria',
+          label: 'Auditoría',
+          icon: ScrollText,
+          href: '/admin/auditoria',
+          permisoRequerido: 'auditoria.ver',
+        },
+        {
+          key: 'notificaciones',
+          label: 'Notificaciones',
+          icon: Bell,
+          href: '/admin/notificaciones',
+          permisoRequerido: 'notificaciones.ver_log',
+        },
+        {
+          key: 'config',
+          label: 'Configuración',
+          icon: Settings,
+          href: '/admin/configuracion',
+          permisoRequerido: 'configuracion.ver',
+        },
       ],
     },
   ],
@@ -71,6 +171,7 @@ export const NAV: Record<AppRole, NavGroup[]> = {
     },
     // El superadmin también puede operar la consola de plaza (el guard de
     // /admin/* lo permite). Estas secciones son plaza-scoped en el backend.
+    // No llevan permisoRequerido: superadmin tiene wildcard '*' y siempre ve.
     {
       label: 'Operación',
       items: [
@@ -85,7 +186,12 @@ export const NAV: Record<AppRole, NavGroup[]> = {
         { key: 'inquilinos', label: 'Inquilinos', icon: UsersRound, href: '/admin/inquilinos' },
         { key: 'contratos', label: 'Contratos', icon: FileText, href: '/admin/contratos' },
         { key: 'categorias', label: 'Categorías', icon: Tags, href: '/admin/categorias' },
-        { key: 'tipos-solicitud', label: 'Tipos de solicitud', icon: Shapes, href: '/admin/catalogos/tipos-solicitud' },
+        {
+          key: 'tipos-solicitud',
+          label: 'Tipos de solicitud',
+          icon: Shapes,
+          href: '/admin/catalogos/tipos-solicitud',
+        },
       ],
     },
     {

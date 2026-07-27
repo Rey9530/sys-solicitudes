@@ -41,6 +41,25 @@ model rol {
   @@map("rol")
 }
 
+/// Permiso granular del RBAC (T-RBAC-1). Catálogo GLOBAL, sin plaza_id.
+/// Cada permiso representa una acción atómica sobre un recurso. Los códigos
+/// siguen la convención `<modulo>.<accion>` en snake_case. Sin RLS: el catálogo
+/// es compartido por todas las plazas; las policies de visibilidad se aplican
+/// en la capa de aplicación (solo admin_plaza / superadmin pueden verlos).
+/// Detalles: docs/04 §4, PERMISOS_README.md.
+model permiso {
+  id          String   @id @default(uuid()) @db.Uuid
+  codigo      String   @unique
+  modulo      String
+  accion      String
+  descripcion String?
+  created_at  DateTime @default(now()) @db.Timestamptz(6)
+
+  roles_staff rol_staff_permiso[]
+
+  @@map("permiso")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tenant raíz
 // ─────────────────────────────────────────────────────────────────────────────
@@ -149,6 +168,7 @@ model usuario {
   solicitudes_asignadas     solicitud[]               @relation("solicitud_admin_asignado")
   solicitud_historial       solicitud_historial[]
   comentarios               comentario[]
+  permisos_otorgados        rol_staff_permiso[]
 
   @@unique([plaza_id, email])
   @@index([rol_id])
@@ -158,6 +178,8 @@ model usuario {
 
 /// Rol operativo configurable por plaza (técnico, ingeniero, supervisor, …).
 /// Sin catálogo fijo en v1 (S-RolStaff, S-MD-K). Detalles: PLANIFICACION/02 T-019.
+/// T-RBAC-1: añade `es_sistema` para roles inamovibles (e.g., "admin" del sistema,
+/// que recibe todos los permisos en el seed y no se puede borrar/editar).
 model rol_staff {
   id          String   @id @default(uuid()) @db.Uuid
   plaza_id    String   @db.Uuid
@@ -165,15 +187,38 @@ model rol_staff {
   nombre      String
   descripcion String?
   activo      Boolean  @default(true)
+  es_sistema  Boolean  @default(false)
   created_at  DateTime @default(now()) @db.Timestamptz(6)
   updated_at  DateTime @updatedAt @db.Timestamptz(6)
 
-  plaza    plaza     @relation(fields: [plaza_id], references: [id])
+  plaza    plaza               @relation(fields: [plaza_id], references: [id])
   usuarios usuario[]
+  permisos rol_staff_permiso[]
 
   @@unique([plaza_id, codigo])
   @@index([plaza_id, activo])
   @@map("rol_staff")
+}
+
+/// Pivote N:M rol_staff ↔ permiso (T-RBAC-1). Define qué permisos están
+/// asignados a cada rol de staff de la plaza. El `plaza_id` está desnormalizado
+/// para soportar la policy de RLS (similar a como `subcategoria_supervisor`
+/// hereda el aislamiento de `subcategoria`). PK compuesta; sin surrogate id.
+model rol_staff_permiso {
+  rol_staff_id String   @db.Uuid
+  permiso_id   String   @db.Uuid
+  plaza_id     String   @db.Uuid
+  otorgado_por String?  @db.Uuid
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  rol_staff rol_staff @relation(fields: [rol_staff_id], references: [id], onDelete: Cascade)
+  permiso   permiso   @relation(fields: [permiso_id],   references: [id], onDelete: Restrict)
+  usuario   usuario?  @relation(fields: [otorgado_por], references: [id], onDelete: SetNull)
+
+  @@id([rol_staff_id, permiso_id])
+  @@index([plaza_id])
+  @@index([permiso_id])
+  @@map("rol_staff_permiso")
 }
 
 /// Refresh token rotado (D3). Se guarda solo el SHA-256, nunca el token plano.

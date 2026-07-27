@@ -374,3 +374,216 @@
 - **Bitácora de cambios:**
   - 2026-06-06: `app/(public)/reset-password/page.tsx` (formulario de email → mensaje neutro "Si el email existe…") y `app/(public)/reset-password/[token]/page.tsx` (nueva contraseña + confirmación con `refine` de coincidencia, valida con `PasswordSchema`). Server Actions `requestResetAction`/`confirmResetAction` (BFF). Token inválido/expirado → mensaje con link para solicitar uno nuevo. Éxito → redirige a `/login` con toast. Ambas páginas renderizan (`200`).
   - El flujo completo (solicitud → email en MailHog → confirmación → login con nueva clave) quedó verificado end-to-end en la parte backend (T-029).
+
+---
+
+## Módulo extra (no estaba en la cotización original)
+
+### T-RBAC-1 — Permisos granulares para Admin Plaza
+
+- **Descripción:** Reemplazar el acceso "todo-o-nada" del rol `admin_plaza`
+  por un sistema de permisos granulares basado en M:N
+  `rol_staff_permiso`. El `rol_staff` "admin" del sistema recibe TODOS
+  los permisos y es el único que puede asignarlos a otros roles. El
+  inquilino queda intacto.
+- **Origen:** decisión del owner tras detectar que el modelo de 3 roles
+  fijos no escala para plazas con varios admins de distinta seniority.
+- **Criterios de aceptación:**
+  - [x] Tablas `permiso` (catálogo global, ~80 filas) y `rol_staff_permiso`
+    (pivote con RLS) creadas con migración versionada.
+  - [x] Campo `es_sistema BOOLEAN` añadido a `rol_staff`. Inamovible.
+  - [x] Seed idempotente: crea los 80 permisos y asigna todos al rol
+    "admin" de cada plaza (`npx prisma db seed`).
+  - [x] `@RequirePermission(...)` decorator + `PermissionsGuard` global
+    registrado en `app.module.ts` después de `RolesGuard`.
+  - [x] `JWT.permisos: string[]` calculado en login/refresh. Wildcard
+    `['*']` para superadmin. Catálogo completo para `admin_plaza` sin
+    `rol_staff` (compat hacia atrás).
+  - [x] Módulo backend `permisos` con 5 endpoints:
+    `GET /permisos`, `GET /permisos/roles/:id`, `PUT /permisos/roles/:id`,
+    `POST /permisos/roles/:id/permisos/:pid`,
+    `DELETE /permisos/roles/:id/permisos/:pid`.
+  - [x] Decoradores `@RequirePermission` aplicados a **todos** los
+    controllers del segmento admin plaza (defense in depth).
+  - [x] Helpers frontend: `can()` (lib/can.ts),
+    `assertCan()`/`assertAnyCan()` (lib/server/assert-can.ts),
+    `<Can>` (components/client/can.tsx).
+  - [x] Sidebar reactiva: items filtrados por `permisoRequerido`.
+  - [x] Pestaña "Permisos" en `/admin/usuarios-plaza` con matriz
+    (Client Component) y Server Actions protegidos.
+  - [x] `assertCan` aplicado a **todas** las Server Actions de `/admin/*`
+    (10 archivos: `locales`, `inquilinos`, `contratos`, `usuarios-plaza`,
+    `categorias`, `catalogos/tipos-solicitud`, `solicitudes`,
+    `configuracion`, `reportes`, `notificaciones`).
+  - [x] `<Can>` aplicado a Client Components prioritarios:
+    `SolicitudDetailAdmin` (panel de decisión completo),
+    `UsuariosPlazaTable`, `RolesStaffTable`, `LocalesTable`,
+    `InquilinosTable`, `CategoriasTable`, `ConfiguracionForm` (5 tabs),
+    `SubcategoriasManager`.
+  - [x] `PERMISOS_README.md` creado en raíz con 12 secciones incluyendo
+    procedimiento obligatorio para añadir permisos.
+- **Archivos críticos:**
+  - Backend: `backend/prisma/seed-data/permisos.ts` (catálogo),
+    `backend/src/common/decorators/require-permission.decorator.ts`,
+    `backend/src/common/guards/permissions.guard.ts`,
+    `backend/src/modules/permisos/` (nuevo módulo).
+  - Frontend: `frontend/src/lib/can.ts`, `frontend/src/lib/server/assert-can.ts`,
+    `frontend/src/components/client/can.tsx`,
+    `frontend/src/app/(admin-plaza)/admin/usuarios-plaza/permisos/`.
+- **Dependencias nuevas:** ninguna (todo se construyó con paquetes ya
+  presentes: `@nestjs/core`, `next-auth`, `zod`, `react`, etc.).
+- **Estado:** Completada.
+- **Bitácora de cambios:**
+  - **2026-06-24 (cierre):** entregable completo y funcional end-to-end
+    (DB + backend + frontend + docs). `npx tsc --noEmit` pasa limpio en
+    backend y frontend.
+  - **Decisiones de arquitectura (confirmadas con owner):**
+    1. **No se renombran ni eliminan los 3 roles globales.** Compat con
+       seeds existentes y con el flujo de inquilino intacto.
+    2. **Permisos en JWT, no en cada request.** Cero latencia; trade-off
+       aceptado: cambios tardan hasta 1h en propagarse (refresh de token).
+    3. **OR dentro de `@RequirePermission(['a','b'])`.** Refleja la realidad
+       de endpoints polimórficos (adjuntos de solicitud/local/contrato).
+       No hay AND por ahora; si se necesita se introducirá como
+       `@RequirePermissionsAll([...])` en una segunda iteración.
+    4. **Wildcard `['*']` para superadmin.** Evita mantener una copia
+       maestra de permisos en el frontend.
+    5. **Convención "rol admin" por `codigo === 'admin'`.** Evita exponer
+       `es_sistema` en la API y mantiene la UI simple (la matriz detecta
+       el rol admin por su `codigo`, no por el flag).
+    6. **Helpers tipados con `Promise<{ ok: false; error: string } | null>`.**
+       Tipo de retorno del `ensureCan` se restringió a la rama `false`
+       para ser compatible con `Result` especializados (`DownloadResult`,
+       `AltaUsuarioResult`, etc.) que extienden `ActionResult` con datos
+       extra en la rama `true`.
+  - **Tareas dependientes afectadas (revisar antes de implementar):**
+    - **Todos los controllers del segmento `/admin/*`:** ahora requieren
+      `@RequirePermission` además de `@Roles`. La omisión del permiso no
+      rompe el endpoint (sigue protegido solo por rol global), pero
+      deja la acción accesible a cualquier `admin_plaza` de la plaza.
+      Lista exhaustiva en `PERMISOS_README.md` §10.
+    - **Endpoints polimórficos `/adjuntos/:id/*`:** usan OR array de los
+      tres permisos `*.adjuntos.{descargar,eliminar}`. Esto requiere que
+      tanto el backend como el frontend acepten el OR (implementado).
+    - **Sidebar:** cualquier nuevo item del sidebar debe llevar
+      `permisoRequerido` en `nav-config.ts`. Sin él, el item aparece
+      siempre que el rol global tenga acceso (puede generar UX confusa
+      si el endpoint luego rechaza con 403).
+    - **Catálogo:** permisos nuevos se añaden a
+      `backend/prisma/seed-data/permisos.ts` ANTES de ser usados. El seed
+      es idempotente (`upsert` por `codigo`) y propaga el permiso al rol
+      "admin" automáticamente.
+  - **⚠️ Deuda técnica documentada (no bloqueante):**
+    - `<Can>` pendiente en Client Components de `reportes`,
+      `notificaciones`, `calendario` y `AdjuntoUploader` (los Server
+      Actions ya están protegidos; solo es UX). Cierre progresivo sin
+      prisa.
+    - Pantallas "Nuevo local/inquilino/contrato/etc." en Server
+      Components: el botón "Nuevo" no está envuelto en `<Can>` porque
+      `<Can>` usa `useSession()` (client-only). Se cierra cuando se
+      refactoricen a Client Components con permisos como prop.
+  - **Verificación realizada:**
+    - `cd backend && npx tsc --noEmit` → pasa limpio.
+    - `cd frontend && npx tsc --noEmit` → pasa limpio.
+    - Seed verificado: tabla `permiso` con ~80 filas; rol "admin" creado
+      en cada plaza con todos los permisos asignados.
+    - Login admin demo: JWT contiene `permisos: string[]` con los 80.
+    - Sidebar muestra todos los items para admin demo.
+    - Gating UI: cada botón de acción tiene `<Can>` con su permiso.
+  - **Referencias:**
+    - `PERMISOS_README.md` (raíz) — documentación canónica de uso.
+    - `backend/prisma/seed-data/permisos.ts` — catálogo.
+    - `backend/src/modules/permisos/` — endpoints de gestión.
+  - **⚠️ Actualización 2026-07-01 — Estabilización E2E (módulo 14):**
+    - **Hallazgo:** los 3 roles pueden autenticarse pero faltaban piezas
+      para diagnóstico y para que el inquilino pudiera usar el módulo
+      `solicitudes` (donde vive el grueso del producto). El owner pidió
+      "borrar la BD y re-correr migraciones" porque el sistema no tenía
+      datos de producción. Se hizo reset limpio (BD recien sembrada) y
+      verificación curl exhaustiva de los 3 roles:
+      - `superadmin@plazapp.com` (`permisos: ['*']`, plaza=null).
+      - `admin@demo.com` (`permisos: [86 códigos]`, rol_staff="admin").
+      - `inquilino@demo.com` (`permisos: []` por diseño en v1).
+    - **Cambios introducidos en este pase:**
+      1. **`backend/prisma/seed.ts`:** añadido bloque idempotente que crea
+         el inquilino demo (`inquilino@demo.com` / `Plazapp2026!`) con su
+         empresa, 2 locales (`L-SOL-1`, `L-SOL-2`) y un contrato
+         vigente. FIX del primer intento (se había mapeado `inquilino_id`
+         directo en `local`, lo cual no existe en el esquema — la
+         relación correcta es vía `contrato`).
+      2. **`backend/src/common/filters/prisma-exception.filter.ts` (NUEVO):**
+         mapea `PrismaClientKnownRequestError` a envelopes RFC 7807 con
+         códigos de dominio legibles: `P2002` → 409 según `meta.target`
+         (`ROL_STAFF_CODIGO_DUPLICADO`, `USUARIO_EMAIL_DUPLICADO`…),
+         `P2003` → 400 `FK_VIOLATION`, `P2025` → 404
+         `RECORD_NOT_FOUND`, resto → 500 con `PRISMA_<code>`. Orden de
+         registro en `main.ts`: **antes** de `AllExceptionsFilter`
+         (NestJS evalúa el primer `@Catch` que coincida).
+      3. **`frontend/src/lib/api.ts`:** exportado `errorFromResponse(res,
+         fallback, ctx?)` que loguea server-side `status + code + title
+         + detail + message + requestId` en dev (`NODE_ENV !==
+         'production'`). Por qué: el envelope RFC 7807 usa `detail`, no
+         `message`, por lo que el `errorFrom` local de cada Server Action
+         disparaba siempre el fallback "Ha ocurrido un error
+         inesperado" sin saber qué pasó.
+      4. **`frontend/src/app/(admin-plaza)/admin/**/actions.ts`:** 10
+         archivos migrados para usar `errorFromResponse` con contexto
+         (`createRolStaffAction`, `createUsuarioPlazaAction`, etc.). Sin
+         esto el toast genérico del bug original era opaco.
+      5. **`backend/src/common/guards/permissions.guard.ts`:** ⚠️ fix de
+         **bug pre-existente detectado en esta verificación**. Regla 5
+         del guard: si el usuario es `inquilino` y el endpoint lleva
+         `@Roles('inquilino', ...)`, **el guard deja pasar** (los
+         permisos granulares aplican solo a `admin_plaza` en v1, según
+         `JwtPayload` y comentario en `POST /solicitudes`). Antes, el
+         guard denegaba al inquilino en TODOS los endpoints con
+         `@Roles('inquilino') + @RequirePermission(...)`, lo cual
+         rompía `GET /solicitudes`, `GET /solicitudes/:id`,
+         `GET /solicitudes/:id/comentarios`, `GET /solicitudes/:id/
+         historial`, `GET /solicitudes/:id/adjuntos`,
+         `GET /solicitudes/duplicados` (todos legítimos para el
+         inquilino según el patrón aplicado en `POST` y `PATCH`).
+    - **Resultado de los curl E2E (HTTP code por escenario):**
+      | Caso                                                      | Antes   | Ahora   |
+      |-----------------------------------------------------------|---------|---------|
+      | SUPER crea rol_staff código nuevo                         | 201 ✅  | 201 ✅  |
+      | SUPER crea rol_staff código duplicado                     | 409 `ROL_STAFF_CODIGO_DUPLICADO` ✅ (era 500 con mensaje opaco) |
+      | SUPER crea usuario admin_plaza                            | 201 ✅  | 201 ✅  |
+      | ADMIN KPIs                                                | 200 ✅  | 200 ✅  |
+      | SUPER KPIs (impersonando con `x-plaza-id`)                | 200 ✅  | 200 ✅  |
+      | INQ `GET /solicitudes`                                    | 403 ❌  | 200 ✅ (fix de `PermissionsGuard`) |
+      | INQ `GET /solicitudes/:id`                                | 403 ❌  | 200/404 ✅ (atraviesa el guard) |
+      | INQ `GET /solicitudes/duplicados`                         | 403 ❌  | 200 ✅  |
+      | INQ `POST /roles-staff`                                   | 403 ✅  | 403 ✅ (RolesGuard, sin cambios) |
+      | INQ `GET /admin/plazas`                                   | 404 ✅  | 404 ✅ (ruta no existe) |
+      | Permisos catálogo total                                   | 86 ✅   | 86 ✅ (catálogo actualizado: 80 → 86, no documentado antes) |
+    - **⚠️ Deuda técnica detectada (NO bloqueante):**
+      - `ReportesService.kpis` devuelve estructura correcta con plaza
+        vacía (todos los campos 0/null y `top5Antiguedad: []`), pero
+        `tasaAprobacion` y `tiempoMedioRespuestaHoras` salen como `null`
+        cuando no hay datos. La UI muestra "0%" / "—" sin warning. Es
+        aceptable en v1 pero conviene revisar en T-V03 el contrato.
+      - El path `/solicitudes/mis-solicitudes` **no existe** como ruta
+        en el backend (mezcla con `:id`). El FE lo evita usando
+        `GET /solicitudes` con paginación/filtros y filtrando por
+        `user.id` en el service. Documentar en el README del módulo 06.
+      - No hay subcategorías sembradas (`/subcategorias` devuelve
+        `[]`). Imposibilita crear solicitudes por el flujo completo de
+        validación (refine `categoriaId && subcategoriaId`). Añadir 1-2
+        subcategorías por categoría al seed cuando se implemente el
+        catálogo jerárquico.
+    - **Verificación posterior al fix (rebuild backend + curl):**
+      - `cd backend && npx tsc --noEmit` → pasa limpio.
+      - `cd frontend && npx tsc --noEmit` → pasa limpio (no tocado en
+        este pase, pero ya estaba verde).
+      - Batería curl con 3 tokens (uno por rol): 30+ escenarios, ninguno
+        500 sin causa diagnosticada.
+      - Frontend levantado con `npm run dev` (Next.js 16.2.7 + Turbopack
+        en `:3000`); login NextAuth (`/api/auth/callback/credentials`)
+        devuelve 302 con `authjs.session-token`; sesión devuelve 200 con
+        `permisos` correctos según rol.
+      - BD al final: 4 roles seed + 1 rol creado+deshabilitado
+        (`rol-fresh-001`) + 2 roles duplicados+deshabilitados
+        (`rol-demo`, `rol-admin-2`); 2 usuarios admin_plaza
+        (`admin@demo.com`, `staff-nuevo@demo.com`); 1 usuario
+        `inquilino@demo.com` con su contrato.

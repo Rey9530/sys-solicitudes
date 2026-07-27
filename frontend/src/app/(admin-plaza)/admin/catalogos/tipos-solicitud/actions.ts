@@ -3,24 +3,44 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { UpdateSolicitudTipoConfigSchema } from '@app/contracts';
-import { auth } from '@/auth';
-import { apiFetch } from '@/lib/api';
+import { ForbiddenError, assertAnyCan } from '@/lib/server/assert-can';
+import { apiFetch, errorFromResponse } from '@/lib/api';
 
 type UpdateFormInput = z.input<typeof UpdateSolicitudTipoConfigSchema>;
 
-async function assertAdminPlaza(): Promise<void> {
-  const session = await auth();
-  const rol = session?.user?.rol;
-  if (rol !== 'admin_plaza' && rol !== 'superadmin') {
-    throw new Error('Forbidden');
-  }
-}
+/**
+ * T-RBAC-1 · Server Actions de Tipos de Solicitud.
+ *
+ * Cada acción valida el permiso granular con `assertAnyCan(...)` ANTES de
+ * llamar al backend. La defensa real vive en el `PermissionsGuard` global
+ * del backend; este helper es solo UX para evitar round-trips innecesarios
+ * y emitir mensajes claros cuando el toast del cliente muestra el 403.
+ */
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * Helper que envuelve `assertAnyCan` y traduce el `ForbiddenError` al
+ * `ActionResult` estándar. Lanza cualquier otro error (red, validación,
+ * etc.) para que el caller decida.
+ */
+async function ensureCan(
+  permisos: string[],
+): Promise<{ ok: false; error: string } | null> {
+  try {
+    await assertAnyCan(permisos);
+    return null;
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: err.message };
+    }
+    throw err;
+  }
+}
+
 async function errorFrom(res: Response, fallback: string): Promise<string> {
-  const err = (await res.json().catch(() => ({}))) as { message?: string; detail?: string };
-  return err.message ?? err.detail ?? fallback;
+  // Wrapper: delega en errorFromResponse.
+  return errorFromResponse(res, fallback, 'legacy');
 }
 
 function revalidateTipos(id?: string): void {
@@ -42,7 +62,8 @@ export async function updateTipoSolicitudAction(
   id: string,
   input: UpdateFormInput,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['tipos_solicitud.editar']);
+  if (denied) return denied;
   const parsed = UpdateSolicitudTipoConfigSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch(`/admin/tipos-solicitud/${id}`, {
@@ -55,4 +76,3 @@ export async function updateTipoSolicitudAction(
   revalidateTipos(id);
   return { ok: true };
 }
-

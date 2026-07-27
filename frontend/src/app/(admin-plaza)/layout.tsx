@@ -10,11 +10,17 @@ import { loadSuperadminShell } from '@/lib/superadmin-shell';
  * servidor; la API también lo exige (defensa en profundidad).
  * superadmin puede operar la consola de plaza "actuando como" una plaza
  * seleccionada (impersonación); sin selección se muestra un gate.
+ *
+ * T-RBAC-1: propaga `session.user.permisos` al shell para que la sidebar
+ * filtre items según permisos granulares. superadmin recibe wildcard `['*']`
+ * (en `TokenService.resolvePermisosEfectivos` del backend) → ve todo.
  */
 export default async function AdminPlazaLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) redirect('/login');
   if (session.user.rol !== 'admin_plaza' && session.user.rol !== 'superadmin') redirect('/');
+
+  const userPermisos = session.user.permisos ?? [];
 
   // ── Superadmin: consola de plaza por impersonación ──
   if (session.user.rol === 'superadmin') {
@@ -29,6 +35,7 @@ export default async function AdminPlazaLayout({ children }: { children: React.R
           plaza={null}
           plazas={plazas}
           selectedPlazaId={selected?.id ?? null}
+          permisos={userPermisos}
         >
           {selected ? (
             children
@@ -70,6 +77,7 @@ export default async function AdminPlazaLayout({ children }: { children: React.R
               }
             : null
         }
+        permisos={userPermisos}
       >
         {children}
       </AppShell>

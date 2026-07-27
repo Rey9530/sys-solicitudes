@@ -27,4 +27,5 @@ export * from './notificaciones/index.js';
 export * from './calendario/index.js';
 export * from './reportes/index.js';
 export * from './auditoria/index.js';
+export * from './permisos/index.js';
 export * from './common/index.js';

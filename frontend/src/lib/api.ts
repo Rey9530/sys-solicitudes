@@ -31,7 +31,22 @@ async function readTokens(): Promise<AuthTokens> {
   // El JWT del backend (access/refresh) vive dentro; nunca se expone al cliente.
   const secure = process.env.NODE_ENV === 'production';
   const cookieName = secure ? '__Secure-authjs.session-token' : 'authjs.session-token';
-  const raw = (await cookies()).get(cookieName)?.value;
+  // Auth.js fragmenta el JWE en chunks de 3936 bytes (cookie.js: ALLOWED_COOKIE_SIZE
+  // 4096 − ESTIMATED_EMPTY_COOKIE_SIZE 160) cuando el payload cifrado excede ese
+  // tamaño. Las cookies resultantes se llaman `authjs.session-token.0`, `.1`, …
+  // `cookies().get(name)` solo lee el nombre EXACTO, así que，我们必须ensamblar
+  // los chunks nosotros mismos (mismo algoritmo que `SessionStore.value` en
+  // @auth/core/lib/utils/cookie.js:145).
+  const all = (await cookies()).getAll();
+  const chunks = all
+    .filter((c) => c.name === cookieName || c.name.startsWith(`${cookieName}.`))
+    .map((c) => {
+      const suffix = c.name.slice(cookieName.length + 1); // "" o "0", "1", …
+      const idx = suffix === '' ? 0 : Number.parseInt(suffix, 10);
+      return { idx: Number.isFinite(idx) ? idx : 0, value: c.value };
+    })
+    .sort((a, b) => a.idx - b.idx);
+  const raw = chunks.map((c) => c.value).join('');
   if (!raw) return {};
   try {
     const token = await decode({
@@ -91,4 +106,51 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   }
 
   return res;
+}
+
+/**
+ * Extrae un mensaje legible de la respuesta de error del backend (envelope
+ * RFC 7807 emitido por los `*ExceptionFilter` NestJS) y, en desarrollo,
+ * loguea `status + code + title + detail + requestId` en consola server-side.
+ *
+ * Uso desde Server Actions:
+ *   const denied = await errorFromResponse(res, 'No se pudo crear el rol.', 'createRolStaffAction');
+ *   if (denied) return { ok: false, error: denied };
+ *
+ * Por qué este helper:
+ *   - El backend puede devolver 4xx/5xx con `code` específico (`USUARIO_EMAIL_DUPLICADO`,
+ *     `PLAZA_SCOPE_VIOLATION`, etc.) o 500 con `INTERNAL_ERROR`. La función `errorFrom`
+ *     original de cada Server Action solo leía `message/detail` y mostraba el fallback
+ *     "Ha ocurrido un error inesperado..." cuando el body no tenía `message`. El
+ *     `AllExceptionsFilter` del backend usa `detail` (no `message`), por lo que el
+ *     fallback se disparaba siempre. Ahora leemos ambos y logueamos para diagnóstico.
+ */
+export async function errorFromResponse(
+  res: Response,
+  fallback: string,
+  ctx?: string,
+): Promise<string> {
+  const body = (await res.json().catch(() => ({}))) as {
+    code?: string;
+    title?: string;
+    detail?: string;
+    message?: string;
+  };
+  const requestId = res.headers.get('x-request-id');
+  if (process.env.NODE_ENV !== 'production') {
+    // server-only: aparece en la consola del proceso `next dev` o `next start`,
+    // no en el navegador del usuario.
+    console.error(
+      `[errorFromResponse]${ctx ? ' ' + ctx : ''} → ${res.status} ${body.code ?? '(no code)'}`,
+      {
+        status: res.status,
+        code: body.code,
+        title: body.title,
+        detail: body.detail,
+        message: body.message,
+        requestId,
+      },
+    );
+  }
+  return body.message ?? body.detail ?? fallback;
 }

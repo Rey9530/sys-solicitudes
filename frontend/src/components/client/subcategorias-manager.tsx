@@ -37,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
 
 export interface StaffOption {
@@ -100,7 +101,9 @@ export function SubcategoriasManager({
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={() => setModal({ kind: 'nueva' })}>Nueva subcategoría</Button>
+        <Can permiso="subcategorias.crear">
+          <Button onClick={() => setModal({ kind: 'nueva' })}>Nueva subcategoría</Button>
+        </Can>
       </div>
 
       {subcategorias.length === 0 ? (
@@ -150,37 +153,45 @@ export function SubcategoriasManager({
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setModal({ kind: 'editar', sub: s })}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setModal({ kind: 'responsable', sub: s })}
-                      >
-                        Responsable
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setModal({ kind: 'supervisores', sub: s })}
-                      >
-                        Supervisores
-                      </Button>
-                      {s.activo && (
+                      <Can permiso="subcategorias.editar">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-600 hover:bg-red-50"
-                          disabled={pendingId === s.id}
-                          onClick={() => onDelete(s)}
+                          onClick={() => setModal({ kind: 'editar', sub: s })}
                         >
-                          Desactivar
+                          Editar
                         </Button>
+                      </Can>
+                      <Can permiso="subcategorias.asignar_responsable">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setModal({ kind: 'responsable', sub: s })}
+                        >
+                          Responsable
+                        </Button>
+                      </Can>
+                      <Can permiso="subcategorias.gestionar_supervisores">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setModal({ kind: 'supervisores', sub: s })}
+                        >
+                          Supervisores
+                        </Button>
+                      </Can>
+                      {s.activo && (
+                        <Can permiso="subcategorias.deshabilitar">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:bg-red-50"
+                            disabled={pendingId === s.id}
+                            onClick={() => onDelete(s)}
+                          >
+                            Desactivar
+                          </Button>
+                        </Can>
                       )}
                     </div>
                   </TableCell>

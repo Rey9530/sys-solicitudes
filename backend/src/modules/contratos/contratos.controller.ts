@@ -35,6 +35,7 @@ import { AdjuntosService, type UploadedPdf } from '../adjuntos/adjuntos.service'
 /** Límite duro del interceptor; el límite real por plaza se valida en el service. */
 const ADJUNTO_HARD_LIMIT_BYTES = 100 * 1024 * 1024;
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { SkipAuditoria } from '../../common/decorators/auditable.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -55,6 +56,7 @@ export class ContratosController {
   // T-161: consistencia con los 3 crons dev de `aprobaciones` (T-150) que ya
   // llevan @SkipAuditoria(). Endpoints dev no deben dejar rastro en el log.
   @SkipAuditoria()
+  @RequirePermission('contratos.listar')
   @ApiOperation({ summary: 'Ejecuta manualmente las alertas T-30/T-7 (solo dev, T-056).' })
   testAlertas() {
     // Gate dev-only: en producción la ruta no existe (404).
@@ -70,6 +72,7 @@ export class ContratosController {
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('contratos.crear')
   @ApiOperation({ summary: 'Crear contrato vigente (trigger anti-solapamiento; local → alquilado).' })
   create(
     @Body(new ZodValidationPipe(CreateContratoSchema)) body: CreateContratoInput,
@@ -83,6 +86,7 @@ export class ContratosController {
 
   @Get()
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('contratos.listar')
   @ApiOperation({ summary: 'Listar contratos (inquilino: solo los suyos).' })
   findAll(
     @Query(new ZodValidationPipe(ListContratosQuerySchema)) query: ListContratosQuery,
@@ -93,6 +97,7 @@ export class ContratosController {
 
   @Get(':id')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('contratos.listar')
   @ApiOperation({ summary: 'Detalle de contrato + flags de ventana T-30/T-7.' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.findOne(id, user);
@@ -100,6 +105,7 @@ export class ContratosController {
 
   @Patch(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('contratos.editar')
   @ApiOperation({ summary: 'Editar contrato (solo monto y condiciones; fechas/local/inquilino no).' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -114,6 +120,7 @@ export class ContratosController {
 
   @Post(':id/cerrar')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('contratos.cerrar')
   @ApiOperation({ summary: 'Cerrar contrato (vigente → finalizado/cancelado; libera el local).' })
   cerrar(
     @Param('id', ParseUUIDPipe) id: string,
@@ -128,6 +135,7 @@ export class ContratosController {
 
   @Post(':id/renovar')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('contratos.renovar')
   @ApiOperation({ summary: 'Renovar contrato (cierra el actual y crea uno nuevo, misma tx).' })
   renovar(
     @Param('id', ParseUUIDPipe) id: string,
@@ -144,6 +152,7 @@ export class ContratosController {
 
   @Post(':id/adjuntos')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('contratos.adjuntos.subir')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: ADJUNTO_HARD_LIMIT_BYTES } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Subir PDF de contrato firmado (inquilino: solo sus contratos).' })
@@ -172,6 +181,7 @@ export class ContratosController {
 
   @Get(':id/adjuntos')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('contratos.adjuntos.descargar')
   @ApiOperation({ summary: 'Listar adjuntos del contrato.' })
   listAdjuntos(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.adjuntos.listContratoAdjuntos(id, user);

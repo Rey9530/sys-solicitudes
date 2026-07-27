@@ -14,7 +14,18 @@ export async function logoutAction(): Promise<void> {
   try {
     const secure = process.env.NODE_ENV === 'production';
     const cookieName = secure ? '__Secure-authjs.session-token' : 'authjs.session-token';
-    const raw = (await cookies()).get(cookieName)?.value;
+    // Mismo reensamblado de chunks que en `lib/api.ts:readTokens` (Auth.js
+    // fragmenta el JWE en cookies `authjs.session-token.N` cuando >3936 bytes).
+    const all = (await cookies()).getAll();
+    const chunks = all
+      .filter((c) => c.name === cookieName || c.name.startsWith(`${cookieName}.`))
+      .map((c) => {
+        const suffix = c.name.slice(cookieName.length + 1);
+        const idx = suffix === '' ? 0 : Number.parseInt(suffix, 10);
+        return { idx: Number.isFinite(idx) ? idx : 0, value: c.value };
+      })
+      .sort((a, b) => a.idx - b.idx);
+    const raw = chunks.map((c) => c.value).join('');
     const token = raw
       ? await decode({ token: raw, secret: process.env.AUTH_SECRET ?? '', salt: cookieName })
       : null;

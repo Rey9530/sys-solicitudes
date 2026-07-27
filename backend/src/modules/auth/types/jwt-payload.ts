@@ -5,6 +5,13 @@ import type { RolGlobal } from '@app/contracts';
  *
  * Nota T-V01: la resolución de tenant es ÚNICAMENTE por `plazaId` aquí; no hay
  * subdominio ni header `x-plaza-slug`. `plazaId` es null solo para superadmin.
+ *
+ * T-RBAC-1: el claim `permisos` lista los códigos de permisos efectivos del
+ * usuario en su plaza. Para superadmin es `['*']` (cualquier permiso pasa).
+ * Para admin_plaza sin `rolStaffId` se resuelve como todos los del catálogo
+ * (compatibilidad hacia atrás con datos pre-RBAC). Para admin_plaza con
+ * `rolStaffId` se resuelve con los permisos de ese rol_staff. Para inquilino
+ * queda `[]` por defecto en v1 (el RBAC granular aplica solo a admin_plaza).
  */
 export interface JwtPayload {
   /** usuario.id */
@@ -14,6 +21,12 @@ export interface JwtPayload {
   plazaId: string | null;
   rolStaffId: string | null;
   inquilinoId: string | null;
+  /**
+   * Códigos de permisos efectivos. El PermissionsGuard los evalúa contra los
+   * `@RequirePermission(...)` del endpoint (lógica OR por array, AND apilando
+   * decoradores). Wildcard `['*']` solo para superadmin.
+   */
+  permisos: string[];
   /** issued at / expiration (los agrega @nestjs/jwt) */
   iat?: number;
   exp?: number;

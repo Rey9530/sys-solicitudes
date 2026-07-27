@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
 
 export function InquilinosTable({ inquilinos }: { inquilinos: InquilinoOutput[] }) {
@@ -71,14 +72,16 @@ export function InquilinosTable({ inquilinos }: { inquilinos: InquilinoOutput[] 
               <TableCell className="muted">{i.contactoNombre ?? '—'}</TableCell>
               <TableCell className="muted">{i.contactoEmail ?? '—'}</TableCell>
               <TableCell className="actions">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  disabled={pendingId === i.id}
-                  onClick={() => onDelete(i)}
-                >
-                  {pendingId === i.id ? 'Desactivando…' : 'Desactivar'}
-                </Button>
+                <Can permiso="inquilinos.deshabilitar">
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={pendingId === i.id}
+                    onClick={() => onDelete(i)}
+                  >
+                    {pendingId === i.id ? 'Desactivando…' : 'Desactivar'}
+                  </Button>
+                </Can>
               </TableCell>
             </TableRow>
           ))}

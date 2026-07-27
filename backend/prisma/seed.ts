@@ -15,6 +15,7 @@ import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Client as MinioClient } from 'minio';
 import bcrypt from 'bcrypt';
+import { PERMISOS_CATALOG, PERMISOS_ROL_ADMIN_TODOS } from './seed-data/permisos';
 
 const BCRYPT_COST = 12;
 
@@ -39,6 +40,90 @@ const ROLES_GLOBALES = [
 
 const SUPERADMIN_EMAIL = 'superadmin@plazapp.com';
 const SUPERADMIN_PASSWORD = 'Plazapp2026!'; // solo dev
+
+/**
+ * T-RBAC-1: siembra el catálogo global de permisos. Idempotente: solo añade
+ * los permisos nuevos; los existentes no se tocan (mantiene la descripción
+ * original incluso si cambia el archivo seed).
+ */
+async function seedPermisos(prisma: PrismaClient): Promise<void> {
+  let added = 0;
+  let existing = 0;
+  for (const p of PERMISOS_CATALOG) {
+    const found = await prisma.permiso.findUnique({ where: { codigo: p.codigo } });
+    if (found) {
+      existing++;
+      continue;
+    }
+    await prisma.permiso.create({
+      data: {
+        codigo: p.codigo,
+        modulo: p.modulo,
+        accion: p.accion,
+        descripcion: p.descripcion,
+      },
+    });
+    added++;
+  }
+  console.log(
+    `✓ Permisos sembrados (nuevos: ${added}, existentes: ${existing}, total catálogo: ${PERMISOS_CATALOG.length}).`,
+  );
+}
+
+/**
+ * T-RBAC-1: crea/actualiza el rol_staff "admin" del sistema con `es_sistema=true`
+ * y le asigna TODOS los permisos del catálogo. Es idempotente: si el rol ya
+ * existe, solo añade los permisos nuevos que falten. Devuelve el rol creado.
+ */
+async function seedRolAdmin(
+  prisma: PrismaClient,
+  plazaId: string,
+): Promise<{ id: string; codigo: string }> {
+  const rolAdmin = await prisma.rol_staff.upsert({
+    where: { plaza_id_codigo: { plaza_id: plazaId, codigo: 'admin' } },
+    update: {
+      // El trigger fn_rol_staff_sistema_inamovible rechaza cambios en codigo
+      // / nombre / plaza_id cuando es_sistema=true. Aquí solo forzamos el flag.
+      es_sistema: true,
+    },
+    create: {
+      plaza_id: plazaId,
+      codigo: 'admin',
+      nombre: 'Administrador del sistema',
+      descripcion:
+        'Rol inamovible con todos los permisos del sistema. Único capaz de gestionar roles y asignar permisos. Se siembra automáticamente; no se puede borrar ni renombrar.',
+      es_sistema: true,
+    },
+  });
+
+  // Asignar permisos: el rol admin recibe todos los del catálogo. Para
+  // idempotencia, solo insertamos los que falten (PK compuesta evita dup).
+  const permisos = await prisma.permiso.findMany({
+    where: { codigo: { in: [...PERMISOS_ROL_ADMIN_TODOS] } },
+    select: { id: true, codigo: true },
+  });
+  const yaAsignados = await prisma.rol_staff_permiso.findMany({
+    where: { rol_staff_id: rolAdmin.id },
+    select: { permiso_id: true },
+  });
+  const asignadosSet = new Set(yaAsignados.map((r) => r.permiso_id));
+  const nuevos = permisos.filter((p) => !asignadosSet.has(p.id));
+
+  if (nuevos.length > 0) {
+    await prisma.rol_staff_permiso.createMany({
+      data: nuevos.map((p) => ({
+        rol_staff_id: rolAdmin.id,
+        permiso_id: p.id,
+        plaza_id: plazaId,
+      })),
+      skipDuplicates: true,
+    });
+  }
+  console.log(
+    `✓ Rol "admin" del sistema: ${rolAdmin.id} (permisos totales: ${permisos.length}, nuevos asignados: ${nuevos.length}).`,
+  );
+  return rolAdmin;
+}
 
 async function main(): Promise<void> {
   // El seed crea el superadmin (usuario con plaza_id NULL) y, en T-045, la plaza
@@ -117,29 +202,150 @@ async function main(): Promise<void> {
     }
     console.log(`✓ Plaza demo "${plazaDemo.slug}" + configuración + roles de staff.`);
 
+    // ── T-RBAC-1: seed del catálogo de permisos + rol "admin" del sistema ───
+    await seedPermisos(prisma);
+    const rolAdmin = await seedRolAdmin(prisma, plazaDemo.id);
+
     const rolAdminPlaza = await prisma.rol.findUniqueOrThrow({ where: { codigo: 'admin_plaza' } });
-    const supervisor = await prisma.rol_staff.findFirstOrThrow({
-      where: { plaza_id: plazaDemo.id, codigo: 'supervisor' },
-    });
+    const rolInquilino = await prisma.rol.findUniqueOrThrow({ where: { codigo: 'inquilino' } });
     const ADMIN_DEMO_EMAIL = 'admin@demo.com';
+    const INQUILINO_DEMO_EMAIL = 'inquilino@demo.com';
+    const INQUILINO_RAZON_SOCIAL = 'Tienda Sol S.A. de C.V.';
     const adminDemo = await prisma.usuario.findFirst({
       where: { email: ADMIN_DEMO_EMAIL, plaza_id: plazaDemo.id },
     });
     if (adminDemo) {
-      console.log(`✓ Admin demo ya existe (${ADMIN_DEMO_EMAIL}), no se modifica.`);
+      // Si ya existe el admin demo y NO tiene rol_staff_id apuntando al rol
+      // "admin", lo actualizamos (migración para datos seed pre-RBAC).
+      if (adminDemo.rol_staff_id !== rolAdmin.id) {
+        await prisma.usuario.update({
+          where: { id: adminDemo.id },
+          data: { rol_staff_id: rolAdmin.id },
+        });
+        console.log(`✓ Admin demo actualizado: ahora con rol_staff "admin".`);
+      } else {
+        console.log(`✓ Admin demo ya existe (${ADMIN_DEMO_EMAIL}) con rol_staff "admin", no se modifica.`);
+      }
     } else {
       const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, BCRYPT_COST); // misma clave dev
       await prisma.usuario.create({
         data: {
           plaza_id: plazaDemo.id,
           rol_id: rolAdminPlaza.id,
-          rol_staff_id: supervisor.id,
+          rol_staff_id: rolAdmin.id,
           email: ADMIN_DEMO_EMAIL,
           password_hash: passwordHash,
           nombre: 'Admin Demo',
         },
       });
       console.log(`✓ Admin demo creado: ${ADMIN_DEMO_EMAIL} / ${SUPERADMIN_PASSWORD} (solo dev).`);
+    }
+
+    // ── T-extra: inquilino demo + local + contrato (T-048, T-049, T-053) ──────
+    // Necesario para pruebas E2E de los 3 roles. Idempotente vía upsert + clave
+    // natural (email para usuario, identificacion para inquilino, codigo para local).
+    const inquilinoDemo = await prisma.inquilino.upsert({
+      where: { id: '00000000-0000-0000-0000-000000000001' },
+      update: {
+        razon_social: INQUILINO_RAZON_SOCIAL,
+        contacto_nombre: 'María Pérez',
+        contacto_email: INQUILINO_DEMO_EMAIL,
+        contacto_telefono: '+503 7000-0001',
+      },
+      create: {
+        // UUID fijo para idempotencia determinista.
+        id: '00000000-0000-0000-0000-000000000001',
+        plaza_id: plazaDemo.id,
+        razon_social: INQUILINO_RAZON_SOCIAL,
+        identificacion: 'SOL-050101-001-1',
+        direccion: 'San Salvador, El Salvador',
+        contacto_nombre: 'María Pérez',
+        contacto_email: INQUILINO_DEMO_EMAIL,
+        contacto_telefono: '+503 7000-0001',
+      },
+    });
+    await prisma.local.upsert({
+      where: { plaza_id_codigo: { plaza_id: plazaDemo.id, codigo: 'L-SOL-1' } },
+      update: { nombre: 'Local 101 · Ropa infantil' },
+      create: {
+        plaza_id: plazaDemo.id,
+        codigo: 'L-SOL-1',
+        nombre: 'Local 101 · Ropa infantil',
+        metraje_m2: '42.50',
+        piso: '1',
+        sector: 'Norte',
+        descripcion: 'Local comercial alquilado por Tienda Sol.',
+      },
+    });
+    await prisma.local.upsert({
+      where: { plaza_id_codigo: { plaza_id: plazaDemo.id, codigo: 'L-SOL-2' } },
+      update: { nombre: 'Local 202 · Accesorios' },
+      create: {
+        plaza_id: plazaDemo.id,
+        codigo: 'L-SOL-2',
+        nombre: 'Local 202 · Accesorios',
+        metraje_m2: '28.00',
+        piso: '2',
+        sector: 'Sur',
+        descripcion: 'Segundo local de Tienda Sol.',
+      },
+    });
+    const today = new Date();
+    const inicio = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+    const fin = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 11, 28));
+    await prisma.contrato.upsert({
+      where: { id: '00000000-0000-0000-0000-000000000002' },
+      update: {
+        estado: 'vigente',
+        fecha_inicio: inicio,
+        fecha_fin: fin,
+        monto_mensual: '1250.00',
+        condiciones: 'Contrato demo generado por seed (solo dev).',
+      },
+      create: {
+        id: '00000000-0000-0000-0000-000000000002',
+        plaza_id: plazaDemo.id,
+        local_id: (
+          await prisma.local.findUniqueOrThrow({
+            where: { plaza_id_codigo: { plaza_id: plazaDemo.id, codigo: 'L-SOL-1' } },
+            select: { id: true },
+          })
+        ).id,
+        inquilino_id: inquilinoDemo.id,
+        fecha_inicio: inicio,
+        fecha_fin: fin,
+        monto_mensual: '1250.00',
+        moneda: 'USD',
+        condiciones: 'Contrato demo generado por seed (solo dev).',
+        estado: 'vigente',
+      },
+    });
+
+    // Usuario del inquilino (vinculado por inquilino_id).
+    const inquilinoUser = await prisma.usuario.findFirst({
+      where: { email: INQUILINO_DEMO_EMAIL, plaza_id: plazaDemo.id },
+    });
+    if (inquilinoUser) {
+      if (inquilinoUser.inquilino_id !== inquilinoDemo.id) {
+        await prisma.usuario.update({
+          where: { id: inquilinoUser.id },
+          data: { inquilino_id: inquilinoDemo.id },
+        });
+      }
+      console.log(`✓ Inquilino demo ya existe (${INQUILINO_DEMO_EMAIL}), no se modifica.`);
+    } else {
+      const passwordHash = await bcrypt.hash(SUPERADMIN_PASSWORD, BCRYPT_COST);
+      await prisma.usuario.create({
+        data: {
+          email: INQUILINO_DEMO_EMAIL,
+          password_hash: passwordHash,
+          nombre: 'María Pérez',
+          rol_id: rolInquilino.id,
+          plaza_id: plazaDemo.id,
+          inquilino_id: inquilinoDemo.id,
+        },
+      });
+      console.log(`✓ Inquilino demo creado: ${INQUILINO_DEMO_EMAIL} / ${SUPERADMIN_PASSWORD} (solo dev).`);
     }
 
     // ── Categorías base de la plaza demo (T-063) ──────────────────────────────

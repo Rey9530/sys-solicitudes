@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Configuracion, PlazaOutput } from '@app/contracts';
 import { Tabs } from '@/components/client/tabs';
+import { Can } from '@/components/client/can';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -177,9 +178,11 @@ export function ConfiguracionForm({
                     Fija para todas las plazas en v1 (decisión T-V08).
                   </p>
                 </div>
-                <Button disabled={pending} onClick={guardarGeneral}>
-                  Guardar
-                </Button>
+                <Can permiso="configuracion.editar_general">
+                  <Button disabled={pending} onClick={guardarGeneral}>
+                    Guardar
+                  </Button>
+                </Can>
               </div>
             ),
           },
@@ -221,9 +224,11 @@ export function ConfiguracionForm({
                     }}
                   />
                 </div>
-                <Button disabled={pending} onClick={guardarBranding}>
-                  Guardar color
-                </Button>
+                <Can permiso="configuracion.editar_branding">
+                  <Button disabled={pending} onClick={guardarBranding}>
+                    Guardar color
+                  </Button>
+                </Can>
               </div>
             ),
           },
@@ -304,9 +309,11 @@ export function ConfiguracionForm({
                     </tbody>
                   </table>
                 </div>
-                <Button disabled={pending} onClick={guardarSla}>
-                  Guardar SLA
-                </Button>
+                <Can permiso="configuracion.editar_sla">
+                  <Button disabled={pending} onClick={guardarSla}>
+                    Guardar SLA
+                  </Button>
+                </Can>
               </div>
             ),
           },
@@ -344,9 +351,11 @@ export function ConfiguracionForm({
                     onChange={(e) => setTamanioMax(e.target.value)}
                   />
                 </div>
-                <Button disabled={pending} onClick={guardarAdjuntos}>
-                  Guardar adjuntos
-                </Button>
+                <Can permiso="configuracion.editar_adjuntos">
+                  <Button disabled={pending} onClick={guardarAdjuntos}>
+                    Guardar adjuntos
+                  </Button>
+                </Can>
               </div>
             ),
           },
@@ -363,9 +372,11 @@ export function ConfiguracionForm({
                   />
                   Mostrar hitos contractuales en el calendario
                 </label>
-                <Button disabled={pending} onClick={guardarCalendario}>
-                  Guardar calendario
-                </Button>
+                <Can permiso="configuracion.editar_calendario">
+                  <Button disabled={pending} onClick={guardarCalendario}>
+                    Guardar calendario
+                  </Button>
+                </Can>
               </div>
             ),
           },

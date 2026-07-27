@@ -18,6 +18,7 @@ import {
 } from '@app/contracts';
 import { TiposSolicitudService, type RequestMeta } from './tipos-solicitud.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
@@ -34,6 +35,7 @@ export class TiposSolicitudController {
 
   @Get('solicitudes/tipos')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('tipos_solicitud.listar')
   @ApiOperation({
     summary:
       'Listar tipos de solicitud activos de la plaza actual (wizard, reportes). Orden: orden ASC, codigo ASC.',
@@ -46,6 +48,7 @@ export class TiposSolicitudController {
 
   @Get('admin/tipos-solicitud')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('tipos_solicitud.listar')
   @ApiOperation({
     summary: 'Listar configuración de tipos (paginado, filtro activo). T-V20.',
   })
@@ -59,6 +62,7 @@ export class TiposSolicitudController {
 
   @Get('admin/tipos-solicitud/:id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('tipos_solicitud.listar')
   @ApiOperation({ summary: 'Detalle de configuración de un tipo.' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.findOne(id, user);
@@ -66,6 +70,7 @@ export class TiposSolicitudController {
 
   @Patch('admin/tipos-solicitud/:id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('tipos_solicitud.editar')
   @ApiOperation({
     summary:
       'Editar etiqueta/descripcion/orden/activo. Reglas: `otro` no se desactiva; tipo con solicitudes activas no se desactiva.',

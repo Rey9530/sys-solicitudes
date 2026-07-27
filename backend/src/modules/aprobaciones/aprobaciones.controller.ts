@@ -30,6 +30,7 @@ import { AutoAsignacionCron } from './cron/auto-asignacion.cron';
 import { SlaRefreshCron } from './cron/sla-refresh.cron';
 import { MantenimientoFinCron } from './cron/mantenimiento-fin.cron';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { SkipAuditoria } from '../../common/decorators/auditable.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -54,6 +55,7 @@ export class AprobacionesController {
   // Ruta estática antes de :id.
   @Get('bandeja')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission(['solicitudes.bandeja.ver', 'solicitudes.bandeja.asignadas_a_mi'])
   @ApiOperation({ summary: 'Bandeja priorizada (enviada/asignado/en_revision; T-099).' })
   bandeja(
     @Query(new ZodValidationPipe(BandejaQuerySchema)) query: BandejaQuery,
@@ -65,6 +67,8 @@ export class AprobacionesController {
   @Post('cron/test-auto-asignacion')
   @SkipAuditoria() // T-150: endpoint dev de cron, sin captura automática
   @Roles('admin_plaza', 'superadmin')
+  // T-RBAC-1: permiso `solicitudes.tomar` cubre el cron (mismo dominio).
+  @RequirePermission('solicitudes.tomar')
   @ApiOperation({ summary: 'Ejecuta la auto-asignación manualmente (solo dev, T-091b).' })
   testAutoAsignacion() {
     this.assertDev();
@@ -74,6 +78,8 @@ export class AprobacionesController {
   @Post('cron/test-sla-refresh')
   @SkipAuditoria() // T-150: endpoint dev de cron, sin captura automática
   @Roles('admin_plaza', 'superadmin')
+  // T-RBAC-1: `solicitudes.bandeja.ver` cubre el cron (refresca la matview SLA).
+  @RequirePermission('solicitudes.bandeja.ver')
   @ApiOperation({ summary: 'Refresca la matview SLA manualmente (solo dev, T-101).' })
   async testSlaRefresh() {
     this.assertDev();
@@ -84,6 +90,7 @@ export class AprobacionesController {
   @Post('cron/test-mantenimiento-fin')
   @SkipAuditoria() // T-150: endpoint dev de cron, sin captura automática
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.aprobar')
   @ApiOperation({ summary: 'Cierra ventanas de mantenimiento vencidas (solo dev, T-103).' })
   testMantenimientoFin() {
     this.assertDev();
@@ -102,6 +109,7 @@ export class AprobacionesController {
 
   @Post(':id/tomar')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.tomar')
   @ApiOperation({
     summary: 'Tomar: asignado→en_revision (solo el asignado) o enviada→en_revision (cola).',
   })
@@ -117,6 +125,7 @@ export class AprobacionesController {
 
   @Post(':id/liberar')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.liberar')
   @ApiOperation({ summary: 'Liberar: vuelve a la cola enviada (solo el asignado).' })
   liberar(
     @Param('id', ParseUUIDPipe) id: string,
@@ -131,6 +140,7 @@ export class AprobacionesController {
 
   @Post(':id/aprobar')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.aprobar')
   @ApiOperation({
     summary: 'Aprobar (T6, SC-4): evento→calendario; remodelación→local en mantenimiento.',
   })
@@ -147,6 +157,7 @@ export class AprobacionesController {
 
   @Post(':id/rechazar')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.rechazar')
   @ApiOperation({ summary: 'Rechazar (T7): comentario obligatorio; SC-4.' })
   rechazar(
     @Param('id', ParseUUIDPipe) id: string,
@@ -161,6 +172,7 @@ export class AprobacionesController {
 
   @Post(':id/pedir-subsanacion')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.pedir_subsanacion')
   @ApiOperation({
     summary: 'Pedir subsanación (T8): comentario obligatorio; queda sin asignar.',
   })
@@ -177,6 +189,7 @@ export class AprobacionesController {
 
   @Post(':id/reasignar')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.reasignar')
   @ApiOperation({ summary: 'Reasignar (T12): en asignado/en_revision; SC-6; sin lock (T-V03).' })
   reasignar(
     @Param('id', ParseUUIDPipe) id: string,

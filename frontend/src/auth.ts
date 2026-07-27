@@ -12,6 +12,10 @@ import type { RolGlobal } from '@app/contracts';
  *
  * Renovación: el callback `jwt` refresca el access token contra
  * `POST /api/v1/auth/refresh` cuando está por expirar (rotación, T-027).
+ *
+ * T-RBAC-1: persistimos `permisos: string[]` desde el `TokenResponse.user.permisos`
+ * del backend y lo exponemos en `session.user.permisos` para que el frontend
+ * pueda gating fino (helpers `can()`, `<Can>`, `assertCan()`).
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -33,6 +37,8 @@ interface BackendLoginResponse {
     plazaId: string | null;
     rolStaffId: string | null;
     inquilinoId: string | null;
+    /** T-RBAC-1: permisos efectivos del usuario (wildcard `['*']` para superadmin). */
+    permisos: string[];
   };
 }
 
@@ -91,6 +97,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           plazaId: data.user.plazaId,
           rolStaffId: data.user.rolStaffId,
           inquilinoId: data.user.inquilinoId,
+          permisos: data.user.permisos,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
           expiresIn: data.expiresIn,
@@ -112,6 +119,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.plazaId = user.plazaId;
         token.rolStaffId = user.rolStaffId;
         token.inquilinoId = user.inquilinoId;
+        token.permisos = user.permisos ?? [];
         return token;
       }
 
@@ -137,6 +145,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           plazaId: null,
           rolStaffId: null,
           inquilinoId: null,
+          permisos: [],
           accessToken: undefined,
           refreshToken: undefined,
           accessTokenExpires: 0,
@@ -146,6 +155,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       token.accessToken = refreshed.accessToken;
       token.refreshToken = refreshed.refreshToken;
       token.accessTokenExpires = Date.now() + refreshed.expiresIn * 1000;
+      // Actualizar permisos en refresh (pueden haber cambiado desde el último login).
+      token.permisos = refreshed.user.permisos ?? [];
+      token.rol = refreshed.user.rol;
+      token.plazaId = refreshed.user.plazaId;
+      token.rolStaffId = refreshed.user.rolStaffId;
+      token.inquilinoId = refreshed.user.inquilinoId;
       token.error = undefined;
       return token;
     },
@@ -156,6 +171,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.plazaId = token.plazaId;
       session.user.rolStaffId = token.rolStaffId;
       session.user.inquilinoId = token.inquilinoId;
+      session.user.permisos = token.permisos ?? [];
       session.error = token.error;
       return session;
     },
@@ -168,6 +184,8 @@ declare module 'next-auth' {
     plazaId?: string | null;
     rolStaffId?: string | null;
     inquilinoId?: string | null;
+    /** T-RBAC-1: permisos efectivos al momento del login. */
+    permisos?: string[];
     accessToken?: string;
     refreshToken?: string;
     expiresIn?: number;
@@ -179,6 +197,8 @@ declare module 'next-auth' {
       plazaId?: string | null;
       rolStaffId?: string | null;
       inquilinoId?: string | null;
+      /** T-RBAC-1: permisos efectivos (pueden quedar desactualizados respecto al backend hasta el próximo refresh; el JWT del backend es la fuente de verdad). */
+      permisos?: string[];
     } & DefaultSession['user'];
     error?: string;
   }
@@ -193,6 +213,8 @@ declare module 'next-auth/jwt' {
     plazaId?: string | null;
     rolStaffId?: string | null;
     inquilinoId?: string | null;
+    /** T-RBAC-1: array de códigos de permiso efectivos. */
+    permisos?: string[];
     error?: string;
   }
 }

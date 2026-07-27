@@ -18,6 +18,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { RolStaffFormDialog } from '@/components/client/rol-staff-form-dialog';
+import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
 
 /**
@@ -120,26 +121,30 @@ export function RolesStaffTable({
                   )}
                 </TableCell>
                 <TableCell className="actions">
-                  <RolStaffFormDialog
-                    mode="edit"
-                    rol={{
-                      id: r.id,
-                      codigo: r.codigo,
-                      nombre: r.nombre,
-                      descripcion: r.descripcion,
-                      activo: r.activo,
-                    }}
-                  />
+                  <Can permiso="roles_staff.editar">
+                    <RolStaffFormDialog
+                      mode="edit"
+                      rol={{
+                        id: r.id,
+                        codigo: r.codigo,
+                        nombre: r.nombre,
+                        descripcion: r.descripcion,
+                        activo: r.activo,
+                      }}
+                    />
+                  </Can>
                   {r.activo && (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      disabled={pendingId === r.id}
-                      onClick={() => onDisable(r)}
-                    >
-                      <PowerOff />
-                      {pendingId === r.id ? 'Desactivando…' : 'Desactivar'}
-                    </Button>
+                    <Can permiso="roles_staff.deshabilitar">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        disabled={pendingId === r.id}
+                        onClick={() => onDisable(r)}
+                      >
+                        <PowerOff />
+                        {pendingId === r.id ? 'Desactivando…' : 'Desactivar'}
+                      </Button>
+                    </Can>
                   )}
                 </TableCell>
               </TableRow>

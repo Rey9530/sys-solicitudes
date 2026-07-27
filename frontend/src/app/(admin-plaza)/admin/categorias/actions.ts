@@ -8,8 +8,8 @@ import {
   CreateSubcategoriaSchema,
   UpdateSubcategoriaSchema,
 } from '@app/contracts';
-import { auth } from '@/auth';
-import { apiFetch } from '@/lib/api';
+import { ForbiddenError, assertAnyCan } from '@/lib/server/assert-can';
+import { apiFetch, errorFromResponse } from '@/lib/api';
 
 // Tipos de ENTRADA (pre-coerción de Zod): lo que envían los formularios.
 type CreateCategoriaFormInput = z.input<typeof CreateCategoriaSchema>;
@@ -17,20 +17,39 @@ type UpdateCategoriaFormInput = z.input<typeof UpdateCategoriaSchema>;
 type CreateSubcategoriaFormInput = z.input<typeof CreateSubcategoriaSchema>;
 type UpdateSubcategoriaFormInput = z.input<typeof UpdateSubcategoriaSchema>;
 
-/** Solo admin_plaza/superadmin operan el panel (el backend también lo exige). */
-async function assertAdminPlaza(): Promise<void> {
-  const session = await auth();
-  const rol = session?.user?.rol;
-  if (rol !== 'admin_plaza' && rol !== 'superadmin') {
-    throw new Error('Forbidden');
-  }
-}
+/**
+ * T-RBAC-1 · Server Actions de Categorías y Subcategorías.
+ *
+ * Cada acción valida el permiso granular con `assertAnyCan(...)` ANTES de
+ * llamar al backend. La defensa real vive en el `PermissionsGuard` global
+ * del backend; este helper es solo UX para evitar round-trips innecesarios
+ * y emitir mensajes claros cuando el toast del cliente muestra el 403.
+ */
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * Helper que envuelve `assertAnyCan` y traduce el `ForbiddenError` al
+ * `ActionResult` estándar. Lanza cualquier otro error (red, validación,
+ * etc.) para que el caller decida.
+ */
+async function ensureCan(
+  permisos: string[],
+): Promise<{ ok: false; error: string } | null> {
+  try {
+    await assertAnyCan(permisos);
+    return null;
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: err.message };
+    }
+    throw err;
+  }
+}
+
 async function errorFrom(res: Response, fallback: string): Promise<string> {
-  const err = (await res.json().catch(() => ({}))) as { message?: string; detail?: string };
-  return err.message ?? err.detail ?? fallback;
+  // Wrapper: delega en errorFromResponse para tener logging + code/requestId en consola.
+  return errorFromResponse(res, fallback, 'legacy');
 }
 
 function revalidateCategorias(categoriaId?: string): void {
@@ -46,7 +65,8 @@ function revalidateCategorias(categoriaId?: string): void {
 export async function createCategoriaAction(
   input: CreateCategoriaFormInput,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['categorias.crear']);
+  if (denied) return denied;
   const parsed = CreateCategoriaSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch('/categorias', { method: 'POST', body: JSON.stringify(parsed.data) });
@@ -59,7 +79,8 @@ export async function updateCategoriaAction(
   id: string,
   input: UpdateCategoriaFormInput,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['categorias.editar']);
+  if (denied) return denied;
   const parsed = UpdateCategoriaSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch(`/categorias/${id}`, {
@@ -74,7 +95,8 @@ export async function updateCategoriaAction(
 }
 
 export async function deleteCategoriaAction(id: string): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['categorias.deshabilitar']);
+  if (denied) return denied;
   const res = await apiFetch(`/categorias/${id}`, { method: 'DELETE' });
   if (!res.ok) {
     return { ok: false, error: await errorFrom(res, 'No se pudo desactivar la categoría.') };
@@ -89,7 +111,8 @@ export async function createSubcategoriaAction(
   categoriaId: string,
   input: CreateSubcategoriaFormInput,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['subcategorias.crear']);
+  if (denied) return denied;
   const parsed = CreateSubcategoriaSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch(`/categorias/${categoriaId}/subcategorias`, {
@@ -108,7 +131,8 @@ export async function updateSubcategoriaAction(
   subId: string,
   input: UpdateSubcategoriaFormInput,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['subcategorias.editar']);
+  if (denied) return denied;
   const parsed = UpdateSubcategoriaSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch(`/categorias/${categoriaId}/subcategorias/${subId}`, {
@@ -126,7 +150,8 @@ export async function deleteSubcategoriaAction(
   categoriaId: string,
   subId: string,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['subcategorias.deshabilitar']);
+  if (denied) return denied;
   const res = await apiFetch(`/categorias/${categoriaId}/subcategorias/${subId}`, {
     method: 'DELETE',
   });
@@ -142,7 +167,8 @@ export async function setResponsableAction(
   subId: string,
   responsableId: string,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['subcategorias.asignar_responsable']);
+  if (denied) return denied;
   const res = await apiFetch(`/categorias/${categoriaId}/subcategorias/${subId}/responsable`, {
     method: 'PATCH',
     body: JSON.stringify({ responsableId }),
@@ -159,7 +185,8 @@ export async function addSupervisorAction(
   subId: string,
   usuarioId: string,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['subcategorias.gestionar_supervisores']);
+  if (denied) return denied;
   const res = await apiFetch(`/categorias/${categoriaId}/subcategorias/${subId}/supervisores`, {
     method: 'POST',
     body: JSON.stringify({ usuarioId }),
@@ -176,7 +203,8 @@ export async function removeSupervisorAction(
   subId: string,
   usuarioId: string,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['subcategorias.gestionar_supervisores']);
+  if (denied) return denied;
   const res = await apiFetch(
     `/categorias/${categoriaId}/subcategorias/${subId}/supervisores/${usuarioId}`,
     { method: 'DELETE' },

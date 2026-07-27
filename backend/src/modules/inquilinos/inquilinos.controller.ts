@@ -28,6 +28,7 @@ import {
 import { InquilinosService, type RequestMeta } from './inquilinos.service';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
@@ -43,6 +44,7 @@ export class InquilinosController {
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('inquilinos.crear')
   @ApiOperation({ summary: 'Crear inquilino.' })
   create(
     @Body(new ZodValidationPipe(CreateInquilinoSchema)) body: CreateInquilinoInput,
@@ -56,6 +58,7 @@ export class InquilinosController {
 
   @Get()
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('inquilinos.listar')
   @ApiOperation({ summary: 'Listar inquilinos (inquilino: solo su propio registro).' })
   findAll(
     @Query(new ZodValidationPipe(ListInquilinosQuerySchema)) query: ListInquilinosQuery,
@@ -66,6 +69,7 @@ export class InquilinosController {
 
   @Get(':id')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('inquilinos.listar')
   @ApiOperation({ summary: 'Detalle de inquilino + contratos activos + histórico.' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.findOne(id, user);
@@ -73,6 +77,7 @@ export class InquilinosController {
 
   @Get(':id/contratos')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('contratos.listar')
   @ApiOperation({ summary: 'Historial de contratos del inquilino (T-061).' })
   findContratos(
     @Param('id', ParseUUIDPipe) id: string,
@@ -85,6 +90,7 @@ export class InquilinosController {
 
   @Get(':id/usuarios')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission(['usuarios_plaza.listar', 'inquilinos.listar'])
   @ApiOperation({
     summary:
       'Listar usuarios asociados al inquilino (T-059-bis, pestaña "Usuarios" del detalle).',
@@ -99,6 +105,7 @@ export class InquilinosController {
 
   @Patch(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('inquilinos.editar')
   @ApiOperation({ summary: 'Editar inquilino (solo contacto y dirección).' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -113,6 +120,7 @@ export class InquilinosController {
 
   @Delete(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('inquilinos.deshabilitar')
   @HttpCode(204)
   @ApiOperation({ summary: 'Desactivar inquilino (soft delete; 409 si tiene contrato vigente).' })
   async remove(

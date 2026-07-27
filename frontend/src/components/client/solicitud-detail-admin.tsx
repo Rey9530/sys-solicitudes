@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tabs } from '@/components/client/tabs';
 import { AdjuntoUploader } from '@/components/client/adjunto-uploader';
+import { Can } from '@/components/client/can';
 import {
   Dialog,
   DialogContent,
@@ -302,18 +303,20 @@ export function SolicitudDetailAdmin({
                         value={comentario}
                         onChange={(e) => setComentario(e.target.value)}
                       />
-                      <Button
-                        disabled={pending || !comentario.trim()}
-                        onClick={() =>
-                          void run(async () => {
-                            const r = await comentarAdminAction(solicitud.id, { cuerpo: comentario });
-                            if (r.ok) setComentario('');
-                            return r;
-                          }, 'Comentario agregado')
-                        }
-                      >
-                        Comentar
-                      </Button>
+                      <Can permiso="solicitudes.comentar">
+                        <Button
+                          disabled={pending || !comentario.trim()}
+                          onClick={() =>
+                            void run(async () => {
+                              const r = await comentarAdminAction(solicitud.id, { cuerpo: comentario });
+                              if (r.ok) setComentario('');
+                              return r;
+                            }, 'Comentario agregado')
+                          }
+                        >
+                          Comentar
+                        </Button>
+                      </Can>
                     </div>
                   </div>
                 ),
@@ -373,34 +376,44 @@ export function SolicitudDetailAdmin({
 
             <div className="action-stack">
               {estado === 'enviada' && (
-                <Button
-                  size="block"
-                  disabled={pending}
-                  onClick={() => void run(() => tomarAction(solicitud.id), 'Tomada: en revisión')}
-                >
-                  Tomar
-                </Button>
+                <Can permiso="solicitudes.tomar">
+                  <Button
+                    size="block"
+                    disabled={pending}
+                    onClick={() => void run(() => tomarAction(solicitud.id), 'Tomada: en revisión')}
+                  >
+                    Tomar
+                  </Button>
+                </Can>
               )}
               {estado === 'asignado' && soyAsignado && (
-                <Button
-                  size="block"
-                  disabled={pending}
-                  onClick={() => void run(() => tomarAction(solicitud.id), 'En revisión')}
-                >
-                  Tomar (revisar)
-                </Button>
+                <Can permiso="solicitudes.tomar">
+                  <Button
+                    size="block"
+                    disabled={pending}
+                    onClick={() => void run(() => tomarAction(solicitud.id), 'En revisión')}
+                  >
+                    Tomar (revisar)
+                  </Button>
+                </Can>
               )}
               {estado === 'en_revision' && soyAsignado && !soyCreador && (
                 <>
-                  <Button variant="success" size="block" disabled={pending} onClick={() => setModal('aprobar')}>
-                    Aprobar
-                  </Button>
-                  <Button variant="danger" size="block" disabled={pending} onClick={() => setModal('rechazar')}>
-                    Rechazar
-                  </Button>
-                  <Button variant="secondary" size="block" disabled={pending} onClick={() => setModal('subsanar')}>
-                    Pedir subsanación
-                  </Button>
+                  <Can permiso="solicitudes.aprobar">
+                    <Button variant="success" size="block" disabled={pending} onClick={() => setModal('aprobar')}>
+                      Aprobar
+                    </Button>
+                  </Can>
+                  <Can permiso="solicitudes.rechazar">
+                    <Button variant="danger" size="block" disabled={pending} onClick={() => setModal('rechazar')}>
+                      Rechazar
+                    </Button>
+                  </Can>
+                  <Can permiso="solicitudes.pedir_subsanacion">
+                    <Button variant="secondary" size="block" disabled={pending} onClick={() => setModal('subsanar')}>
+                      Pedir subsanación
+                    </Button>
+                  </Can>
                 </>
               )}
               {esTerminal && (
@@ -418,24 +431,26 @@ export function SolicitudDetailAdmin({
                 <span className="kv-v inline-flex items-center gap-2">
                   <PrioridadBadge prioridad={solicitud.prioridad} />
                   {!esTerminal && (
-                    <select
-                      className="select"
-                      style={{ height: 30, width: 'auto', padding: '0 26px 0 8px', fontSize: 12 }}
-                      value={solicitud.prioridad}
-                      disabled={pending}
-                      onChange={(e) =>
-                        void run(
-                          () => cambiarPrioridadAction(solicitud.id, e.target.value),
-                          `Prioridad ${e.target.value}`,
-                        )
-                      }
-                    >
-                      {['A', 'B', 'C', 'D', 'F'].map((p) => (
-                        <option key={p} value={p}>
-                          {p}
-                        </option>
-                      ))}
-                    </select>
+                    <Can permiso="solicitudes.cambiar_prioridad">
+                      <select
+                        className="select"
+                        style={{ height: 30, width: 'auto', padding: '0 26px 0 8px', fontSize: 12 }}
+                        value={solicitud.prioridad}
+                        disabled={pending}
+                        onChange={(e) =>
+                          void run(
+                            () => cambiarPrioridadAction(solicitud.id, e.target.value),
+                            `Prioridad ${e.target.value}`,
+                          )
+                        }
+                      >
+                        {['A', 'B', 'C', 'D', 'F'].map((p) => (
+                          <option key={p} value={p}>
+                            {p}
+                          </option>
+                        ))}
+                      </select>
+                    </Can>
                   )}
                 </span>
               </div>
@@ -457,36 +472,42 @@ export function SolicitudDetailAdmin({
                 <div className="action-stack">
                   {(estado === 'asignado' || estado === 'en_revision') && (
                     <>
-                      <Button variant="secondary" size="block" disabled={pending} onClick={() => setModal('reasignar')}>
-                        Reasignar
-                      </Button>
-                      {soyAsignado && (
-                        <Button
-                          variant="ghost"
-                          size="block"
-                          disabled={pending}
-                          onClick={() => {
-                            const motivo = prompt('Motivo (opcional):') ?? undefined;
-                            void run(() => liberarAction(solicitud.id, motivo), 'Liberada: volvió a la cola');
-                          }}
-                        >
-                          Liberar
+                      <Can permiso="solicitudes.reasignar">
+                        <Button variant="secondary" size="block" disabled={pending} onClick={() => setModal('reasignar')}>
+                          Reasignar
                         </Button>
+                      </Can>
+                      {soyAsignado && (
+                        <Can permiso="solicitudes.liberar">
+                          <Button
+                            variant="ghost"
+                            size="block"
+                            disabled={pending}
+                            onClick={() => {
+                              const motivo = prompt('Motivo (opcional):') ?? undefined;
+                              void run(() => liberarAction(solicitud.id, motivo), 'Liberada: volvió a la cola');
+                            }}
+                          >
+                            Liberar
+                          </Button>
+                        </Can>
                       )}
                     </>
                   )}
                   {!esTerminal && (
-                    <Button
-                      variant="danger"
-                      size="block"
-                      disabled={pending}
-                      onClick={() => {
-                        const motivo = prompt('Motivo de cancelación:') ?? undefined;
-                        void run(() => cancelarAdminAction(solicitud.id, motivo), 'Cancelada');
-                      }}
-                    >
-                      Cancelar solicitud
-                    </Button>
+                    <Can permiso="solicitudes.cancelar">
+                      <Button
+                        variant="danger"
+                        size="block"
+                        disabled={pending}
+                        onClick={() => {
+                          const motivo = prompt('Motivo de cancelación:') ?? undefined;
+                          void run(() => cancelarAdminAction(solicitud.id, motivo), 'Cancelada');
+                        }}
+                      >
+                        Cancelar solicitud
+                      </Button>
+                    </Can>
                   )}
                 </div>
               </>

@@ -38,6 +38,7 @@ import {
   type UploadedFile as UploadedFileType,
 } from '../adjuntos/adjuntos.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
@@ -58,6 +59,9 @@ export class SolicitudesController {
 
   @Get('duplicados')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  // T-RBAC-1: heurística accesible desde ambos lados. Inquilino la usa
+  // mientras redacta; admin_plaza la usa desde la bandeja.
+  @RequirePermission(['solicitudes.bandeja.ver', 'solicitudes.detalle.ver'])
   @ApiOperation({ summary: 'Heurística de duplicados: mismo local+tipo en 30 días (T-090).' })
   duplicados(
     @Query(new ZodValidationPipe(DuplicadosQuerySchema)) query: DuplicadosQuery,
@@ -70,6 +74,9 @@ export class SolicitudesController {
 
   @Post()
   @Roles('inquilino')
+  // T-RBAC-1: inquilino no tiene permisos granulares en esta fase;
+  // el gating fino aplica solo a admin_plaza. El @Roles('inquilino')
+  // ya bloquea al resto. Dejamos el guard sin metadata → pasa.
   @ApiOperation({ summary: 'Crear solicitud en borrador (prioridad heredada, código SOL-).' })
   create(
     @Body(new ZodValidationPipe(CreateSolicitudSchema)) body: CreateSolicitudInput,
@@ -83,6 +90,7 @@ export class SolicitudesController {
 
   @Get()
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('solicitudes.bandeja.ver')
   @ApiOperation({ summary: 'Listar solicitudes (inquilino: solo las suyas).' })
   findAll(
     @Query(new ZodValidationPipe(ListSolicitudesQuerySchema)) query: ListSolicitudesQuery,
@@ -93,6 +101,7 @@ export class SolicitudesController {
 
   @Get(':id')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('solicitudes.detalle.ver')
   @ApiOperation({ summary: 'Detalle + adjuntos + comentarios + historial.' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.findOne(id, user);
@@ -133,6 +142,7 @@ export class SolicitudesController {
 
   @Post(':id/cancelar')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('solicitudes.cancelar')
   @ApiOperation({ summary: 'Cancelar cualquier estado no terminal (sin email).' })
   cancelar(
     @Param('id', ParseUUIDPipe) id: string,
@@ -178,6 +188,7 @@ export class SolicitudesController {
 
   @Patch(':id/prioridad')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.cambiar_prioridad')
   @ApiOperation({ summary: 'Cambiar prioridad (no en borrador ni terminales).' })
   prioridad(
     @Param('id', ParseUUIDPipe) id: string,
@@ -194,6 +205,7 @@ export class SolicitudesController {
 
   @Post(':id/comentarios')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('solicitudes.comentar')
   @ApiOperation({ summary: 'Agregar comentario (decision/subsanacion: solo admin).' })
   addComentario(
     @Param('id', ParseUUIDPipe) id: string,
@@ -208,6 +220,7 @@ export class SolicitudesController {
 
   @Get(':id/comentarios')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('solicitudes.detalle.ver')
   @ApiOperation({ summary: 'Thread de comentarios (created_at ASC).' })
   listComentarios(
     @Param('id', ParseUUIDPipe) id: string,
@@ -218,6 +231,7 @@ export class SolicitudesController {
 
   @Get(':id/historial')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('solicitudes.detalle.ver')
   @ApiOperation({ summary: 'Historial append-only (created_at ASC).' })
   listHistorial(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.listHistorial(id, user);
@@ -227,6 +241,7 @@ export class SolicitudesController {
 
   @Post(':id/adjuntos')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('solicitudes.adjuntos.subir')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: ADJUNTO_HARD_LIMIT_BYTES } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Subir adjunto (MIME/tamaño por plaza; máx 10 por solicitud).' })
@@ -255,6 +270,7 @@ export class SolicitudesController {
 
   @Get(':id/adjuntos')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission(['solicitudes.adjuntos.descargar', 'solicitudes.detalle.ver'])
   @ApiOperation({ summary: 'Listar adjuntos vivos de la solicitud.' })
   listAdjuntos(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.adjuntos.listSolicitudAdjuntos(id, user);

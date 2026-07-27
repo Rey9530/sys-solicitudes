@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import Script from 'next/script';
 import { Toaster } from 'sonner';
+import { Providers } from './providers';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -35,10 +37,16 @@ export default function RootLayout({
           rel="stylesheet"
           href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap"
         />
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <Script
+          id="theme-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
       </head>
       <body className="min-h-screen">
-        <div id="app-root">{children}</div>
+        <div id="app-root">
+          <Providers>{children}</Providers>
+        </div>
         <Toaster richColors position="top-right" />
       </body>
     </html>

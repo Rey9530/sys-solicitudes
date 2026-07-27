@@ -2,6 +2,7 @@ import { Controller, Get, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { ListAuditoriaQuerySchema, type ListAuditoriaQuery } from '@app/contracts';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuditoriaService } from './auditoria.service';
@@ -20,6 +21,7 @@ export class AuditoriaController {
 
   @Get()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('auditoria.ver')
   @ApiOperation({ summary: 'Log de auditoría con filtros (acción/entidad/usuario/fechas).' })
   findAll(
     @Query(new ZodValidationPipe(ListAuditoriaQuerySchema)) query: ListAuditoriaQuery,

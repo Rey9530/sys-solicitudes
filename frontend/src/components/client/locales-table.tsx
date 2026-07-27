@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LocalEstadoBadge } from '@/components/estado-badge';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
 
 export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
@@ -78,14 +79,16 @@ export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
                 <LocalEstadoBadge estado={l.estado} />
               </TableCell>
               <TableCell className="actions">
-                <Button
-                  variant="danger"
-                  size="sm"
-                  disabled={pendingId === l.id}
-                  onClick={() => onDelete(l)}
-                >
-                  {pendingId === l.id ? 'Desactivando…' : 'Desactivar'}
-                </Button>
+                <Can permiso="locales.deshabilitar">
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    disabled={pendingId === l.id}
+                    onClick={() => onDelete(l)}
+                  >
+                    {pendingId === l.id ? 'Desactivando…' : 'Desactivar'}
+                  </Button>
+                </Can>
               </TableCell>
             </TableRow>
           ))}

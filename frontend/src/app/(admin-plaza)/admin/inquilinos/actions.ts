@@ -10,27 +10,47 @@ import {
   type UpdateInquilinoInput,
   type UpdateUsuarioInput,
 } from '@app/contracts';
-import { auth } from '@/auth';
-import { apiFetch } from '@/lib/api';
+import { ForbiddenError, assertAnyCan } from '@/lib/server/assert-can';
+import { apiFetch, errorFromResponse } from '@/lib/api';
 
-async function assertAdminPlaza(): Promise<void> {
-  const session = await auth();
-  const rol = session?.user?.rol;
-  console.log('assertAdminPlaza: user rol:', rol);
-  if (rol !== 'admin_plaza' && rol !== 'superadmin') {
-    throw new Error('Forbidden');
-  }
-}
+/**
+ * T-RBAC-1 · Server Actions de Inquilinos.
+ *
+ * Cada acción valida el permiso granular con `assertAnyCan(...)` ANTES de
+ * llamar al backend. La defensa real vive en el `PermissionsGuard` global
+ * del backend; este helper es solo UX para evitar round-trips innecesarios
+ * y emitir mensajes claros cuando el toast del cliente muestra el 403.
+ */
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * Helper que envuelve `assertAnyCan` y traduce el `ForbiddenError` al
+ * `ActionResult` estándar. Lanza cualquier otro error (red, validación,
+ * etc.) para que el caller decida.
+ */
+async function ensureCan(
+  permisos: string[],
+): Promise<{ ok: false; error: string } | null> {
+  try {
+    await assertAnyCan(permisos);
+    return null;
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: err.message };
+    }
+    throw err;
+  }
+}
+
 async function errorFrom(res: Response, fallback: string): Promise<string> {
-  const err = (await res.json().catch(() => ({}))) as { message?: string; detail?: string };
-  return err.message ?? err.detail ?? fallback;
+  // Wrapper: delega en errorFromResponse para tener logging + code/requestId en consola.
+  return errorFromResponse(res, fallback, 'legacy');
 }
 
 export async function createInquilinoAction(input: CreateInquilinoInput): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['inquilinos.crear']);
+  if (denied) return denied;
   const parsed = CreateInquilinoSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch('/inquilinos', {
@@ -46,7 +66,8 @@ export async function updateInquilinoAction(
   id: string,
   input: UpdateInquilinoInput,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['inquilinos.editar']);
+  if (denied) return denied;
   const parsed = UpdateInquilinoSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch(`/inquilinos/${id}`, {
@@ -62,7 +83,8 @@ export async function updateInquilinoAction(
 }
 
 export async function deleteInquilinoAction(id: string): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['inquilinos.deshabilitar']);
+  if (denied) return denied;
   const res = await apiFetch(`/inquilinos/${id}`, { method: 'DELETE' });
   if (!res.ok) {
     return { ok: false, error: await errorFrom(res, 'No se pudo desactivar el inquilino.') };
@@ -86,7 +108,8 @@ export async function altaUsuarioInquilinoAction(input: {
   email: string;
   nombre: string;
 }): Promise<AltaUsuarioResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['inquilinos.alta_usuario']);
+  if (denied) return denied;
   // Password temporal que cumple la política (mayúscula + minúscula + dígito).
   const passwordTemporal = `Tmp${randomBytes(9).toString('base64url')}1a`;
   const res = await apiFetch('/usuarios', {
@@ -111,7 +134,8 @@ export async function altaUsuarioInquilinoAction(input: {
 export async function disableUsuarioInquilinoAction(
   usuarioId: string,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['inquilinos.deshabilitar_usuario']);
+  if (denied) return denied;
   const res = await apiFetch(`/usuarios/${usuarioId}`, { method: 'DELETE' });
   if (!res.ok) return { ok: false, error: await errorFrom(res, 'No se pudo deshabilitar el usuario.') };
   return { ok: true };
@@ -121,7 +145,8 @@ export async function disableUsuarioInquilinoAction(
 export async function reactivateUsuarioInquilinoAction(
   usuarioId: string,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['inquilinos.reactivar_usuario']);
+  if (denied) return denied;
   const res = await apiFetch(`/usuarios/${usuarioId}/reactivate`, { method: 'POST' });
   if (!res.ok) return { ok: false, error: await errorFrom(res, 'No se pudo reactivar el usuario.') };
   return { ok: true };
@@ -131,7 +156,8 @@ export async function reactivateUsuarioInquilinoAction(
 export async function adminResetUsuarioPasswordAction(
   usuarioId: string,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['inquilinos.resetear_clave']);
+  if (denied) return denied;
   const res = await apiFetch(`/usuarios/${usuarioId}/reset-password`, { method: 'POST' });
   if (!res.ok) {
     return {
@@ -142,12 +168,19 @@ export async function adminResetUsuarioPasswordAction(
   return { ok: true };
 }
 
-/** Edita nombre y teléfono de un usuario. */
+/**
+ * Edita nombre y teléfono de un usuario inquilino.
+ *
+ * Nota: el catálogo no tiene `inquilinos.editar_usuario` específico; usamos
+ * `inquilinos.editar` como permiso paraguas (la operación afecta datos del
+ * inquilino o de su usuario asociado).
+ */
 export async function updateUsuarioInquilinoAction(
   usuarioId: string,
   input: UpdateUsuarioInput,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['inquilinos.editar']);
+  if (denied) return denied;
   const parsed = UpdateUsuarioSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch(`/usuarios/${usuarioId}`, {

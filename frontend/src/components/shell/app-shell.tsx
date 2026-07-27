@@ -14,6 +14,12 @@ interface AppShellProps {
   /** Solo superadmin: lista de plazas y selección actual para el selector. */
   plazas?: PlazaLite[];
   selectedPlazaId?: string | null;
+  /**
+   * T-RBAC-1 · Permisos efectivos del usuario actual. Lo pasa el Server
+   * Component layout y la sidebar lo usa para filtrar items por permiso
+   * granular. Ver `frontend/src/lib/can.ts` para las reglas.
+   */
+  permisos?: readonly string[];
   children: React.ReactNode;
 }
 
@@ -24,7 +30,15 @@ const COLLAPSE_KEY = 'sidebar-collapsed';
  * (colapsado/persistido y drawer móvil). Los datos llegan ya resueltos por el
  * layout servidor; aquí solo vive la interacción (decisión BFF del proyecto).
  */
-export function AppShell({ role, user, plaza, plazas, selectedPlazaId, children }: AppShellProps) {
+export function AppShell({
+  role,
+  user,
+  plaza,
+  plazas,
+  selectedPlazaId,
+  permisos,
+  children,
+}: AppShellProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -60,6 +74,7 @@ export function AppShell({ role, user, plaza, plazas, selectedPlazaId, children 
         role={role}
         user={user}
         plazaName={plaza?.nombreComercial ?? null}
+        permisos={permisos}
         onNavigate={() => setMobileOpen(false)}
       />
       <div className="main-col">

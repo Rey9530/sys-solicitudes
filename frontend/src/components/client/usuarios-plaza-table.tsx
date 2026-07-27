@@ -26,6 +26,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { EditarUsuarioPlazaDialog } from '@/components/client/editar-usuario-plaza-dialog';
 import { DeshabilitarUsuarioPlazaDialog } from '@/components/client/deshabilitar-usuario-plaza-dialog';
+import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
 
 type UsuarioRow = UsuarioOutput & {
@@ -167,40 +168,48 @@ export function UsuariosPlazaTable({
                 </TableCell>
                 <TableCell className="actions">
                   {inactivo ? (
-                    <Button
-                      variant="success"
-                      size="sm"
-                      disabled={pendingId === u.id}
-                      onClick={() => onReactivate(u)}
-                    >
-                      <Power />
-                      {pendingId === u.id ? 'Reactivando…' : 'Reactivar'}
-                    </Button>
-                  ) : (
-                    <div className="inline-flex items-center gap-1">
-                      <EditarUsuarioPlazaDialog
-                        usuarioId={u.id}
-                        nombreInicial={u.nombre}
-                        telefonoInicial={u.telefono}
-                        email={u.email}
-                        rolStaffIdInicial={u.rolStaffId}
-                        rolesStaff={rolesStaff}
-                      />
+                    <Can permiso="usuarios_plaza.reactivar">
                       <Button
-                        variant="outline"
+                        variant="success"
                         size="sm"
                         disabled={pendingId === u.id}
-                        onClick={() => onReset(u)}
+                        onClick={() => onReactivate(u)}
                       >
-                        <KeyRound />
-                        {pendingId === u.id ? 'Enviando…' : 'Resetear clave'}
+                        <Power />
+                        {pendingId === u.id ? 'Reactivando…' : 'Reactivar'}
                       </Button>
-                      <DeshabilitarUsuarioPlazaDialog
-                        usuarioId={u.id}
-                        nombre={u.nombre}
-                        email={u.email}
-                        onDisabled={() => router.refresh()}
-                      />
+                    </Can>
+                  ) : (
+                    <div className="inline-flex items-center gap-1">
+                      <Can permiso="usuarios_plaza.editar">
+                        <EditarUsuarioPlazaDialog
+                          usuarioId={u.id}
+                          nombreInicial={u.nombre}
+                          telefonoInicial={u.telefono}
+                          email={u.email}
+                          rolStaffIdInicial={u.rolStaffId}
+                          rolesStaff={rolesStaff}
+                        />
+                      </Can>
+                      <Can permiso="usuarios_plaza.resetear_clave">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={pendingId === u.id}
+                          onClick={() => onReset(u)}
+                        >
+                          <KeyRound />
+                          {pendingId === u.id ? 'Enviando…' : 'Resetear clave'}
+                        </Button>
+                      </Can>
+                      <Can permiso="usuarios_plaza.deshabilitar">
+                        <DeshabilitarUsuarioPlazaDialog
+                          usuarioId={u.id}
+                          nombre={u.nombre}
+                          email={u.email}
+                          onDisabled={() => router.refresh()}
+                        />
+                      </Can>
                     </div>
                   )}
                 </TableCell>

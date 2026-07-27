@@ -32,6 +32,7 @@ import {
 } from '@app/contracts';
 import { CategoriasService, type RequestMeta } from './categorias.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
@@ -46,6 +47,7 @@ export class CategoriasController {
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('categorias.crear')
   @ApiOperation({ summary: 'Crear categoría de la plaza.' })
   createCategoria(
     @Body(new ZodValidationPipe(CreateCategoriaSchema)) body: CreateCategoriaInput,
@@ -59,6 +61,7 @@ export class CategoriasController {
 
   @Get()
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('categorias.listar')
   @ApiOperation({ summary: 'Listar categorías (inquilino: solo activas).' })
   findAllCategorias(
     @Query(new ZodValidationPipe(ListCategoriasQuerySchema)) query: ListCategoriasQuery,
@@ -69,6 +72,7 @@ export class CategoriasController {
 
   @Get(':id')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('categorias.listar')
   @ApiOperation({ summary: 'Detalle de categoría + subcategorías activas.' })
   findOneCategoria(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.findOneCategoria(id, user);
@@ -76,6 +80,7 @@ export class CategoriasController {
 
   @Patch(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('categorias.editar')
   @ApiOperation({ summary: 'Editar categoría (desactivar exige sin subcategorías activas).' })
   updateCategoria(
     @Param('id', ParseUUIDPipe) id: string,
@@ -90,6 +95,7 @@ export class CategoriasController {
 
   @Delete(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('categorias.deshabilitar')
   @ApiOperation({ summary: 'Desactivar categoría (soft delete vía activo=false).' })
   deleteCategoria(
     @Param('id', ParseUUIDPipe) id: string,
@@ -105,6 +111,7 @@ export class CategoriasController {
 
   @Post(':id/subcategorias')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('subcategorias.crear')
   @ApiOperation({ summary: 'Crear subcategoría (1 responsable + 0..5 supervisores, SC-6).' })
   createSubcategoria(
     @Param('id', ParseUUIDPipe) categoriaId: string,
@@ -124,6 +131,9 @@ export class CategoriasController {
 
   @Get(':id/subcategorias')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  // El catálogo no tiene `subcategorias.listar` propio; reusamos
+  // `categorias.listar` para mantener gating consistente.
+  @RequirePermission('categorias.listar')
   @ApiOperation({ summary: 'Listar subcategorías de la categoría (inquilino: solo activas).' })
   findAllSubcategorias(
     @Param('id', ParseUUIDPipe) categoriaId: string,
@@ -135,6 +145,7 @@ export class CategoriasController {
 
   @Get(':id/subcategorias/:subId')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('categorias.listar')
   @ApiOperation({ summary: 'Detalle de subcategoría + responsable + supervisores.' })
   findOneSubcategoria(
     @Param('id', ParseUUIDPipe) categoriaId: string,
@@ -146,6 +157,7 @@ export class CategoriasController {
 
   @Patch(':id/subcategorias/:subId')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('subcategorias.editar')
   @ApiOperation({ summary: 'Editar subcategoría (nombre, descripción, prioridad, activo).' })
   updateSubcategoria(
     @Param('id', ParseUUIDPipe) categoriaId: string,
@@ -167,6 +179,7 @@ export class CategoriasController {
 
   @Delete(':id/subcategorias/:subId')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('subcategorias.deshabilitar')
   @ApiOperation({ summary: 'Desactivar subcategoría (soft delete vía activo=false).' })
   deleteSubcategoria(
     @Param('id', ParseUUIDPipe) categoriaId: string,
@@ -188,6 +201,7 @@ export class CategoriasController {
 
   @Patch(':id/subcategorias/:subId/responsable')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('subcategorias.asignar_responsable')
   @ApiOperation({
     summary: 'Cambiar responsable de la subcategoría (SC-6; reasignación masiva en módulo 07).',
   })
@@ -214,6 +228,7 @@ export class CategoriasController {
 
   @Post(':id/subcategorias/:subId/supervisores')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('subcategorias.gestionar_supervisores')
   @ApiOperation({ summary: 'Agregar supervisor (máx 5, idempotente).' })
   addSupervisor(
     @Param('id', ParseUUIDPipe) categoriaId: string,
@@ -236,6 +251,7 @@ export class CategoriasController {
 
   @Delete(':id/subcategorias/:subId/supervisores/:usuarioId')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('subcategorias.gestionar_supervisores')
   @ApiOperation({ summary: 'Quitar supervisor de la subcategoría.' })
   removeSupervisor(
     @Param('id', ParseUUIDPipe) categoriaId: string,

@@ -298,7 +298,7 @@ export class AuthService {
     usuario: TokenUser & { nombre: string },
     meta: RequestMeta,
   ): Promise<TokenResponse> {
-    const accessToken = await this.tokens.issueAccessToken(usuario);
+    const { token: accessToken, permisos } = await this.tokens.issueAccessToken(usuario);
     const refreshToken = await this.tokens.issueRefreshToken(usuario.id, meta);
     return {
       accessToken,
@@ -312,6 +312,7 @@ export class AuthService {
         plazaId: usuario.plaza_id,
         rolStaffId: usuario.rol_staff_id,
         inquilinoId: usuario.inquilino_id,
+        permisos,
       },
     };
   }

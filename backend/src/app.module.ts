@@ -24,6 +24,7 @@ import { ReportesModule } from './modules/reportes/reportes.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AuditoriaModule } from './modules/auditoria/auditoria.module';
 import { HealthModule } from './modules/health/health.module';
+import { PermisosModule } from './modules/permisos/permisos.module';
 
 import { PrismaModule } from './prisma/prisma.module';
 import { StorageModule } from './common/storage/storage.module';
@@ -34,6 +35,7 @@ import { AuditoriaInterceptor } from './common/interceptors/auditoria.intercepto
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PlazaScopeGuard } from './modules/auth/guards/plaza-scope.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { PermissionsGuard } from './common/guards/permissions.guard';
 
 @Module({
   imports: [
@@ -102,15 +104,18 @@ import { RolesGuard } from './common/guards/roles.guard';
     AdminModule,
     AuditoriaModule,
     HealthModule,
+    PermisosModule,
   ],
   providers: [
-    // El orden define la ejecución del triple guard (T-023..T-025):
+    // El orden define la ejecución de los guards (T-023..T-025 + T-RBAC-1):
     //   1) Throttler (rate limit)  2) JwtAuthGuard  3) PlazaScopeGuard  4) RolesGuard
-    // Los endpoints @Public() se saltan los guards 2-4.
+    //   5) PermissionsGuard (T-RBAC-1: gating fino por permiso granular)
+    // Los endpoints @Public() se saltan los guards 2-5.
     { provide: APP_GUARD, useClass: ThrottlerBehindProxyGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: PlazaScopeGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: PermissionsGuard },
     // T-150: captura automática de auditoría (opt-in vía @Auditable).
     { provide: APP_INTERCEPTOR, useClass: AuditoriaInterceptor },
   ],

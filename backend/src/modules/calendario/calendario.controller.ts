@@ -23,6 +23,7 @@ import {
   type MoverEventoFechas,
 } from '@app/contracts';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { CalendarioService } from './calendario.service';
@@ -37,6 +38,7 @@ export class CalendarioController {
 
   @Get()
   @Roles('admin_plaza', 'inquilino')
+  @RequirePermission('calendario.ver')
   @ApiOperation({ summary: 'Feed de eventos para FullCalendar (T-129).' })
   feed(
     @Query(new ZodValidationPipe(CalendarioQuerySchema)) query: CalendarioQuery,
@@ -47,6 +49,7 @@ export class CalendarioController {
 
   @Get('export.ics')
   @Roles('admin_plaza', 'inquilino')
+  @RequirePermission('calendario.exportar_ics')
   @ApiOperation({ summary: 'Exportar calendario en formato iCalendar (T-130).' })
   async exportIcs(
     @Query(new ZodValidationPipe(IcsQuerySchema)) query: IcsQuery,
@@ -63,6 +66,7 @@ export class CalendarioController {
 
   @Get('choques')
   @Roles('admin_plaza', 'inquilino')
+  @RequirePermission('calendario.choques.ver')
   @ApiOperation({ summary: 'Pares de eventos que se solapan en el mismo local (T-131).' })
   choques(
     @Query(new ZodValidationPipe(ChoquesQuerySchema)) query: ChoquesQuery,
@@ -73,6 +77,7 @@ export class CalendarioController {
 
   @Patch('eventos/:id/fechas')
   @Roles('admin_plaza')
+  @RequirePermission('calendario.mover_evento')
   @ApiOperation({ summary: 'Mover un evento aprobado (drag-and-drop del admin).' })
   moverEvento(
     @Param('id', new ParseUUIDPipe()) id: string,

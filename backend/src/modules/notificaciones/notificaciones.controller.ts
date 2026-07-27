@@ -21,6 +21,7 @@ import {
 } from '@app/contracts';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { NotificacionesService, type RequestMeta } from './notificaciones.service';
@@ -77,6 +78,7 @@ export class NotificacionesController {
   @Get('unsubscribes')
   @ApiBearerAuth()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('notificaciones.gestionar_desuscripciones')
   @ApiOperation({ summary: 'Listar desuscripciones de la plaza (T-125).' })
   listUnsubscribes(
     @Query(new ZodValidationPipe(ListUnsubscribesQuerySchema)) query: ListUnsubscribesQuery,
@@ -88,6 +90,7 @@ export class NotificacionesController {
   @Delete('unsubscribes/:id')
   @ApiBearerAuth()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('notificaciones.gestionar_desuscripciones')
   @HttpCode(204)
   @ApiOperation({ summary: 'Resetear una desuscripción (vuelve a recibir esa plantilla).' })
   async deleteUnsubscribe(
@@ -105,6 +108,7 @@ export class NotificacionesController {
   @Get()
   @ApiBearerAuth()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('notificaciones.ver_log')
   @ApiOperation({ summary: 'Log de emails (admin_plaza: su plaza; superadmin: todas).' })
   findAll(
     @Query(new ZodValidationPipe(ListEmailLogQuerySchema)) query: ListEmailLogQuery,
@@ -116,6 +120,7 @@ export class NotificacionesController {
   @Get(':id/preview')
   @ApiBearerAuth()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('notificaciones.ver_preview')
   @ApiOperation({ summary: 'HTML renderizado del email (modal "Ver contenido").' })
   preview(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.preview(id, user);
@@ -124,6 +129,7 @@ export class NotificacionesController {
   @Post(':id/reintentar')
   @ApiBearerAuth()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('notificaciones.reintentar')
   @ApiOperation({ summary: 'Reintento manual de un email fallido (lo retoma el worker).' })
   reintentar(
     @Param('id', new ParseUUIDPipe()) id: string,

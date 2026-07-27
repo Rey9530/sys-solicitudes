@@ -111,6 +111,12 @@ export const DOMAIN_ERRORS = {
   FILTROS_INVALIDOS: d(400, 'Solicitud inválida', 'Los filtros del reporte no son válidos.'),
   RANGO_EXCEDIDO: d(413, 'Rango demasiado grande', 'El rango máximo de exportación es 12 meses.'),
   REPORTE_DEMASIADO_GRANDE: d(413, 'Reporte demasiado grande', 'El reporte supera el máximo de filas; reduce el rango.'),
+
+  // ── Permisos / RBAC granular (módulo 14, T-RBAC-1) ─────────────────────────
+  PERMISSION_DENIED: d(403, 'Acceso denegado', 'No tienes permiso para realizar esta acción.'),
+  ROL_SISTEMA_NO_MODIFICABLE: d(409, 'Conflicto con el estado actual', 'El rol del sistema es inamovible; no se puede modificar su código, nombre ni plaza.'),
+  ROL_SISTEMA_NO_BORRABLE: d(409, 'Conflicto con el estado actual', 'El rol del sistema es inamovible; no se puede eliminar.'),
+  PERMISO_NO_ENCONTRADO: d(404, 'Recurso no encontrado', 'El permiso no existe en el catálogo.'),
 } satisfies Record<string, DomainErrorDef>;
 
 export type DomainErrorCode = keyof typeof DOMAIN_ERRORS;

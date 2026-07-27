@@ -17,6 +17,7 @@ import {
   type ReporteEntidad,
 } from '@app/contracts';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ReportesService } from './reportes.service';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
@@ -33,6 +34,7 @@ export class ReportesController {
 
   @Get('kpis')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('reportes.kpis.ver')
   @ApiOperation({ summary: 'KPIs del dashboard (T-141); superadmin: agregado global.' })
   kpis(@CurrentUser() user: AuthenticatedUser) {
     return this.service.kpis(user);
@@ -40,6 +42,7 @@ export class ReportesController {
 
   @Get('dashboard')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('reportes.dashboard.ver')
   @ApiOperation({ summary: 'Datos de gráficos del dashboard (T-143).' })
   dashboard(@CurrentUser() user: AuthenticatedUser) {
     return this.service.dashboardCharts(user);
@@ -47,6 +50,7 @@ export class ReportesController {
 
   @Get('locales/:id/export.pdf')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('reportes.ficha_local_pdf')
   @ApiOperation({ summary: 'Ficha PDF de un local: detalle + contratos + solicitudes (T-140).' })
   async localDetallePdf(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -59,6 +63,7 @@ export class ReportesController {
 
   @Get('inquilinos/:id/export.pdf')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('reportes.ficha_inquilino_pdf')
   @ApiOperation({ summary: 'Ficha PDF de un inquilino (T-140).' })
   async inquilinoDetallePdf(
     @Param('id', new ParseUUIDPipe()) id: string,
@@ -71,6 +76,7 @@ export class ReportesController {
 
   @Get('solicitudes/:id/permiso.pdf')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission(['reportes.ficha_local_pdf', 'solicitudes.detalle.ver'])
   @ApiOperation({
     summary: 'PDF "Permiso de Trabajos" de una solicitud; inquilino solo la suya.',
   })
@@ -85,6 +91,7 @@ export class ReportesController {
 
   @Get(':entidad/preview')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('reportes.preview')
   @ApiOperation({ summary: 'Primeros 10 registros del reporte (T-144, sin descarga).' })
   preview(
     @Param('entidad') entidadRaw: string,
@@ -97,6 +104,7 @@ export class ReportesController {
 
   @Get(':entidad/export.csv')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('reportes.exportar_csv')
   @ApiOperation({ summary: 'Export CSV inline con BOM UTF-8 (T-138).' })
   async exportCsv(
     @Param('entidad') entidadRaw: string,
@@ -115,6 +123,7 @@ export class ReportesController {
 
   @Get(':entidad/export.xlsx')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('reportes.exportar_xlsx')
   @ApiOperation({ summary: 'Export XLSX vía jsreport (T-139).' })
   async exportXlsx(
     @Param('entidad') entidadRaw: string,
@@ -134,6 +143,7 @@ export class ReportesController {
 
   @Get(':entidad/export.pdf')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('reportes.exportar_pdf')
   @ApiOperation({ summary: 'Export PDF vía jsreport (T-140).' })
   async exportPdf(
     @Param('entidad') entidadRaw: string,

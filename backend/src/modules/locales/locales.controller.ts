@@ -32,6 +32,7 @@ import {
 import { LocalesService, type RequestMeta } from './locales.service';
 import { AdjuntosService, type UploadedFile as UploadedFileType } from '../adjuntos/adjuntos.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
@@ -49,6 +50,7 @@ export class LocalesController {
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('locales.crear')
   @ApiOperation({ summary: 'Crear local (estado inicial: disponible).' })
   create(
     @Body(new ZodValidationPipe(CreateLocalSchema)) body: CreateLocalInput,
@@ -62,6 +64,7 @@ export class LocalesController {
 
   @Get()
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('locales.listar')
   @ApiOperation({ summary: 'Listar locales (inquilino: solo los suyos con contrato vigente).' })
   findAll(
     @Query(new ZodValidationPipe(ListLocalesQuerySchema)) query: ListLocalesQuery,
@@ -72,6 +75,7 @@ export class LocalesController {
 
   @Get(':id')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  @RequirePermission('locales.listar')
   @ApiOperation({ summary: 'Detalle de local + contrato vigente + histórico.' })
   findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.findOne(id, user);
@@ -79,6 +83,7 @@ export class LocalesController {
 
   @Get(':id/contratos')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('contratos.listar')
   @ApiOperation({ summary: 'Historial de contratos del local (T-061).' })
   findContratos(
     @Param('id', ParseUUIDPipe) id: string,
@@ -91,6 +96,7 @@ export class LocalesController {
 
   @Patch(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('locales.editar')
   @ApiOperation({ summary: 'Editar local (estado con reglas RI-2).' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -105,6 +111,7 @@ export class LocalesController {
 
   @Post(':id/fuera-de-servicio')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('locales.fuera_de_servicio')
   @ApiOperation({
     summary: 'Baja a fuera_de_servicio con rechazo masivo opcional de solicitudes (T-108).',
   })
@@ -127,6 +134,7 @@ export class LocalesController {
 
   @Delete(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('locales.deshabilitar')
   @HttpCode(204)
   @ApiOperation({ summary: 'Desactivar local (soft delete; 409 si tiene contrato vigente).' })
   async remove(
@@ -143,6 +151,7 @@ export class LocalesController {
 
   @Post(':id/adjuntos')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('locales.adjuntos.subir')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: ADJUNTO_HARD_LIMIT_BYTES } }))
   @ApiConsumes('multipart/form-data')
   @ApiOperation({ summary: 'Subir plano/foto de local (PNG/JPEG/WEBP).' })
@@ -166,6 +175,7 @@ export class LocalesController {
 
   @Get(':id/adjuntos')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('locales.adjuntos.descargar')
   @ApiOperation({ summary: 'Listar adjuntos vivos del local.' })
   listAdjuntos(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.adjuntos.listLocalAdjuntos(id, user);

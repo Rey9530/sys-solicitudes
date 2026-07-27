@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
 
 export function CategoriasTable({ categorias }: { categorias: CategoriaOutput[] }) {
@@ -76,14 +77,16 @@ export function CategoriasTable({ categorias }: { categorias: CategoriaOutput[] 
                     Subcategorías
                   </Link>
                   {c.activo && (
-                    <Button
-                      variant="danger"
-                      size="sm"
-                      disabled={pendingId === c.id}
-                      onClick={() => onDelete(c)}
-                    >
-                      Desactivar
-                    </Button>
+                    <Can permiso="categorias.deshabilitar">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        disabled={pendingId === c.id}
+                        onClick={() => onDelete(c)}
+                      >
+                        Desactivar
+                      </Button>
+                    </Can>
                   )}
                 </div>
               </TableCell>

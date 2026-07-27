@@ -78,6 +78,11 @@ export const TokenResponseSchema = z.object({
     plazaId: z.string().nullable(),
     rolStaffId: z.string().nullable(),
     inquilinoId: z.string().nullable(),
+    /**
+     * T-RBAC-1: códigos de permisos efectivos del usuario. `['*']` para
+     * superadmin. Lista vacía para inquilino en v1.
+     */
+    permisos: z.array(z.string()),
   }),
 });
 export type TokenResponse = z.infer<typeof TokenResponseSchema>;

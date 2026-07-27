@@ -24,6 +24,7 @@ import {
 } from '@app/contracts';
 import { UsuariosService, type RequestMeta } from './usuarios.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
@@ -33,6 +34,13 @@ import type { AuthenticatedUser } from '../auth/types/jwt-payload';
  * Endpoints adicionales T-059-bis para gestión desde la pestaña "Usuarios"
  * del detalle de inquilino: PATCH (nombre/teléfono), DELETE (soft delete),
  * POST :id/reset-password (admin dispara reset por email), POST :id/reactivate.
+ *
+ * T-RBAC-1 · Gating fino: este controller sirve a DOS flujos (admin_plaza
+ * opera usuarios `admin_plaza` con permisos `usuarios_plaza.*`; admin_plaza
+ * opera usuarios `inquilino` con permisos `inquilinos.*`). Se aplica OR
+ * entre permisos equivalentes para cubrir ambos contextos sin filtrar
+ * por rol del target en el guard global (esa validación fina queda en el
+ * service cuando hay reglas RN-AU-* adicionales).
  */
 @ApiTags('usuarios')
 @ApiBearerAuth()
@@ -42,6 +50,7 @@ export class UsuariosController {
 
   @Get()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission(['usuarios_plaza.listar', 'inquilinos.listar'])
   @ApiOperation({ summary: 'Listar usuarios de la plaza (mínimo de T-034, para selectores).' })
   findAll(
     @Query(new ZodValidationPipe(ListUsuariosQuerySchema)) query: ListUsuariosQuery,
@@ -52,6 +61,7 @@ export class UsuariosController {
 
   @Post()
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission(['usuarios_plaza.crear', 'inquilinos.alta_usuario'])
   @ApiOperation({ summary: 'Crear usuario de plaza (alta rápida de inquilino, T-059).' })
   create(
     @Body(new ZodValidationPipe(CreateUsuarioSchema)) body: CreateUsuarioInput,
@@ -65,6 +75,7 @@ export class UsuariosController {
 
   @Patch(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission(['usuarios_plaza.editar', 'inquilinos.editar'])
   @ApiOperation({
     summary: 'Editar nombre/teléfono de un usuario (T-059-bis, vista por inquilino).',
   })
@@ -81,6 +92,7 @@ export class UsuariosController {
 
   @Get(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission(['usuarios_plaza.listar', 'inquilinos.listar'])
   @ApiOperation({
     summary:
       'Detalle de un usuario de la plaza (incluye rol_staff para badges en el FE).',
@@ -94,6 +106,7 @@ export class UsuariosController {
 
   @Delete(':id')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission(['usuarios_plaza.deshabilitar', 'inquilinos.deshabilitar_usuario'])
   @HttpCode(204)
   @ApiOperation({
     summary:
@@ -114,6 +127,7 @@ export class UsuariosController {
 
   @Post(':id/reset-password')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission(['usuarios_plaza.resetear_clave', 'inquilinos.resetear_clave'])
   @HttpCode(200)
   @ApiOperation({
     summary:
@@ -136,6 +150,7 @@ export class UsuariosController {
 
   @Post(':id/reactivate')
   @Roles('admin_plaza', 'superadmin')
+  @RequirePermission(['usuarios_plaza.reactivar', 'inquilinos.reactivar_usuario'])
   @ApiOperation({
     summary: 'Reactivar usuario (revierte soft delete; T-059-bis, solo rol inquilino).',
   })
@@ -151,6 +166,9 @@ export class UsuariosController {
 
   @Post(':id/reset-email-invalido')
   @Roles('admin_plaza', 'superadmin')
+  // No hay permiso dedicado en el catálogo; usamos OR entre los dos contextos
+  // que pueden disparar la operación (gestión de usuarios en general).
+  @RequirePermission(['usuarios_plaza.editar', 'inquilinos.editar'])
   @ApiOperation({ summary: 'Resetear email_invalido tras corregir la dirección (T-124).' })
   resetEmailInvalido(
     @Param('id', new ParseUUIDPipe()) id: string,

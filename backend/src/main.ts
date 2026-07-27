@@ -5,6 +5,7 @@ import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter';
 import { setupRequestContext } from './common/middleware/request-id.middleware';
 import { buildHelmet } from './common/security/helmet.config';
 
@@ -45,8 +46,15 @@ async function bootstrap() {
     }),
   );
 
-  // Filtros de excepciones
-  app.useGlobalFilters(new AllExceptionsFilter(), new HttpExceptionFilter());
+  // Filtros de excepciones. Orden importante: NestJS evalúa el primer @Catch que
+  // coincida. PrismaExceptionFilter captura PrismaClientKnownRequestError/ValidationError
+  // con códigos de dominio legibles; AllExceptionsFilter captura el resto (incluyendo
+  // HttpException no formateadas); HttpExceptionFilter re-formatea HttpExceptions genéricas.
+  app.useGlobalFilters(
+    new PrismaExceptionFilter(),
+    new AllExceptionsFilter(),
+    new HttpExceptionFilter(),
+  );
 
   // Swagger / OpenAPI
   const config = new DocumentBuilder()

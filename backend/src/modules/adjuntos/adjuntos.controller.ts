@@ -11,6 +11,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdjuntosService } from './adjuntos.service';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { RequirePermission } from '../../common/decorators/require-permission.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
@@ -27,6 +28,14 @@ export class AdjuntosController {
 
   @Get(':id/download')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  // T-RBAC-1: download se permite a quien pueda ver el recurso. Aplicamos
+  // el set de permisos de adjuntos-descarga de TODOS los recursos, en OR.
+  // El service valida que el usuario tenga acceso al recurso padre (defense).
+  @RequirePermission([
+    'solicitudes.adjuntos.descargar',
+    'locales.adjuntos.descargar',
+    'contratos.adjuntos.descargar',
+  ])
   @ApiOperation({ summary: 'URL pre-firmada de descarga (15 min).' })
   download(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.service.download(id, user);
@@ -34,6 +43,12 @@ export class AdjuntosController {
 
   @Delete(':id')
   @Roles('admin_plaza', 'superadmin', 'inquilino')
+  // T-RBAC-1: idem download para eliminar adjunto.
+  @RequirePermission([
+    'solicitudes.adjuntos.eliminar',
+    'locales.adjuntos.eliminar',
+    'contratos.adjuntos.eliminar',
+  ])
   @HttpCode(204)
   @ApiOperation({ summary: 'Eliminar adjunto (cuarentena + soft delete; solo uploader o admin).' })
   async remove(

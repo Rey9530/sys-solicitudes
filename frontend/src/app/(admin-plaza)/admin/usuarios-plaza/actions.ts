@@ -13,22 +13,42 @@ import {
   type UpdateRolStaffInput,
   type UpdateUsuarioInput,
 } from '@app/contracts';
-import { auth } from '@/auth';
-import { apiFetch } from '@/lib/api';
+import { ForbiddenError, assertAnyCan } from '@/lib/server/assert-can';
+import { apiFetch, errorFromResponse } from '@/lib/api';
 
-async function assertAdminPlaza(): Promise<void> {
-  const session = await auth();
-  const rol = session?.user?.rol;
-  if (rol !== 'admin_plaza' && rol !== 'superadmin') {
-    throw new Error('Forbidden');
-  }
-}
+/**
+ * T-RBAC-1 · Server Actions de Usuarios-Plaza (staff) y Roles de Staff.
+ *
+ * Cada acción valida el permiso granular con `assertAnyCan(...)` ANTES de
+ * llamar al backend. La defensa real vive en el `PermissionsGuard` global
+ * del backend; este helper es solo UX para evitar round-trips innecesarios
+ * y emitir mensajes claros cuando el toast del cliente muestra el 403.
+ */
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
+/**
+ * Helper que envuelve `assertAnyCan` y traduce el `ForbiddenError` al
+ * `ActionResult` estándar. Lanza cualquier otro error (red, validación,
+ * etc.) para que el caller decida.
+ */
+async function ensureCan(
+  permisos: string[],
+): Promise<{ ok: false; error: string } | null> {
+  try {
+    await assertAnyCan(permisos);
+    return null;
+  } catch (err) {
+    if (err instanceof ForbiddenError) {
+      return { ok: false, error: err.message };
+    }
+    throw err;
+  }
+}
+
 async function errorFrom(res: Response, fallback: string): Promise<string> {
-  const err = (await res.json().catch(() => ({}))) as { message?: string; detail?: string };
-  return err.message ?? err.detail ?? fallback;
+  // Wrapper: delega en errorFromResponse para tener logging + code/requestId en consola.
+  return errorFromResponse(res, fallback, 'legacy');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,7 +70,8 @@ export async function createUsuarioPlazaAction(input: {
   telefono?: string;
   rolStaffId: string;
 }): Promise<AltaUsuarioPlazaResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['usuarios_plaza.crear']);
+  if (denied) return denied;
   const dto: CreateUsuarioInput = {
     email: input.email,
     nombre: input.nombre,
@@ -77,7 +98,8 @@ export async function updateUsuarioPlazaAction(
   id: string,
   input: UpdateUsuarioInput,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['usuarios_plaza.editar']);
+  if (denied) return denied;
   const parsed = UpdateUsuarioSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch(`/usuarios/${id}`, {
@@ -100,7 +122,8 @@ export async function disableUsuarioPlazaAction(
   id: string,
   motivo: string,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['usuarios_plaza.deshabilitar']);
+  if (denied) return denied;
   const parsed = DisableUsuarioSchema.safeParse({ motivo });
   if (!parsed.success) {
     return { ok: false, error: 'Indica el motivo (mínimo 3 caracteres).' };
@@ -118,7 +141,8 @@ export async function disableUsuarioPlazaAction(
 
 /** Reactiva un admin_plaza previamente deshabilitado. */
 export async function reactivateUsuarioPlazaAction(id: string): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['usuarios_plaza.reactivar']);
+  if (denied) return denied;
   const res = await apiFetch(`/usuarios/${id}/reactivate`, { method: 'POST' });
   if (!res.ok) {
     return { ok: false, error: await errorFrom(res, 'No se pudo reactivar el usuario.') };
@@ -129,7 +153,8 @@ export async function reactivateUsuarioPlazaAction(id: string): Promise<ActionRe
 
 /** Dispara un reset de contraseña por email al usuario (T-029 vía T-059-bis). */
 export async function adminResetUsuarioPlazaAction(usuarioId: string): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['usuarios_plaza.resetear_clave']);
+  if (denied) return denied;
   const res = await apiFetch(`/usuarios/${usuarioId}/reset-password`, { method: 'POST' });
   if (!res.ok) {
     return {
@@ -144,7 +169,8 @@ export async function adminResetUsuarioPlazaAction(usuarioId: string): Promise<A
 // Roles de staff (T-035)
 
 export async function createRolStaffAction(input: CreateRolStaffInput): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['roles_staff.crear']);
+  if (denied) return denied;
   const parsed = CreateRolStaffSchema.safeParse(input);
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
@@ -165,7 +191,8 @@ export async function updateRolStaffAction(
   id: string,
   input: UpdateRolStaffInput,
 ): Promise<ActionResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['roles_staff.editar']);
+  if (denied) return denied;
   const parsed = UpdateRolStaffSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
   const res = await apiFetch(`/roles-staff/${id}`, {
@@ -189,7 +216,8 @@ export type DisableRolStaffResult =
  * visible en la UI).
  */
 export async function disableRolStaffAction(id: string): Promise<DisableRolStaffResult> {
-  await assertAdminPlaza();
+  const denied = await ensureCan(['roles_staff.deshabilitar']);
+  if (denied) return denied;
   const res = await apiFetch(`/roles-staff/${id}`, { method: 'DELETE' });
   if (!res.ok) {
     return { ok: false, error: await errorFrom(res, 'No se pudo desactivar el rol de staff.') };
