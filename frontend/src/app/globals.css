@@ -519,7 +519,7 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 0 28px;
+    padding: 0 clamp(12px, 4vw, 28px);
     background: color-mix(in srgb, var(--surface) 80%, transparent);
     backdrop-filter: saturate(180%) blur(14px);
     -webkit-backdrop-filter: saturate(180%) blur(14px);
@@ -578,6 +578,13 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+  }
+  .top-toggle,
+  .top-tenant,
+  .top-avatar,
+  .top-right > .icon-btn {
+    flex-shrink: 0;
   }
   .top-tenant {
     display: flex;
@@ -640,6 +647,7 @@
     background: linear-gradient(150deg, var(--primary-300), var(--primary));
     color: #fff;
     font-weight: 600;
+    flex-shrink: 0;
     font-size: 13px;
     flex: none;
   }
@@ -673,6 +681,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     color: var(--text);
+    max-width: min(180px, 32vw);
   }
   .top-tenant .tt-chev {
     width: 15px;

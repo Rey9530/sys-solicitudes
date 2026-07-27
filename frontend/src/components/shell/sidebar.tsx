@@ -76,6 +76,7 @@ export function Sidebar({ role, user, plazaName, permisos, onNavigate }: Sidebar
                   href={item.href}
                   className={active ? 'nav-link active' : 'nav-link'}
                   onClick={onNavigate}
+                  {...(active ? { 'aria-current': 'page' as const } : {})}
                 >
                   <Icon />
                   <span>{item.label}</span>

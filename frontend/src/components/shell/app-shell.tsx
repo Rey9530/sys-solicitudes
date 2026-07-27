@@ -56,6 +56,22 @@ export function AppShell({
     }
   }, []);
 
+  // Cierre del drawer móvil con Escape y bloqueo de scroll del body.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setMobileOpen(false);
+      }
+    };
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [mobileOpen]);
+
   function toggleCollapse() {
     setCollapsed((prev) => {
       const next = !prev;
