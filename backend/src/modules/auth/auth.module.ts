@@ -38,6 +38,18 @@ import { durationToSeconds } from '../../common/utils/duration';
   providers: [AuthService, JwtStrategy, PasswordService, TokenService, MailerService],
   // PasswordService y MailerService se reutilizan en plazas (T-040: crear
   // admin_plaza inicial con hash + email de bienvenida).
-  exports: [AuthService, JwtModule, PassportModule, PasswordService, MailerService],
+  // T-RBAC-1 (fix login 502, 2026-08-07): TokenService se exporta porque
+  // `PermissionsGuard` (registrado como APP_GUARD global en AppModule) lo
+  // necesita para resolver permisos efectivos desde BD por request. APP_GUARD
+  // vive en el injector raíz, así que el provider tiene que ser accesible
+  // globalmente (vía exports).
+  exports: [
+    AuthService,
+    JwtModule,
+    PassportModule,
+    PasswordService,
+    MailerService,
+    TokenService,
+  ],
 })
 export class AuthModule {}
