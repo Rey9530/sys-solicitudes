@@ -29,12 +29,17 @@ export interface RequestMeta {
  *  - Refresh: UUID v4 opaco; en BD solo su SHA-256, TTL JWT_REFRESH_TTL (14d).
  * Detalles: PLANIFICACION/02 (T-020, T-026, T-027).
  *
- * T-RBAC-1: al emitir el access se resuelve el set de permisos efectivos del
- * usuario y se incluyen en el JWT (`permisos: string[]`). La resolución se hace
- * en BD con RLS (PrismaService.withTenant) cuando hay plaza, o vía admin
- * client (PrismaAdminService) cuando es superadmin. Los admin_plaza legacy sin
- * `rol_staff_id` reciben todos los permisos del catálogo (compatibilidad con
- * datos sembrados antes de T-RBAC-1).
+ * T-RBAC-1 (fix login 502, 2026-08-07): el accessToken YA NO incluye los
+ * permisos en su payload. Esto reduce ~1800 bytes del JWT firmado y, en
+ * consecuencia, del JWE cifrado por Auth.js (el accessToken vive dentro
+ * del JWT de NextAuth → del cookie cifrado → que se fragmentaba en varias
+ * cookies cuando superaba 3936 bytes, causando 502 Bad Gateway).
+ *
+ * Los permisos se resuelven SIEMPRE frescos desde BD cuando un endpoint
+ * protegido los necesita (ver `PermissionsGuard`). Si el admin_plaza perdió
+ * un permiso entre la emisión del JWT y la siguiente request, el guard lo
+ * rechaza en el momento — sin esperar al refresh del token. La seguridad
+ * queda más estricta que antes (antes: claim podía ir stale hasta el refresh).
  */
 @Injectable()
 export class TokenService {
@@ -65,6 +70,10 @@ export class TokenService {
    *  - admin_plaza con rol_staff_id → permisos asignados al rol_staff (vía pivote).
    *  - inquilino → `[]` (v1: RBAC solo Admin Plaza; el flujo de inquilino sigue
    *    gobernado por `@Roles('inquilino')`).
+   *
+   * Nota: este método resuelve SIEMPRE desde BD. La cache por request se
+   * hace en `PermissionsGuard` (no aquí, porque este servicio no es
+   * singleton de request).
    */
   async resolvePermisosEfectivos(user: TokenUser): Promise<string[]> {
     if (user.rol.codigo === 'superadmin') {
@@ -102,6 +111,11 @@ export class TokenService {
     return permisos.map((r) => r.permiso.codigo);
   }
 
+  /**
+   * Emite el access token SIN el claim `permisos` (ver nota T-RBAC-1 arriba).
+   * El método retorna también los permisos para que el controller los envíe
+   * en la respuesta de login (compatibilidad con clientes externos / tests).
+   */
   async issueAccessToken(user: TokenUser): Promise<{ token: string; permisos: string[] }> {
     const permisos = await this.resolvePermisosEfectivos(user);
     const payload: JwtPayload = {
@@ -111,7 +125,6 @@ export class TokenService {
       plazaId: user.plaza_id,
       rolStaffId: user.rol_staff_id,
       inquilinoId: user.inquilino_id,
-      permisos,
     };
     const token = await this.jwt.signAsync(payload);
     return { token, permisos };

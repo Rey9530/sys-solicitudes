@@ -3,6 +3,7 @@ import {
   ExecutionContext,
   ForbiddenException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
@@ -13,6 +14,7 @@ import {
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import type { RolGlobal } from '@app/contracts';
 import type { AuthenticatedUser } from '../../modules/auth/types/jwt-payload';
+import { TokenService } from '../../modules/auth/services/token.service';
 
 /**
  * T-RBAC-1: guard global de permisos granulares. Corre DESPUÉS de RolesGuard.
@@ -43,13 +45,26 @@ import type { AuthenticatedUser } from '../../modules/auth/types/jwt-payload';
  *
  * Errores: 403 con código RFC 7807 `PERMISSION_DENIED` y `meta.permisosRequeridos`.
  *
+ * (Fix login 502, 2026-08-07) El claim `permisos` ya NO viaja en el JWT
+ * (ver `JwtPayload`). El guard los resuelve vía `TokenService.resolvePermisosEfectivos`
+ * la primera vez que un endpoint protegido los necesita, y los cachea en
+ * `request.user.permisos` para que el resto de guards/decoradores del mismo
+ * request no repitan la consulta a BD. Coste: 1 SELECT por request a
+ * `rol_staff_permiso` JOIN `permiso` cuando hay gating fino (índices
+ * existentes ya cubren la consulta).
+ *
  * Detalles: PERMISOS_README.md, docs/07-arquitectura.md §7.4.
  */
 @Injectable()
 export class PermissionsGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  private readonly logger = new Logger(PermissionsGuard.name);
 
-  canActivate(context: ExecutionContext): boolean {
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly tokens: TokenService,
+  ) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     // 1) @Public() salta este guard (otros ya validaron JWT/Roles).
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
@@ -95,6 +110,31 @@ export class PermissionsGuard implements CanActivate {
       return true;
     }
 
+    // Hidratamos permisos la primera vez en este request (cache en
+    // `user.permisos`). Si ya están seteados (porque otro guard/decorador
+    // pasó antes), los reutilizamos.
+    if (user.permisos === undefined) {
+      try {
+        user.permisos = await this.tokens.resolvePermisosEfectivos({
+          id: user.sub,
+          email: user.email,
+          plaza_id: user.plazaId,
+          rol_staff_id: user.rolStaffId,
+          inquilino_id: user.inquilinoId,
+          rol: { codigo: user.rol },
+        });
+      } catch (err) {
+        // Si falla la BD, denegamos por defecto (fail-safe). El endpoint
+        // público no llega aquí (regla 3 ya pasó), así que la denegación es
+        // la respuesta correcta.
+        this.logger.error(
+          `No se pudieron resolver permisos del usuario ${user.sub}: ${String(err)}`,
+        );
+        this.deny(required, []);
+      }
+    }
+    const userPerms = user.permisos;
+
     // 5) Inquilino: en v1 no tiene permisos granulares propios
     // (RBAC solo Admin Plaza). Si el endpoint está marcado con
     // `@Roles('inquilino', ...)`, el dev lo expone a propósito y debe pasar
@@ -109,7 +149,7 @@ export class PermissionsGuard implements CanActivate {
       if (admiteInquilino) {
         return true;
       }
-      this.deny(required, user.permisos);
+      this.deny(required, userPerms);
     }
 
     // 6) Admin Plaza.
@@ -119,7 +159,6 @@ export class PermissionsGuard implements CanActivate {
         return true;
       }
       // 6b) Con rol_staff_id → chequear permisos efectivos.
-      const userPerms = user.permisos ?? [];
       const ok = required.some((p) => userPerms.includes(p));
       if (!ok) {
         this.deny(required, userPerms);
@@ -128,7 +167,7 @@ export class PermissionsGuard implements CanActivate {
     }
 
     // Cualquier otro rol no contemplado: denegado.
-    this.deny(required, user.permisos);
+    this.deny(required, userPerms);
   }
 
   private deny(required: string[], userPerms: string[] | undefined): never {
