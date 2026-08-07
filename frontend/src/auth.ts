@@ -13,9 +13,15 @@ import type { RolGlobal } from '@app/contracts';
  * Renovación: el callback `jwt` refresca el access token contra
  * `POST /api/v1/auth/refresh` cuando está por expirar (rotación, T-027).
  *
- * T-RBAC-1: persistimos `permisos: string[]` desde el `TokenResponse.user.permisos`
- * del backend y lo exponemos en `session.user.permisos` para que el frontend
- * pueda gating fino (helpers `can()`, `<Can>`, `assertCan()`).
+ * T-RBAC-1 (fix login 502, 2026-08-07): los permisos efectivos del usuario
+ * (`permisos: string[]`) NO se persisten en el JWT de NextAuth. Auth.js
+ * fragmenta el cookie en chunks de 3936 bytes cuando el JWE cifrado supera
+ * ese tamaño; un admin_plaza con ~64 permisos generaba un payload ≈6 KiB
+ * que se fragmentaba en `.0/.1/...` y provocaba 502 Bad Gateway en el login
+ * (sólo visible para admin_plaza porque superadmin/inquilino caben en 1 cookie).
+ * Los permisos se resuelven server-side contra el backend con
+ * `GET /api/v1/auth/me/permisos` (vía `frontend/src/lib/server/permisos.ts`,
+ * cacheado por request con React.cache), no via cookie.
  */
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -37,8 +43,6 @@ interface BackendLoginResponse {
     plazaId: string | null;
     rolStaffId: string | null;
     inquilinoId: string | null;
-    /** T-RBAC-1: permisos efectivos del usuario (wildcard `['*']` para superadmin). */
-    permisos: string[];
   };
 }
 
@@ -97,7 +101,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           plazaId: data.user.plazaId,
           rolStaffId: data.user.rolStaffId,
           inquilinoId: data.user.inquilinoId,
-          permisos: data.user.permisos,
           accessToken: data.accessToken,
           refreshToken: data.refreshToken,
           expiresIn: data.expiresIn,
@@ -119,7 +122,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.plazaId = user.plazaId;
         token.rolStaffId = user.rolStaffId;
         token.inquilinoId = user.inquilinoId;
-        token.permisos = user.permisos ?? [];
         return token;
       }
 
@@ -145,7 +147,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           plazaId: null,
           rolStaffId: null,
           inquilinoId: null,
-          permisos: [],
           accessToken: undefined,
           refreshToken: undefined,
           accessTokenExpires: 0,
@@ -155,8 +156,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       token.accessToken = refreshed.accessToken;
       token.refreshToken = refreshed.refreshToken;
       token.accessTokenExpires = Date.now() + refreshed.expiresIn * 1000;
-      // Actualizar permisos en refresh (pueden haber cambiado desde el último login).
-      token.permisos = refreshed.user.permisos ?? [];
       token.rol = refreshed.user.rol;
       token.plazaId = refreshed.user.plazaId;
       token.rolStaffId = refreshed.user.rolStaffId;
@@ -171,7 +170,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.plazaId = token.plazaId;
       session.user.rolStaffId = token.rolStaffId;
       session.user.inquilinoId = token.inquilinoId;
-      session.user.permisos = token.permisos ?? [];
       session.error = token.error;
       return session;
     },
@@ -184,8 +182,6 @@ declare module 'next-auth' {
     plazaId?: string | null;
     rolStaffId?: string | null;
     inquilinoId?: string | null;
-    /** T-RBAC-1: permisos efectivos al momento del login. */
-    permisos?: string[];
     accessToken?: string;
     refreshToken?: string;
     expiresIn?: number;
@@ -197,8 +193,6 @@ declare module 'next-auth' {
       plazaId?: string | null;
       rolStaffId?: string | null;
       inquilinoId?: string | null;
-      /** T-RBAC-1: permisos efectivos (pueden quedar desactualizados respecto al backend hasta el próximo refresh; el JWT del backend es la fuente de verdad). */
-      permisos?: string[];
     } & DefaultSession['user'];
     error?: string;
   }
@@ -213,8 +207,6 @@ declare module 'next-auth/jwt' {
     plazaId?: string | null;
     rolStaffId?: string | null;
     inquilinoId?: string | null;
-    /** T-RBAC-1: array de códigos de permiso efectivos. */
-    permisos?: string[];
     error?: string;
   }
 }

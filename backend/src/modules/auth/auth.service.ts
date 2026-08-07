@@ -293,6 +293,27 @@ export class AuthService {
     };
   }
 
+  /**
+   * T-RBAC-1 (fix login 502) · Permisos efectivos del usuario, resueltos
+   * SIEMPRE desde la BD (no desde el JWT, que puede haber quedado obsoleto
+   * tras una rotación de permisos). Misma lógica que
+   * `TokenService.resolvePermisosEfectivos`; el front lo llama desde
+   * `GET /api/v1/auth/me/permisos`.
+   *
+   * Endpoint llamado por el frontend con caché por request (React.cache):
+   * una sola consulta a BD por request renderizado en el servidor.
+   */
+  async permisosEfectivos(user: AuthenticatedUser): Promise<string[]> {
+    return this.tokens.resolvePermisosEfectivos({
+      id: user.sub,
+      email: user.email,
+      plaza_id: user.plazaId,
+      rol_staff_id: user.rolStaffId,
+      inquilino_id: user.inquilinoId,
+      rol: { codigo: user.rol },
+    });
+  }
+
   // ── Helpers ──────────────────────────────────────────────────────────────────
   private async buildTokenResponse(
     usuario: TokenUser & { nombre: string },

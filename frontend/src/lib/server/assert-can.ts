@@ -1,9 +1,9 @@
 import 'server-only';
 
 import { redirect } from 'next/navigation';
-import type { Session } from 'next-auth';
 import { auth } from '@/auth';
 import { can } from '@/lib/can';
+import { getPermisosEfectivos } from '@/lib/server/permisos';
 
 /**
  * T-RBAC-1 · Helper server-side para gating fino en Server Actions y
@@ -24,14 +24,13 @@ import { can } from '@/lib/can';
  *    legible. Los Server Actions de Next.js lo propagan al cliente y
  *    aparece en el toast (no es un redirect porque suele ser un
  *    flujo interactivo).
- *  - Si pasa → devuelve la sesión para que el caller acceda a
- *    `session.user.plazaId` u otros claims sin re-leer el cookie.
  *
- * NOTA: la verificación del JWT del backend (defensa en profundidad)
- * ocurre SIEMPRE en el endpoint del backend mediante `PermissionsGuard`
- * global. Este helper es solo UX — evita que el usuario vea opciones
- * para las que no tiene permiso o que un fetch directo desde el cliente
- * gaste un round-trip antes de ser rechazado.
+ * (Fix login 502, 2026-08-07) Los permisos ya no viven en el JWT de NextAuth
+ * (un admin_plaza con ~64 permisos generaba un JWE que Auth.js fragmentaba
+ * en varias cookies, provocando 502 Bad Gateway en el login). Se resuelven
+ * server-side con `getPermisosEfectivos()` (cacheado por request con
+ * `React.cache()`). La verificación de seguridad REAL ocurre SIEMPRE en el
+ * `PermissionsGuard` del backend; este helper es solo UX.
  */
 
 export class ForbiddenError extends Error {
@@ -45,15 +44,15 @@ export class ForbiddenError extends Error {
   }
 }
 
-export async function assertCan(permiso: string | string[]): Promise<Session> {
-  const session = (await auth()) as Session | null;
+export async function assertCan(permiso: string | string[]): Promise<void> {
+  const session = await auth();
   if (!session?.user) {
     redirect('/login');
   }
-  if (!can(session.user.permisos, permiso)) {
+  const permisos = await getPermisosEfectivos();
+  if (!can(permisos, permiso)) {
     throw new ForbiddenError(permiso);
   }
-  return session;
 }
 
 /**
@@ -62,13 +61,13 @@ export async function assertCan(permiso: string | string[]): Promise<Session> {
  * inicio. Lanza `ForbiddenError` solo si el usuario NO tiene NINGUNO
  * de los permisos del array.
  */
-export async function assertAnyCan(permisos: string[]): Promise<Session> {
-  const session = (await auth()) as Session | null;
+export async function assertAnyCan(permisos: string[]): Promise<void> {
+  const session = await auth();
   if (!session?.user) {
     redirect('/login');
   }
-  if (!can(session.user.permisos, permisos)) {
+  const userPermisos = await getPermisosEfectivos();
+  if (!can(userPermisos, permisos)) {
     throw new ForbiddenError(permisos);
   }
-  return session;
 }

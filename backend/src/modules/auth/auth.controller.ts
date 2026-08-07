@@ -137,6 +137,34 @@ export class AuthController {
     return this.authService.me(user);
   }
 
+  /**
+   * T-RBAC-1 · Permisos efectivos del usuario autenticado.
+   *
+   * El frontend NO los persiste en la cookie de sesión de NextAuth (el cookie
+   * cifrado se fragmenta y supera el límite de Auth.js cuando el usuario
+   * tiene asignados muchos permisos: ~64 permisos × ≈30 bytes ≈ 6 KiB > 4 KiB
+   * por cookie, fragmentación en `.0/.1/...` y 502 Bad Gateway en el login).
+   * Se resuelven server-side contra la BD cada vez que un Server Component los
+   * necesita, cacheados por request con `React.cache()` en el frontend.
+   *
+   * El backend ya trae los permisos en el JWT (`request.user.permisos`), pero
+   * pueden haber cambiado desde la emisión (rotación de permisos, asignación
+   * rápida de roles). Esta ruta SIEMPRE lee frescos del catálogo/pivote con
+   * la misma lógica que `TokenService.resolvePermisosEfectivos` (defensa en
+   * profundidad: si el JWT quedó obsoleto, la API nunca expone datos a los
+   * que el usuario ya no tiene acceso).
+   */
+  @Get('me/permisos')
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary:
+      'Permisos efectivos del usuario autenticado (wildcard ["*"] para superadmin).',
+  })
+  async misPermisos(@CurrentUser() user: AuthenticatedUser) {
+    const permisos = await this.authService.permisosEfectivos(user);
+    return { permisos };
+  }
+
   private meta(ip: string, userAgent: string | undefined): RequestMeta {
     return { ip: ip || null, userAgent: userAgent ?? null };
   }

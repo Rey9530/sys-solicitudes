@@ -1,15 +1,23 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { useSession } from 'next-auth/react';
 import { can } from '@/lib/can';
+import { usePermisos } from './permisos-provider';
 
 /**
  * T-RBAC-1 · Gating fino para Client Components.
  *
  * Wrapper declarativo que oculta (o muestra un fallback) los children según
- * los permisos del usuario actual. Lee los permisos desde `useSession()`
- * (no hay prop drilling y siempre están frescos al revalidar `router.refresh`).
+ * los permisos del usuario actual. Los permisos los toma del contexto
+ * `PermisosProvider` (seteado por el Server Component layout con
+ * `getPermisosEfectivos()`). Si NO está dentro del provider, `usePermisos()`
+ * devuelve `[]` → `can()` niega → el componente se oculta (denegación segura
+ * por defecto).
+ *
+ * No usamos `useSession()` aquí a propósito: los permisos NO están en la
+ * cookie de NextAuth (ver `frontend/src/auth.ts`) — el fetch del backend es
+ * la única fuente, y el Server Component layout es el único punto que puede
+ * resolverlos una sola vez por request.
  *
  * Reglas:
  *  - Wildcard `*` (superadmin) → siempre muestra.
@@ -30,23 +38,24 @@ import { can } from '@/lib/can';
  *   <Can permiso="auditoria.ver" fallback={<Tooltip>No tienes acceso</Tooltip>}>
  *     <AuditoriaLink />
  *   </Can>
- *
- * ⚠️ Convención del proyecto (S-ARQ-F): preferir siempre que se pueda pasar
- * los permisos como **prop desde el Server Component padre** en lugar de
- * `useSession()` para evitar hydration mismatch y un fetch adicional. Este
- * componente existe para Client Components que ya tienen sesión disponible
- * vía `SessionProvider` o donde es aceptable un re-render tras hidratación.
  */
 interface CanProps {
   /** Permiso o lista de permisos requeridos (OR). Acepta `'*'` para superadmin. */
   permiso: string | string[];
+  /**
+   * Override del contexto: pasar un array distinto de permisos. Útil cuando
+   * el componente necesita chequear con un set diferente (ej. permisos de un
+   * rol_staff concreto en la matriz de permisos). Si se omite, usa el
+   * `PermisosProvider` del layout.
+   */
+  permisos?: readonly string[] | undefined | null;
   /** Lo que se muestra cuando NO se cumple el permiso. Default: `null`. */
   fallback?: ReactNode;
   children: ReactNode;
 }
 
-export function Can({ permiso, fallback = null, children }: CanProps) {
-  const { data: session } = useSession();
-  const permisos = session?.user?.permisos;
+export function Can({ permiso, permisos: permisosProp, fallback = null, children }: CanProps) {
+  const permisosFromContext = usePermisos();
+  const permisos = permisosProp ?? permisosFromContext;
   return <>{can(permisos, permiso) ? children : fallback}</>;
 }
