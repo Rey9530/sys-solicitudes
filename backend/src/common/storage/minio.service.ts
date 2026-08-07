@@ -22,6 +22,15 @@ export class MinioService implements OnModuleInit {
   private readonly presignTtl: number;
   private readonly region: string;
 
+  /**
+   * Reescritura del host en URLs pre-firmadas. En producción, el cliente
+   * MinIO habla con `minio:9000` (red interna, sin TLS), pero el navegador
+   * del usuario debe alcanzar el bucket por `https://<MINIO_PUBLIC_ENDPOINT>`.
+   * Si está configurado, `presignedGetUrl` reemplaza el `host:port` interno
+   * por el público (manteniendo firma y query string intactos).
+   */
+  private readonly publicHost: string | null;
+
   /** Días de retención en `quarantine-{plazaId}` antes de la purga automática (S-Quarantine). */
   static readonly QUARANTINE_TTL_DAYS = 30;
 
@@ -38,11 +47,15 @@ export class MinioService implements OnModuleInit {
       secretKey: this.config.get<string>('MINIO_SECRET_KEY', 'minioadmin'),
       region: this.region,
     });
+    const publicEndpoint = this.config.get<string>('MINIO_PUBLIC_ENDPOINT', '').trim();
+    this.publicHost = publicEndpoint
+      ? `${this.config.get<string>('MINIO_PUBLIC_USE_SSL', 'true') === 'true' ? 'https' : 'http'}://${publicEndpoint}${this.config.get<string>('MINIO_PUBLIC_PORT', '443') && this.config.get<string>('MINIO_PUBLIC_PORT', '443') !== '443' && this.config.get<string>('MINIO_PUBLIC_PORT', '443') !== '80' ? ':' + this.config.get<string>('MINIO_PUBLIC_PORT', '443') : ''}`
+      : null;
   }
 
   onModuleInit(): void {
     this.logger.log(
-      `MinIO client inicializado (endpoint=${this.config.get<string>('MINIO_ENDPOINT', 'localhost')}:${this.config.get<string>('MINIO_PORT', '9000')}, ssl=${this.config.get<string>('MINIO_USE_SSL', 'false')}, presignTtl=${this.presignTtl}s)`,
+      `MinIO client inicializado (endpoint=${this.config.get<string>('MINIO_ENDPOINT', 'localhost')}:${this.config.get<string>('MINIO_PORT', '9000')}, ssl=${this.config.get<string>('MINIO_USE_SSL', 'false')}, presignTtl=${this.presignTtl}s, publicHost=${this.publicHost ?? '(mismo que interno)'})`,
     );
   }
 
@@ -176,9 +189,34 @@ export class MinioService implements OnModuleInit {
 
   /** URL pre-firmada de lectura (TTL por MINIO_PRESIGNED_URL_TTL, 15 min). */
   async presignedGetUrl(bucket: string, key: string): Promise<string> {
-    const url = await this.client.presignedGetObject(bucket, key, this.presignTtl);
-    this.logger.debug(`presignedGetUrl bucket=${bucket} key=${key} ttl=${this.presignTtl}s`);
+    const internalUrl = await this.client.presignedGetObject(bucket, key, this.presignTtl);
+    const url = this.rewritePresignedHost(internalUrl);
+    this.logger.debug(
+      `presignedGetUrl bucket=${bucket} key=${key} ttl=${this.presignTtl}s public=${this.publicHost ? 'yes' : 'no'}`,
+    );
     return url;
+  }
+
+  /**
+   * Si hay `MINIO_PUBLIC_ENDPOINT` configurado, reemplaza el `scheme://host:port`
+   * interno por el público. La firma SigV4 queda intacta (la firma es sobre el
+   * path + query, no sobre el host). Si no hay override, devuelve la URL tal cual.
+   */
+  private rewritePresignedHost(internalUrl: string): string {
+    if (!this.publicHost) return internalUrl;
+    try {
+      const u = new URL(internalUrl);
+      const pub = new URL(this.publicHost);
+      u.protocol = pub.protocol;
+      u.host = pub.host;
+      return u.toString();
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo reescribir la URL pre-firmada (${String(err)}); devolviendo original. ` +
+          `internal=${internalUrl} publicHost=${this.publicHost}`,
+      );
+      return internalUrl;
+    }
   }
 
   /**

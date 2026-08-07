@@ -32,7 +32,8 @@ class ApiEndpoints {
   static String solicitudCancelar(String id) => '/solicitudes/$id/cancelar';
   static String solicitudPausar(String id) => '/solicitudes/$id/pausar';
   static String solicitudReanudar(String id) => '/solicitudes/$id/reanudar';
-  static String solicitudComentarios(String id) => '/solicitudes/$id/comentarios';
+  static String solicitudComentarios(String id) =>
+      '/solicitudes/$id/comentarios';
   static String solicitudHistorial(String id) => '/solicitudes/$id/historial';
   static String solicitudAdjuntos(String id) => '/solicitudes/$id/adjuntos';
 
@@ -63,6 +64,6 @@ class ApiEndpoints {
 class ApiConfig {
   static const String baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:4000/api/v1',
+    defaultValue: 'http://10.0.2.2:3000',
   );
 }

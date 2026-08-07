@@ -109,7 +109,9 @@ services:
       - plazapp_net
 
   # ───────────────────────────────────────────────────────────────────────────
-  # MinIO · interno. Console (9001) opcional, NO publicar en prod real.
+  # MinIO · S3 API expuesta en loopback (NGINX del host la sirve en
+  # s3.paseovenecia.com.sv). Console (9001) NO se publica — para acceder
+  # puntualmente se usa túnel SSH (ver docs).
   minio:
     image: minio/minio:latest
     container_name: plazapp-minio
@@ -117,8 +119,15 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      # CORS para que el frontend en app.paseovenecia.com.sv pueda pedir
+      # archivos vía presigned URL al subdominio s3.paseovenecia.com.sv.
+      MINIO_API_CORS_ALLOW_ORIGIN: ${MINIO_CORS_ALLOW_ORIGIN}
     volumes:
       - miniodata:/data
+    # 9000 → 127.0.0.1 del host (loopback, NGINX lo alcanza; internet NO).
+    # 9001 → NO se publica. Acceso solo por túnel SSH del operador.
+    ports:
+      - "127.0.0.1:9000:9000"
     command: server /data --console-address ":9001"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
