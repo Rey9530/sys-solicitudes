@@ -23,7 +23,11 @@ const ESTADO_COLORES: Record<string, string> = {
   asignado: '#06b6d4',
   en_revision: '#f59e0b',
   requerida_subsanacion: '#f97316',
+  // T-091d-pausar: cian claro, distinguible del resto de activos.
+  pausada: '#22d3ee',
   aprobada: '#10b981',
+  // T-091e-cerrar: violeta, distinto del verde de aprobada (terminal positivo).
+  cerrada: '#8b5cf6',
   rechazada: '#ef4444',
   cancelada: '#6b7280',
 };

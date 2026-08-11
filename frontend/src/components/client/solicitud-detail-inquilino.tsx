@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { SolicitudDetailOutput } from '@app/contracts';
+import { esEstadoTerminal } from '@app/contracts';
 import {
   enviarSolicitudAction,
   cancelarSolicitudAction,
@@ -25,6 +26,7 @@ import {
   SolicitudEstadoBadge,
   PrioridadBadge,
   SOLICITUD_ESTADO_LABEL,
+  ResultadoCierreBadge,
 } from '@/components/estado-badge';
 import { formatDateInPlazaTz } from '@/lib/datetime';
 
@@ -64,6 +66,7 @@ const EVENTO_LABEL: Record<string, string> = {
   asignada: 'Auto-asignada',
   tomada: 'Tomada en revisión',
   aprobada: 'Aprobada',
+  cerrada: 'Cerrada',
   rechazada: 'Rechazada',
   subsanada: 'Subsanación solicitada',
   reasignada: 'Reasignada',
@@ -126,7 +129,11 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
   // está pausada — debe esperar a que el admin la reanude. Sigue pudiendo
   // comentar y adjuntar (no se bloquea aquí).
   const esPausada = estado === 'pausada';
-  const esTerminal = ['aprobada', 'rechazada', 'cancelada'].includes(estado);
+  // T-091e-cerrar: tras `cerrar` la solicitud solo es lectura para el inquilino.
+  // `aprobada` ya NO es terminal según la nueva semántica — pendiente de cierre
+  // por la administración, no se cancela.
+  const esTerminal = esEstadoTerminal(estado);
+  const esAprobadaPendienteCierre = estado === 'aprobada';
   const puedeAdjuntar = esBorrador || esSubsanacion;
 
   return (
@@ -386,7 +393,7 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
               <Button variant="secondary" size="block" disabled={pending} onClick={() => void onDuplicar()}>
                 Duplicar
               </Button>
-              {!esTerminal && !esPausada && (
+              {!esTerminal && !esPausada && !esAprobadaPendienteCierre && (
                 <Button
                   variant="danger"
                   size="block"
@@ -398,6 +405,28 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
                 >
                   Cancelar
                 </Button>
+              )}
+              {esAprobadaPendienteCierre && (
+                <p className="muted text-sm">
+                  Solicitud aprobada: pendiente de cierre por la administración. Te avisaremos cuando
+                  se registre el resultado.
+                </p>
+              )}
+              {estado === 'cerrada' && (
+                <div className="text-sm">
+                  <p className="muted">
+                    Solicitud cerrada
+                    {solicitud.cerradaAt ? ` el ${formatDateInPlazaTz(solicitud.cerradaAt)}` : ''}.
+                  </p>
+                  {solicitud.resultadoCierre && (
+                    <p style={{ marginTop: 6 }}>
+                      <ResultadoCierreBadge resultado={solicitud.resultadoCierre} />
+                    </p>
+                  )}
+                  {solicitud.cierreComentario && (
+                    <p style={{ marginTop: 6 }}>{solicitud.cierreComentario}</p>
+                  )}
+                </div>
               )}
             </div>
           </div>

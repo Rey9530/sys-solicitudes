@@ -43,6 +43,14 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplateDef> = {
     critico: true,
     unsubscribe: false,
   },
+  // T-091e-cerrar: la actividad terminó. Crítico como el resto de decisiones:
+  // el inquilino debe enterarse del resultado aunque tenga email_invalido.
+  'solicitud-cerrada': {
+    archivo: 'solicitud-cerrada',
+    subject: 'Solicitud {{solicitudCodigo}} cerrada · {{plaza.nombreComercial}}',
+    critico: true,
+    unsubscribe: false,
+  },
   'solicitud-rechazada': {
     archivo: 'solicitud-rechazada',
     subject: 'Solicitud {{solicitudCodigo}} rechazada · {{plaza.nombreComercial}}',

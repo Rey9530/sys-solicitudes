@@ -4,19 +4,25 @@ import type {
   solicitud as SolicitudModel,
   solicitud_estado,
   solicitud_historial_evento,
+  solicitud_resultado_cierre,
 } from '@prisma/client';
 import type { AuthenticatedUser } from '../../auth/types/jwt-payload';
 import { EmailService } from '../../notificaciones/email.service';
 
-/** Estados terminales (S-FS-A): no admiten más transiciones. */
-const ESTADOS_TERMINALES: solicitud_estado[] = ['aprobada', 'rechazada', 'cancelada'];
+/**
+ * Estados terminales (S-FS-A): no admiten más transiciones.
+ * ⚠️ T-091e-cerrar: `aprobada` SALIÓ de esta lista. Una solicitud aprobada
+ * está "autorizada, pendiente de ejecución" y todavía debe cerrarse.
+ */
+const ESTADOS_TERMINALES: solicitud_estado[] = ['cerrada', 'rechazada', 'cancelada'];
 
 /**
  * Tabla de transiciones válidas del flujo (docs/05 revisado por T-V03):
  *
  *   borrador ──enviar──▶ enviada ──autoAsignar(cron 15 min)──▶ asignado
  *   asignado ──tomar(solo asignado)──▶ en_revision
- *   en_revision ──aprobar/rechazar──▶ terminal
+ *   en_revision ──aprobar──▶ aprobada ──cerrar(solo asignado)──▶ cerrada
+ *   en_revision ──rechazar──▶ rechazada (terminal)
  *   en_revision ──pedirSubsanacion──▶ requerida_subsanacion
  *   requerida_subsanacion ──reenviar(inquilino)──▶ enviada
  *   asignado|en_revision ──liberar/reasignar──▶ enviada | (mismo estado)
@@ -25,12 +31,16 @@ const ESTADOS_TERMINALES: solicitud_estado[] = ['aprobada', 'rechazada', 'cancel
  *
  * ⚠️ T-V03: NO existe lock de 30 min ni `lock_expira_at`.
  * T-091d-pausar: `pausada` es reversible y congela el SLA.
+ * T-091e-cerrar: `aprobada` NO está en `cancelar.desde` — una vez autorizada
+ * la actividad ya no se cancela, se cierra con el resultado que corresponda
+ * (`no_realizado` cubre el caso de "al final no se hizo").
  */
 const TRANSICIONES: Record<string, { desde: solicitud_estado[]; hacia: solicitud_estado }> = {
   enviar: { desde: ['borrador'], hacia: 'enviada' },
   autoAsignar: { desde: ['enviada'], hacia: 'asignado' },
   tomar: { desde: ['asignado', 'enviada'], hacia: 'en_revision' },
   aprobar: { desde: ['en_revision'], hacia: 'aprobada' },
+  cerrar: { desde: ['aprobada'], hacia: 'cerrada' },
   rechazar: { desde: ['en_revision'], hacia: 'rechazada' },
   pedirSubsanacion: { desde: ['en_revision'], hacia: 'requerida_subsanacion' },
   reenviar: { desde: ['requerida_subsanacion'], hacia: 'enviada' },
@@ -44,8 +54,16 @@ const TRANSICIONES: Record<string, { desde: solicitud_estado[]; hacia: solicitud
   },
 };
 
-export interface HistorialParams {
-  solicitudId: string;
+/** Etiquetas legibles del resultado de cierre (T-091e-cerrar). Se usan para
+ *  construir el comentario del historial y como variable de email. */
+export const RESULTADO_CIERRE_LABEL: Record<solicitud_resultado_cierre, string> = {
+  exitoso: 'Cerrada con éxito',
+  parcial: 'Cerrada parcialmente',
+  fallido: 'Cerrada sin éxito',
+  no_realizado: 'No realizada',
+};
+
+export interface HistorialParams {  solicitudId: string;
   plazaId: string;
   usuarioId: string | null;
   evento: solicitud_historial_evento;
@@ -254,8 +272,58 @@ export class SolicitudStateService {
     return updated;
   }
 
-  /** T-095 (T7): `en_revision → rechazada`. Comentario OBLIGATORIO (Zod). */
-  async rechazar(
+  /**
+   * T-091e-cerrar: `aprobada → cerrada`. Da por finalizada la actividad y
+   * registra CÓMO terminó (`resultado_cierre`) más una nota de cierre.
+   *
+   * Reglas:
+   *  - Solo el `admin_asignado_id` (o superadmin) cierra — mismo criterio que
+   *    `aprobar`, para que quien autorizó sea quien confirma la ejecución.
+   *  - Si el resultado NO es `exitoso`, el comentario es obligatorio (el Zod
+   *    `CerrarSolicitudSchema` ya lo exige; esto es defensa en profundidad
+   *    para los callers internos que no pasan por el pipe).
+   *  - NO se toca `evento_calendario` ni el estado del local: la reversión de
+   *    `en_mantenimiento` la sigue haciendo el cron `mantenimiento-fin`.
+   */
+  async cerrar(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    actor: AuthenticatedUser,
+    resultado: solicitud_resultado_cierre,
+    comentario?: string,
+  ): Promise<SolicitudModel> {
+    this.assertTransicion(solicitud, 'cerrar');
+    this.assertEsAsignado(solicitud, actor);
+    const nota = comentario?.trim() || null;
+    if (resultado !== 'exitoso' && !nota) {
+      throw new BadRequestException({
+        code: 'CIERRE_COMENTARIO_REQUERIDO',
+        title: 'Solicitud inválida',
+        message: 'Un cierre que no es exitoso requiere un comentario que lo justifique.',
+      });
+    }
+    const updated = await tx.solicitud.update({
+      where: { id: solicitud.id },
+      data: {
+        estado: 'cerrada',
+        resultado_cierre: resultado,
+        cierre_comentario: nota,
+        cerrada_at: new Date(),
+      },
+    });
+    await this.insertarHistorial(tx, {
+      solicitudId: solicitud.id,
+      plazaId: solicitud.plaza_id,
+      usuarioId: actor.sub,
+      evento: 'cerrada',
+      estadoAnterior: solicitud.estado,
+      estadoNuevo: 'cerrada',
+      comentario: nota ? `${RESULTADO_CIERRE_LABEL[resultado]}: ${nota}` : RESULTADO_CIERRE_LABEL[resultado],
+    });
+    return updated;
+  }
+
+  /** T-095 (T7): `en_revision → rechazada`. Comentario OBLIGATORIO (Zod). */  async rechazar(
     tx: Prisma.TransactionClient,
     solicitud: SolicitudModel,
     actor: AuthenticatedUser,
@@ -505,7 +573,8 @@ export class SolicitudStateService {
     }
   }
 
-  /** Estados terminales: aprobada, rechazada, cancelada (S-FS-A). */
+  /** Estados terminales: cerrada, rechazada, cancelada (S-FS-A, T-091e-cerrar).
+   *  ⚠️ `aprobada` NO es terminal: falta cerrarla. */
   esTerminal(estado: solicitud_estado): boolean {
     return ESTADOS_TERMINALES.includes(estado);
   }

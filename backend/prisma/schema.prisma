@@ -559,9 +559,14 @@ model solicitud_tipo_config {
 ///   en_revision → aprobada | rechazada | requerida_subsanacion
 ///   requerida_subsanacion → enviada (reenvío, vuelve a la cola)
 ///   en_revision|asignado → pausada → en_revision (T-091d-pausar, reversible)
+///   aprobada → cerrada (T-091e-cerrar, cierre de la actividad)
 ///   * no terminal → cancelada
 /// `pausada` NO es terminal: el SLA queda congelado (sin semáforo) y la
 /// solicitud sigue visible en la bandeja con filtro explícito. Sin emails.
+/// ⚠️ T-091e-cerrar: `aprobada` DEJÓ DE SER TERMINAL. Significa "autorizada,
+/// pendiente de ejecución"; el terminal es `cerrada`. El SLA sigue congelado
+/// desde la aprobación (no hay SLA de ejecución). Terminales: cerrada,
+/// rechazada, cancelada.
 enum solicitud_estado {
   borrador
   enviada
@@ -570,8 +575,18 @@ enum solicitud_estado {
   requerida_subsanacion
   pausada
   aprobada
+  cerrada
   rechazada
   cancelada
+}
+
+/// Resultado del cierre de una solicitud aprobada (T-091e-cerrar). Cuando el
+/// resultado NO es `exitoso`, el comentario de cierre es obligatorio.
+enum solicitud_resultado_cierre {
+  exitoso
+  parcial
+  fallido
+  no_realizado
 }
 
 /// Tipos de solicitud (T-078, S-CamposTipo).
@@ -586,12 +601,14 @@ enum solicitud_tipo {
 /// (T-091b); `tomada` es el admin pasando a revisión (T-091c).
 /// T-091d-pausar: `pausada` y `reanudada` son nuevas para registrar el
 /// ciclo de pausa del estado `pausada`.
+/// T-091e-cerrar: `cerrada` registra el cierre de la actividad aprobada.
 enum solicitud_historial_evento {
   creada
   enviada
   asignada
   tomada
   aprobada
+  cerrada
   rechazada
   subsanada
   reasignada
@@ -650,6 +667,11 @@ model solicitud {
   enviada_at          DateTime?           @db.Timestamptz(6)
   asignada_at         DateTime?           @db.Timestamptz(6)
   decision_at         DateTime?           @db.Timestamptz(6)
+  // ── Cierre de la actividad (T-091e-cerrar) ────────────────────────────────
+  // Solo se rellenan al pasar de `aprobada` a `cerrada`.
+  resultado_cierre    solicitud_resultado_cierre?
+  cierre_comentario   String?
+  cerrada_at          DateTime?           @db.Timestamptz(6)
   created_at          DateTime            @default(now()) @db.Timestamptz(6)
   updated_at          DateTime            @updatedAt @db.Timestamptz(6)
 
@@ -672,6 +694,7 @@ model solicitud {
   @@index([plaza_id, fecha_evento_inicio])
   @@index([plaza_id, admin_asignado_id, estado])
   @@index([plaza_id, estado, enviada_at])
+  @@index([plaza_id, estado, decision_at])
   @@index([plaza_id, es_emergencia, created_at])
   @@map("solicitud")
 }

@@ -11,6 +11,7 @@ import {
   PausarSolicitudSchema,
   UpdatePrioridadSchema,
   CreateComentarioSchema,
+  CerrarSolicitudSchema,
 } from '@app/contracts';
 import { ForbiddenError, assertAnyCan } from '@/lib/server/assert-can';
 import { apiFetch, errorFromResponse } from '@/lib/api';
@@ -107,6 +108,31 @@ export async function aprobarAction(id: string, comentario?: string): Promise<Ac
   const parsed = AprobarSolicitudSchema.safeParse({ comentario: comentario || undefined });
   if (!parsed.success) return { ok: false, error: 'Comentario inválido' };
   return postAccion(id, 'aprobar', parsed.data, 'No se pudo aprobar.', 'solicitudes.aprobar');
+}
+
+/**
+ * T-091e-cerrar: cerrar una solicitud aprobada. Resultado de cierre obligatorio
+ * (exitoso/parcial/fallido/no_realizado). Comentario obligatorio cuando el
+ * resultado ≠ `exitoso`. Solo el admin asignado o superadmin puede cerrar.
+ */
+export async function cerrarAction(
+  id: string,
+  input: z.input<typeof CerrarSolicitudSchema>,
+): Promise<ActionResult> {
+  const denied = await ensureCan(['solicitudes.cerrar']);
+  if (denied) return denied;
+  const parsed = CerrarSolicitudSchema.safeParse(input);
+  if (!parsed.success) {
+    const first = parsed.error.issues[0]?.message ?? 'Datos inválidos';
+    return { ok: false, error: first };
+  }
+  return postAccion(
+    id,
+    'cerrar',
+    parsed.data,
+    'No se pudo cerrar la solicitud.',
+    'solicitudes.cerrar',
+  );
 }
 
 export async function rechazarAction(id: string, comentario: string): Promise<ActionResult> {

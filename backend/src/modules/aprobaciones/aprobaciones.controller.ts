@@ -13,6 +13,7 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   AprobarSolicitudSchema,
+  CerrarSolicitudSchema,
   RechazarSolicitudSchema,
   SubsanarSolicitudAdminSchema,
   ReasignarSolicitudSchema,
@@ -20,6 +21,7 @@ import {
   PausarSolicitudSchema,
   BandejaQuerySchema,
   type AprobarSolicitudInput,
+  type CerrarSolicitudInput,
   type RechazarSolicitudInput,
   type SubsanarSolicitudAdminInput,
   type ReasignarSolicitudInput,
@@ -155,6 +157,25 @@ export class AprobacionesController {
     @Headers('x-request-id') requestId: string | undefined,
   ) {
     return this.service.aprobar(id, body, user, this.meta(ip, userAgent, requestId));
+  }
+
+  @Post(':id/cerrar')
+  @Roles('admin_plaza', 'superadmin')
+  @RequirePermission('solicitudes.cerrar')
+  @ApiOperation({
+    summary:
+      'Cerrar (T-091e): aprobada→cerrada. Solo el admin asignado. ' +
+      'Comentario obligatorio si el resultado no es "exitoso".',
+  })
+  cerrar(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(CerrarSolicitudSchema)) body: CerrarSolicitudInput,
+    @CurrentUser() user: AuthenticatedUser,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+  ) {
+    return this.service.cerrar(id, body, user, this.meta(ip, userAgent, requestId));
   }
 
   @Post(':id/rechazar')

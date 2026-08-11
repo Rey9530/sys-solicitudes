@@ -8,6 +8,7 @@ import { AutoRefresh } from '@/components/client/auto-refresh';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Pager } from '@/components/ui/pager';
+import { SOLICITUD_ESTADO_LABEL, SOLICITUD_ESTADO_OPCIONES } from '@/components/estado-badge';
 
 export const metadata: Metadata = { title: 'Bandeja de solicitudes' };
 
@@ -83,15 +84,11 @@ export default async function AdminSolicitudesPage({
             <label htmlFor="f-estado">Estado</label>
             <select id="f-estado" name="estado" defaultValue={sp.estado ?? ''} className="select">
               <option value="">Todos los estados</option>
-              <option value="borrador">Borrador</option>
-              <option value="enviada">Enviada (en espera)</option>
-              <option value="asignado">Asignada</option>
-              <option value="en_revision">En revisión</option>
-              <option value="requerida_subsanacion">Requerida subsanación</option>
-              <option value="pausada">Pausada</option>
-              <option value="aprobada">Aprobada</option>
-              <option value="rechazada">Rechazada</option>
-              <option value="cancelada">Cancelada</option>
+              {SOLICITUD_ESTADO_OPCIONES.map((e) => (
+                <option key={e} value={e}>
+                  {SOLICITUD_ESTADO_LABEL[e]}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">

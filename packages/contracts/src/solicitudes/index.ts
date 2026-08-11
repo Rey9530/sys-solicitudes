@@ -23,6 +23,7 @@ export const SolicitudEstadoSchema = z.enum([
   'asignado', // T-V03: nuevo estado entre 'enviada' y 'en_revision'
   'en_revision',
   'aprobada',
+  'cerrada', // T-091e-cerrar: terminal real; `aprobada` es "pendiente de ejecución".
   'rechazada',
   'cancelada',
   'requerida_subsanacion',
@@ -30,14 +31,28 @@ export const SolicitudEstadoSchema = z.enum([
 ]);
 export type SolicitudEstado = z.infer<typeof SolicitudEstadoSchema>;
 
+/** Estados terminales: ya no admiten ninguna transición (T-091e-cerrar).
+ *  ⚠️ `aprobada` NO está aquí: espera el cierre de la actividad. */
+export const SOLICITUD_ESTADOS_TERMINALES = [
+  'cerrada',
+  'rechazada',
+  'cancelada',
+] as const satisfies readonly SolicitudEstado[];
+
+export function esEstadoTerminal(estado: SolicitudEstado): boolean {
+  return (SOLICITUD_ESTADOS_TERMINALES as readonly SolicitudEstado[]).includes(estado);
+}
+
 /** Estados desde los que aún se puede transicionar. `pausada` se omite: ya
- *  no requiere acción humana (SLA congelado); pero sigue siendo "viva". */
+ *  no requiere acción humana (SLA congelado); pero sigue siendo "viva".
+ *  T-091e-cerrar: `aprobada` entra aquí — queda pendiente de cierre. */
 export const SOLICITUD_ESTADOS_ACTIVOS = [
   'borrador',
   'enviada',
   'asignado',
   'en_revision',
   'requerida_subsanacion',
+  'aprobada',
 ] as const satisfies readonly SolicitudEstado[];
 
 export const SolicitudHistorialEventoSchema = z.enum([
@@ -46,6 +61,7 @@ export const SolicitudHistorialEventoSchema = z.enum([
   'asignada',
   'tomada',
   'aprobada',
+  'cerrada', // T-091e-cerrar
   'rechazada',
   'subsanada',
   'reasignada',
@@ -57,6 +73,15 @@ export const SolicitudHistorialEventoSchema = z.enum([
   'reanudada', // T-091d-pausar
 ]);
 export type SolicitudHistorialEvento = z.infer<typeof SolicitudHistorialEventoSchema>;
+
+/** Resultado del cierre de una solicitud aprobada (T-091e-cerrar). */
+export const SolicitudResultadoCierreSchema = z.enum([
+  'exitoso',
+  'parcial',
+  'fallido',
+  'no_realizado',
+]);
+export type SolicitudResultadoCierre = z.infer<typeof SolicitudResultadoCierreSchema>;
 
 /** Semáforo SLA (S-SLA): null para estados terminales o sin enviar. */
 export const SlaStatusSchema = z.enum(['verde', 'amarillo', 'rojo']).nullable();
@@ -289,6 +314,20 @@ export const AprobarSolicitudSchema = z.object({
 });
 export type AprobarSolicitudInput = z.infer<typeof AprobarSolicitudSchema>;
 
+/** T-091e-cerrar: cierre de una solicitud aprobada. Solo el admin asignado
+ *  (o superadmin) puede cerrarla. El comentario es OBLIGATORIO cuando el
+ *  resultado no es `exitoso` (hay que justificar por qué no salió bien). */
+export const CerrarSolicitudSchema = z
+  .object({
+    resultado: SolicitudResultadoCierreSchema,
+    comentario: z.string().trim().min(1).max(4000).optional(),
+  })
+  .refine((v) => v.resultado === 'exitoso' || !!v.comentario, {
+    path: ['comentario'],
+    message: 'El comentario es obligatorio cuando el cierre no es exitoso',
+  });
+export type CerrarSolicitudInput = z.infer<typeof CerrarSolicitudSchema>;
+
 /** T-093: liberar devuelve la solicitud a la cola (`enviada`). */
 export const LiberarSolicitudSchema = z.object({
   motivo: z.string().trim().max(1000).optional(),
@@ -304,21 +343,11 @@ export const PausarSolicitudSchema = z.object({
 export type PausarSolicitudInput = z.infer<typeof PausarSolicitudSchema>;
 
 /** T-099: bandeja del admin. Acepta cualquier estado del workflow (decisión owner
- *  2026-06-23 — antes restringido a enviada/asignado/en_revision). */
+ *  2026-06-23 — antes restringido a enviada/asignado/en_revision).
+ *  T-091e-cerrar: usa `SolicitudEstadoSchema` en vez de un enum inline
+ *  duplicado, para que un estado nuevo no haya que añadirlo en dos sitios. */
 export const BandejaQuerySchema = PaginationSchema.extend({
-  estado: z
-    .enum([
-      'borrador',
-      'enviada',
-      'asignado',
-      'en_revision',
-      'requerida_subsanacion',
-      'pausada', // T-091d-pausar: filtro explícito para ver pausadas
-      'aprobada',
-      'rechazada',
-      'cancelada',
-    ])
-    .optional(),
+  estado: SolicitudEstadoSchema.optional(),
   tipo: SolicitudTipoSchema.optional(),
   categoriaId: UuidSchema.optional(),
   subcategoriaId: UuidSchema.optional(),
@@ -431,6 +460,10 @@ export const SolicitudOutputSchema = z.object({
   enviadaAt: z.iso.datetime().nullable(),
   asignadaAt: z.iso.datetime().nullable(),
   decisionAt: z.iso.datetime().nullable(),
+  // T-091e-cerrar: solo poblados cuando estado === 'cerrada'.
+  resultadoCierre: SolicitudResultadoCierreSchema.nullable(),
+  cierreComentario: z.string().nullable(),
+  cerradaAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

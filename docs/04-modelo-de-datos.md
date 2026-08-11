@@ -500,6 +500,9 @@ Núcleo del sistema. Ver [`05-flujo-de-solicitudes.md`](./05-flujo-de-solicitude
 | `enviada_at` | TIMESTAMPTZ | Set en T2 (envío) o T9 (re-envío tras subsanación). |
 | `asignada_at` | TIMESTAMPTZ | Set cada vez que `admin_asignado_id` cambia (T2 inicial, T12 reasignación). |
 | `decision_at` | TIMESTAMPTZ | Set en T6 (aprobada) o T7 (rechazada). |
+| `resultado_cierre` | ENUM `solicitud_resultado_cierre` | Nullable. Set en T16 (`aprobada → cerrada`). Valores: `exitoso`, `parcial`, `fallido`, `no_realizado`. |
+| `cierre_comentario` | TEXT | Nullable, ≤ 4000 chars. Obligatorio cuando `resultado_cierre != 'exitoso'`. |
+| `cerrada_at` | TIMESTAMPTZ | Set en T16. |
 
 **Índices:**
 - UNIQUE(`plaza_id`, `codigo`).
@@ -514,13 +517,20 @@ Núcleo del sistema. Ver [`05-flujo-de-solicitudes.md`](./05-flujo-de-solicitude
 CREATE TYPE solicitud_estado AS ENUM (
   'borrador',
   'enviada',
+  'asignado',         -- T-V03
   'en_revision',
+  'requerida_subsanacion',
+  'pausada',          -- T-091d-pausar
   'aprobada',
+  'cerrada',          -- T-091e-cerrar
   'rechazada',
-  'cancelada',
-  'requerida_subsanacion'
+  'cancelada'
 );
 ```
+
+> **T-091e-cerrar (2026-08-11):** `aprobada` deja de ser terminal; la transición
+> `aprobada → cerrada` (T16) la realiza el admin asignado con un `resultado_cierre`
+> (exitoso / parcial / fallido / no_realizado).
 
 ### 4.3.8b. ENUM `solicitud_prioridad`
 
@@ -879,7 +889,13 @@ CREATE TRIGGER tg_subcategoria_supervisor_max_5
 -- SOLICITUDES
 CREATE TYPE solicitud_tipo AS ENUM ('mantenimiento','evento','remodelacion','otro');
 CREATE TYPE solicitud_estado AS ENUM (
-  'borrador','enviada','en_revision','aprobada','rechazada','cancelada','requerida_subsanacion'
+  'borrador','enviada','asignado','en_revision',
+  'requerida_subsanacion','pausada','aprobada','cerrada',
+  'rechazada','cancelada'
+);
+-- T-091e-cerrar: cierre de la actividad.
+CREATE TYPE solicitud_resultado_cierre AS ENUM (
+  'exitoso','parcial','fallido','no_realizado'
 );
 CREATE TABLE solicitud (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -904,10 +920,16 @@ CREATE TABLE solicitud (
   enviada_at TIMESTAMPTZ,
   asignada_at TIMESTAMPTZ,        -- cuándo se asignó al responsable actual
   decision_at TIMESTAMPTZ,
+  -- T-091e-cerrar: registrada al transicionar aprobada → cerrada.
+  resultado_cierre solicitud_resultado_cierre,
+  cierre_comentario TEXT,
+  cerrada_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   CONSTRAINT solicitud_codigo_uniq_por_plaza UNIQUE (plaza_id, codigo)
 );
+CREATE INDEX solicitud_plaza_estado_decision_idx
+  ON solicitud (plaza_id, estado, decision_at);  -- bandeja "pendientes de cierre"
 
 -- HISTORIAL, COMENTARIOS, ADJUNTOS, CALENDARIO, ETC.
 -- (definidos en §4.3; abreviados aquí por espacio)

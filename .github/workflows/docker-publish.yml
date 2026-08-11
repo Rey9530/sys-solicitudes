@@ -1,0 +1,179 @@
+# =============================================================================
+# Plazapp · Publicación de imágenes a Docker Hub (reyles/sys-solicitudes-*)
+# =============================================================================
+# Diseño: docs/superpowers/specs/2026-07-27-docker-publish-workflow-design.md
+#
+# Comportamiento:
+#   - push a main          → build + push de backend y frontend en paralelo
+#                            con tags :latest + :<short-sha>
+#   - workflow_dispatch    → igual, con inputs opcionales:
+#                            * tag           → tag custom (ej. v1.2.3-rc1)
+#                            * api_url       → override de NEXT_PUBLIC_API_URL
+#                            * app_name      → override de NEXT_PUBLIC_APP_NAME
+#                            * sentry_dsn    → override de NEXT_PUBLIC_SENTRY_DSN
+#
+# Secrets requeridos (Settings → Secrets and variables → Actions):
+#   - DOCKERHUB_USERNAME   → 'reyles'
+#   - DOCKERHUB_TOKEN      → access token de Docker Hub (NO la contraseña)
+#
+# Repo variables opcionales (Settings → Secrets and variables → Actions → Variables):
+#   - NEXT_PUBLIC_API_URL    (default: https://app.plazapp.com)
+#   - NEXT_PUBLIC_APP_NAME   (default: Plazapp)
+#   - NEXT_PUBLIC_SENTRY_DSN (default: vacío)
+#
+# Notas:
+#   - Reutiliza los Dockerfiles existentes en frontend/Dockerfile y
+#     backend/Dockerfile (multi-stage, production-ready, no se modifican).
+#   - Single-arch linux/amd64 (deploy target = Ubuntu x86_64).
+#   - Cache de capas vía GitHub Actions cache (type=gha, scope por servicio).
+# =============================================================================
+
+name: Docker · Publish to Docker Hub
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag opcional (ej: v1.2.3-rc1). Si vacío, usa :latest + :<short-sha>.'
+        required: false
+        type: string
+      api_url:
+        description: 'Override de NEXT_PUBLIC_API_URL (si vacío, usa repo var → default https://app.plazapp.com).'
+        required: false
+        type: string
+        default: ''
+      app_name:
+        description: 'Override de NEXT_PUBLIC_APP_NAME (si vacío, usa repo var → default Plazapp).'
+        required: false
+        type: string
+        default: ''
+      sentry_dsn:
+        description: 'Override de NEXT_PUBLIC_SENTRY_DSN (si vacío, usa repo var → default vacío).'
+        required: false
+        type: string
+        default: ''
+
+# Cancela runs previos del mismo ref para evitar races al pushear el mismo tag.
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: true
+
+# Solo lectura del repo. El push al registry usa DOCKERHUB_TOKEN (no necesita
+# permissions: write en el repo).
+permissions:
+  contents: read
+
+env:
+  REGISTRY: docker.io
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Backend · NestJS + Prisma
+  # Reutiliza backend/Dockerfile (multi-stage, ya production-ready).
+  # ───────────────────────────────────────────────────────────────────────────
+  build-backend:
+    name: Build & push · backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata · backend
+        id: meta-backend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/reyles/sys-solicitudes-backend
+          tags: |
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+            type=sha,format=short
+          # flavor latest=auto → añade :latest solo en push al default branch
+          # (no en workflow_dispatch con tag custom, no en PRs).
+          flavor: latest=auto
+          labels: |
+            org.opencontainers.image.title=sys-solicitudes-backend
+            org.opencontainers.image.description=Plazapp · NestJS API for multi-plaza request management
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=UNLICENSED
+
+      - name: Build and push · backend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          platforms: linux/amd64
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+          push: ${{ github.event_name != 'pull_request' }}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Frontend · Next.js 14 (standalone)
+  # Reutiliza frontend/Dockerfile (multi-stage, ya production-ready).
+  # Los NEXT_PUBLIC_* se hornean en build-time → build-args desde inputs/vars.
+  # ───────────────────────────────────────────────────────────────────────────
+  build-frontend:
+    name: Build & push · frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata · frontend
+        id: meta-frontend
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/reyles/sys-solicitudes-frontend
+          tags: |
+            type=raw,value=${{ inputs.tag }},enable=${{ inputs.tag != '' }}
+            type=sha,format=short
+          flavor: latest=auto
+          labels: |
+            org.opencontainers.image.title=sys-solicitudes-frontend
+            org.opencontainers.image.description=Plazapp · Next.js 14 (App Router, standalone) for multi-plaza request management
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=UNLICENSED
+
+      - name: Build and push · frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: frontend/Dockerfile
+          platforms: linux/amd64
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          # Resolución de NEXT_PUBLIC_*: input (workflow_dispatch) → repo var → default.
+          # `inputs.X` y `vars.X` devuelven '' si no están definidos, así que el || funciona.
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ inputs.api_url || vars.NEXT_PUBLIC_API_URL || 'https://app.plazapp.com' }}
+            NEXT_PUBLIC_APP_NAME=${{ inputs.app_name || vars.NEXT_PUBLIC_APP_NAME || 'Plazapp' }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ inputs.sentry_dsn || vars.NEXT_PUBLIC_SENTRY_DSN || '' }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+          push: ${{ github.event_name != 'pull_request' }}

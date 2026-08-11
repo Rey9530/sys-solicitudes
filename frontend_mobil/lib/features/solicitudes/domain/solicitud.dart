@@ -16,7 +16,7 @@ class Solicitud {
   final String subcategoria;
   final String descripcion;
   final String prioridad; // A..F
-  final String estado; // borrador | enviada | asignado | en_revision | requerida_subsanacion | aprobada | rechazada | cancelada | pausada
+  final String estado; // borrador | enviada | asignado | en_revision | requerida_subsanacion | aprobada | cerrada | rechazada | cancelada | pausada (T-091e-cerrar)
   final String localCodigo;
   final String localNombre;
   final String? adminAsignadoNombre;

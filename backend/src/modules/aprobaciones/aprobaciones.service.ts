@@ -1,7 +1,8 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException, Logger } from '@nestjs/common';
 import type { Prisma, solicitud as SolicitudModel } from '@prisma/client';
 import type {
   AprobarSolicitudInput,
+  CerrarSolicitudInput,
   RechazarSolicitudInput,
   SubsanarSolicitudAdminInput,
   ReasignarSolicitudInput,
@@ -14,7 +15,10 @@ import type {
 } from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
-import { SolicitudStateService } from '../solicitudes/state/solicitud-state.service';
+import {
+  SolicitudStateService,
+  RESULTADO_CIERRE_LABEL,
+} from '../solicitudes/state/solicitud-state.service';
 import { StaffForSubcategoriaValidator } from '../categorias/validators/staff-for-subcategoria.validator';
 import { calcularSlaStatus } from '../solicitudes/sla/sla.util';
 import {
@@ -47,6 +51,7 @@ interface Paginated<T> {
  */
 @Injectable()
 export class AprobacionesService {
+  private readonly logger = new Logger(AprobacionesService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly auditoria: AuditoriaService,
@@ -148,6 +153,39 @@ export class AprobacionesService {
 
     await this.audit('solicitud.aprobar', id, plazaId, actor, meta, {
       estado: updated.estado,
+      comentario: dto.comentario ?? null,
+    });
+    return solicitudToOutput(updated);
+  }
+
+  // ── Cerrar (T-091e-cerrar) ────────────────────────────────────────────────────
+
+  /**
+   * `aprobada → cerrada`: da por finalizada la actividad autorizada y registra
+   * el resultado. Solo el admin asignado (guard en `state.cerrar`).
+   * NO toca `evento_calendario` ni el estado del local: la salida de
+   * `en_mantenimiento` la sigue gestionando el cron `mantenimiento-fin`.
+   */
+  async cerrar(
+    id: string,
+    dto: CerrarSolicitudInput,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<SolicitudOutput> {
+    const plazaId = this.requirePlaza(actor);
+    const updated = await this.prisma.withTenant(plazaId, async (tx) => {
+      const solicitud = await this.assertSolicitud(tx, id);
+      const cerrada = await this.state.cerrar(tx, solicitud, actor, dto.resultado, dto.comentario);
+      await this.emailAlCreador(tx, solicitud, 'solicitud-cerrada', dto.comentario, {
+        resultado: dto.resultado,
+        resultadoLabel: RESULTADO_CIERRE_LABEL[dto.resultado],
+        exitoso: dto.resultado === 'exitoso',
+      });
+      return cerrada;
+    });
+    await this.audit('solicitud.cerrar', id, plazaId, actor, meta, {
+      estado: updated.estado,
+      resultado: dto.resultado,
       comentario: dto.comentario ?? null,
     });
     return solicitudToOutput(updated);
@@ -267,21 +305,37 @@ export class AprobacionesService {
       ...(query.subcategoriaId ? { subcategoria_id: query.subcategoriaId } : {}),
       ...(query.localId ? { local_id: query.localId } : {}),
       ...(query.prioridad ? { prioridad: query.prioridad } : {}),
-      ...(query.asignadasAMi ? { admin_asignado_id: actor.sub } : {}),
     };
 
     const { items, total, slaPorId, config } = await this.prisma.withTenant(
       plazaId,
       async (tx) => {
+        // El rol "Administrador del sistema" (rol_staff con `es_sistema=true`)
+        // tiene visibilidad completa de su plaza por defecto: omitimos el filtro
+        // `asignadasAMi` aunque el cliente lo mande como `true`, para que vea
+        // también solicitudes en `enviada` (sin asignar) que nunca llegarían a
+        // su bandeja si solo se filtrara por `admin_asignado_id = self`.
+        //
+        // El lookup se hace DENTRO de withTenant (no antes) porque la RLS de
+        // `rol_staff` evalúa `current_setting('app.plaza_id')::uuid`; si la
+        // query corre antes de fijar el `set_config`, el cast lanza
+        // `invalid input syntax for type uuid: ""` y rompe el endpoint con 500.
+        const filtrarPorAsignadasAMi =
+          query.asignadasAMi && !(await this.actorEsAdminDelSistema(tx, actor));
+        const whereConAsignacion: Prisma.solicitudWhereInput = {
+          ...where,
+          ...(filtrarPorAsignadasAMi ? { admin_asignado_id: actor.sub } : {}),
+        };
+
         const [items, total, config] = await Promise.all([
           tx.solicitud.findMany({
-            where,
+            where: whereConAsignacion,
             skip: (page - 1) * pageSize,
             take: pageSize,
             orderBy: [{ prioridad: 'asc' }, { enviada_at: 'desc' }],
             include: SOLICITUD_INCLUDE,
           }),
-          tx.solicitud.count({ where }),
+          tx.solicitud.count({ where: whereConAsignacion }),
           tx.configuracion.findUnique({ where: { plaza_id: plazaId } }),
         ]);
         // T-101: estado precalculado en la matview para los ids de la página.
@@ -366,6 +420,7 @@ export class AprobacionesService {
     solicitud: SolicitudModel,
     plantilla: string,
     comentario?: string,
+    extraVars?: Record<string, unknown>,
   ): Promise<void> {
     const creador = await tx.usuario.findFirst({
       where: { id: solicitud.usuario_creador_id },
@@ -381,6 +436,7 @@ export class AprobacionesService {
         solicitudCodigo: solicitud.codigo,
         solicitudTitulo: solicitud.titulo,
         comentario: comentario ?? null,
+        ...extraVars,
       },
     });
   }
@@ -416,6 +472,41 @@ export class AprobacionesService {
       });
     }
     return actor.plazaId;
+  }
+
+  /**
+   * Devuelve `true` cuando el actor es un admin_plaza cuyo rol_staff es el rol
+   * maestro del sistema (`rol_staff.es_sistema = true`, código `admin`).
+   * Estos admins tienen visibilidad operativa completa de su plaza, así que en
+   * `bandeja` el filtro `asignadasAMi` se ignora aunque el cliente lo mande.
+   *
+   * Validamos `rolStaffId` con regex UUID antes de la query: Prisma no
+   * rechaza strings vacíos/no-UUID (los pasa a Postgres) y Postgres responde
+   * con `invalid input syntax for type uuid: ""` (HTTP 500). Con este guard
+   * `false` para los actores sin rol_staff válido (inquilinos, superadmin, o
+   * JWTs viejos con el campo degenerado).
+   *
+   * La consulta se hace con el `tx` de `withTenant`: si se hiciera con
+   * `this.prisma` antes de fijar `app.plaza_id`, la RLS evalúa
+   * `current_setting('app.plaza_id')::uuid` con el GUC aún vacío y revienta.
+   *
+   * Consulta puntual (no cacheada): un SELECT por request sobre `rol_staff` por
+   * PK es <1 ms. Si se vuelve caliente, cachear en `AuthenticatedUser` igual
+   * que `permisos`.
+   */
+  private static readonly UUID_RE =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+  private async actorEsAdminDelSistema(
+    tx: Prisma.TransactionClient,
+    actor: AuthenticatedUser,
+  ): Promise<boolean> {
+    if (!actor.rolStaffId || !AprobacionesService.UUID_RE.test(actor.rolStaffId)) return false;
+    const rol = await tx.rol_staff.findUnique({
+      where: { id: actor.rolStaffId },
+      select: { es_sistema: true },
+    });
+    return rol?.es_sistema === true;
   }
 
   private async audit(

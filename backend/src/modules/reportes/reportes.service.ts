@@ -5,7 +5,7 @@ import {
   NotFoundException,
   PayloadTooLargeException,
 } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import type { Prisma, solicitud_estado } from '@prisma/client';
 import type {
   DashboardChartsOutput,
   KpisOutput,
@@ -39,20 +39,29 @@ const CAMPOS_EXTRA_FILTRADOS_PARA_PDF = new Set<string>([
   'requiere_aprobacion_especial',
 ]);
 
-/** Etiquetas de estado para el PDF "Permiso de Trabajos". */
-const ESTADO_LABEL: Record<string, string> = {
+/**
+ * Estados que cuentan como "aprobada" en los KPIs (T-091e-cerrar). Una
+ * solicitud cerrada fue aprobada antes: si solo contáramos `aprobada` la
+ * tasa de aprobación se desplomaría a medida que se cierran solicitudes.
+ */
+const APROBADAS: solicitud_estado[] = ['aprobada', 'cerrada'];
+
+/** Etiquetas de estado para el PDF "Permiso de Trabajos". */const ESTADO_LABEL: Record<string, string> = {
   borrador: 'Borrador',
   enviada: 'Enviada',
   asignado: 'Asignada',
   en_revision: 'En revisión',
   requerida_subsanacion: 'Requiere subsanación',
+  pausada: 'Pausada',
   aprobada: 'Aprobada',
+  cerrada: 'Cerrada',
   rechazada: 'Rechazada',
   cancelada: 'Cancelada',
 };
 /** Clase CSS del badge de estado (verde aprobada / rojo terminal negativo / neutro). */
 const ESTADO_CLASE: Record<string, string> = {
   aprobada: '',
+  cerrada: '',
   rechazada: 'rojo',
   cancelada: 'rojo',
 };
@@ -749,6 +758,9 @@ export class ReportesService {
     switch (estado) {
       case 'aprobada':
         return { texto: 'APROBADO', clase: 'ok' };
+      // T-091e-cerrar: la actividad se ejecutó y se dio por finalizada.
+      case 'cerrada':
+        return { texto: 'CERRADO', clase: 'ok' };
       case 'rechazada':
       case 'cancelada':
         return { texto: estado.toUpperCase(), clase: 'danger' };
@@ -829,7 +841,9 @@ export class ReportesService {
       db.solicitud.count({
         where: { estado: { in: ['enviada', 'asignado', 'en_revision', 'requerida_subsanacion'] } },
       }),
-      db.solicitud.count({ where: { estado: 'aprobada', decision_at: { gte: inicioHoy } } }),
+      db.solicitud.count({
+        where: { estado: { in: APROBADAS }, decision_at: { gte: inicioHoy } },
+      }),
       db.solicitud.count({ where: { estado: 'rechazada', decision_at: { gte: inicioHoy } } }),
       db.evento_calendario.count({
         where: { deleted_at: null, inicio: { gte: ahora, lte: en7d } },
@@ -837,7 +851,7 @@ export class ReportesService {
       db.contrato.count({
         where: { estado: 'vigente', fecha_fin: { not: null, gte: ahora, lte: en30d } },
       }),
-      db.solicitud.count({ where: { estado: 'aprobada' } }),
+      db.solicitud.count({ where: { estado: { in: APROBADAS } } }),
       db.solicitud.count({ where: { estado: 'rechazada' } }),
       db.solicitud_historial.findMany({
         where: { evento: 'subsanada' },

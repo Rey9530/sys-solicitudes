@@ -2,6 +2,7 @@ import type {
   LocalEstado,
   ContratoEstado,
   SolicitudEstado,
+  SolicitudResultadoCierre,
   SolicitudPrioridad,
   SlaStatus,
 } from '@app/contracts';
@@ -65,6 +66,7 @@ const SOLICITUD_ESTADO_TONE: Record<SolicitudEstado, string> = {
   requerida_subsanacion: 'b-orange',
   pausada: 'b-cyan', // T-091d-pausar: estado congelado, distintivo de los demás.
   aprobada: 'b-ok',
+  cerrada: 'b-violet', // T-091e-cerrar: terminal, distinto del verde de `aprobada`.
   rechazada: 'b-danger',
   cancelada: 'b-neutral',
 };
@@ -77,12 +79,48 @@ export const SOLICITUD_ESTADO_LABEL: Record<SolicitudEstado, string> = {
   requerida_subsanacion: 'Requiere subsanación',
   pausada: 'Pausada',
   aprobada: 'Aprobada',
+  cerrada: 'Cerrada',
   rechazada: 'Rechazada',
   cancelada: 'Cancelada',
 };
 
+/** Orden canónico del flujo — usar en los `<select>` de filtro para no
+ *  repetir la lista de estados en cada página (T-091e-cerrar). */
+export const SOLICITUD_ESTADO_OPCIONES = [
+  'borrador',
+  'enviada',
+  'asignado',
+  'en_revision',
+  'requerida_subsanacion',
+  'pausada',
+  'aprobada',
+  'cerrada',
+  'rechazada',
+  'cancelada',
+] as const satisfies readonly SolicitudEstado[];
+
 export function SolicitudEstadoBadge({ estado }: { estado: SolicitudEstado }) {
   return <Badge tone={SOLICITUD_ESTADO_TONE[estado]}>{SOLICITUD_ESTADO_LABEL[estado]}</Badge>;
+}
+
+// ── Resultado de cierre (T-091e-cerrar) ───────────────────────────────────────
+
+const RESULTADO_CIERRE_TONE: Record<SolicitudResultadoCierre, string> = {
+  exitoso: 'b-ok',
+  parcial: 'b-warn',
+  fallido: 'b-danger',
+  no_realizado: 'b-neutral',
+};
+
+export const RESULTADO_CIERRE_LABEL: Record<SolicitudResultadoCierre, string> = {
+  exitoso: 'Exitoso',
+  parcial: 'Parcial',
+  fallido: 'Fallido',
+  no_realizado: 'No realizada',
+};
+
+export function ResultadoCierreBadge({ resultado }: { resultado: SolicitudResultadoCierre }) {
+  return <Badge tone={RESULTADO_CIERRE_TONE[resultado]}>{RESULTADO_CIERRE_LABEL[resultado]}</Badge>;
 }
 
 /** Chip de prioridad cuadrado (A–F). */

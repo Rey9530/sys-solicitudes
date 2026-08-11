@@ -118,11 +118,14 @@ Leyenda: `✅` permitido · `❌` prohibido · `⚠️` permitido con restricci�
 |---|---|---|---|
 | Ver bandeja de entrada | ❌ | ✅ | ❌ |
 | Tomar para revisión | ❌ | ✅ | ❌ |
-| Aprobar | ❌ | ✅ | ❌ |
-| Rechazar | ❌ | ✅ (motivo obligatorio) | ❌ |
-| Pedir subsanación | ❌ | ✅ (comentario obligatorio) | ❌ |
-| Asignar a otro admin | ❌ | ✅ | ❌ |
-| Liberar lock de revisión | ❌ | ✅ | ❌ |
+| Aprobar | ❌ | ✅ (asignado) | ❌ |
+| Rechazar | ❌ | ✅ (asignado, motivo obligatorio) | ❌ |
+| Pedir subsanación | ❌ | ✅ (asignado, comentario obligatorio) | ❌ |
+| Asignar a otro admin (T12) | ❌ | ✅ (cualquier admin) | ❌ |
+| Liberar (T13) | ❌ | ✅ (asignado) | ❌ |
+| Pausar (T14, T-091d-pausar) | ❌ | ✅ (asignado) | ❌ |
+| Reanudar (T15, T-091d-pausar) | ❌ | ✅ (asignado) | ❌ |
+| **Cerrar (T16, T-091e-cerrar)** | ❌ | ✅ (asignado; resultado + comentario obligatorio si ≠ `exitoso`) | ❌ |
 
 ### 6.2.7. Notificaciones
 

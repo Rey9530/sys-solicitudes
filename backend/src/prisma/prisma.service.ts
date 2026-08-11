@@ -31,7 +31,10 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       log:
         process.env.NODE_ENV === 'production'
           ? [{ emit: 'event', level: 'error' }]
-          : [{ emit: 'event', level: 'warn' }, { emit: 'event', level: 'error' }],
+          : [
+              { emit: 'event', level: 'warn' },
+              { emit: 'event', level: 'error' },
+            ],
     });
   }
 

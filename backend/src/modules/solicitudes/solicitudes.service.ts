@@ -578,7 +578,13 @@ export class SolicitudesService {
     const { before, updated } = await this.prisma.withTenant(plazaId, async (tx) => {
       const before = await tx.solicitud.findFirst({ where: { id } });
       if (!before) this.throwNotFound();
-      if (before.estado === 'borrador' || this.state.esTerminal(before.estado)) {
+      // T-091e-cerrar: `aprobada` ya no es terminal, pero tampoco admite cambio
+      // de prioridad — la decisión ya está tomada, solo falta cerrarla.
+      if (
+        before.estado === 'borrador' ||
+        before.estado === 'aprobada' ||
+        this.state.esTerminal(before.estado)
+      ) {
         throw new BadRequestException({
           code: 'INVALID_STATE_TRANSITION',
           title: 'Solicitud inválida',
@@ -717,7 +723,9 @@ export class SolicitudesService {
           local_id: query.localId,
           tipo: query.tipo,
           created_at: { gte: hace30dias },
-          estado: { notIn: ['aprobada', 'rechazada', 'cancelada'] },
+          // Se excluyen las ya decididas: `aprobada` y `cerrada` no son
+          // "duplicados abiertos" (T-091e-cerrar añadió `cerrada`).
+          estado: { notIn: ['aprobada', 'cerrada', 'rechazada', 'cancelada'] },
           ...(actor.rol === 'inquilino'
             ? { inquilino_id: this.requireInquilino(actor) }
             : {}),

@@ -36,7 +36,8 @@ Este documento define:
 | `en_revision` | El admin asignado la tomó y la está revisando. | No |
 | `requerida_subsanacion` | El admin pidió cambios al inquilino. | No |
 | `pausada` | **(NUEVO, T-091d-pausar)** Congelada temporalmente por el admin asignado mientras espera algo externo (perito, proveedor, etc.). El SLA queda congelado y no aparece en KPIs `pendientes`. Reversible con `reanudar` (vuelve a `en_revision`). | **No** (reversible) |
-| `aprobada` | Aprobada por el admin_plaza. | **Sí** |
+| `aprobada` | Aprobada por el admin_plaza. **Actividad autorizada, pendiente de ejecución.** No es terminal: la cierra el admin asignado con un resultado de cierre cuando la actividad termina. | **No** (T-091e-cerrar) |
+| `cerrada` | **(NUEVO, T-091e-cerrar)** La actividad terminó. El admin asignado registró un `resultado_cierre` (`exitoso` / `parcial` / `fallido` / `no_realizado`) y comentario opcional (obligatorio si ≠ `exitoso`). **No** se reabre. | **Sí** |
 | `rechazada` | Rechazada por el admin_plaza. | **Sí** |
 | `cancelada` | Cancelada por el inquilino o por el admin. | **Sí** |
 
@@ -80,7 +81,11 @@ stateDiagram-v2
     requerida_subsanacion --> enviada : Inquilino subsana y reenvía (vuelve a la cola)
     requerida_subsanacion --> cancelada : Inquilino cancela
 
-    aprobada --> [*]
+    aprobada --> cerrada : Admin asignado cierra (T-091e, resultado de cierre)
+    aprobada --> rechazada : NO (incorrecto — usar 'rechazada' antes de aprobar)
+    aprobada --> cancelada : NO (T-091e: aprobada se cierra, no se cancela)
+
+    cerrada --> [*]
     rechazada --> [*]
     cancelada --> [*]
 ```
@@ -108,7 +113,9 @@ stateDiagram-v2
 | **T13 (NUEVO)** | `asignado\|en_revision → enviada` (liberar) | Solo el admin asignado | `403 NOT_ASSIGNED_ADMIN` si no. | `admin_asignado_id = NULL`; `enviada_at` NO se resetea (el SLA cuenta desde el envío original); vuelve a la cola del cron. |
 | **T14 (NUEVO, T-091d-pausar)** | `asignado\|en_revision → pausada` (pausar) | Solo el admin asignado | `403 NOT_ASSIGNED_ADMIN` si no; motivo opcional. | `admin_asignado_id` y `asignada_at` se CONSERVAN; historial `pausada` con motivo opcional; SLA congelado (matview `solicitud_sla_view` excluye el estado); sin email (silencioso). |
 | **T15 (NUEVO, T-091d-pausar)** | `pausada → en_revision` (reanudar) | Solo el admin asignado | `403 NOT_ASSIGNED_ADMIN` si no. | `admin_asignado_id` y `asignada_at` se conservan (sin reset); historial `reanudada`; SLA retoma el conteo desde el envío original; sin email. |
+| **T16 (NUEVO, T-091e-cerrar)** | `aprobada → cerrada` (cerrar) | Solo el admin asignado (o superadmin) | `403 NOT_ASSIGNED_ADMIN` si no; `resultado` enum obligatorio; `comentario` obligatorio cuando `resultado != 'exitoso'` (`400 CIERRE_COMENTARIO_REQUERIDO` como defensa además del Zod refine). Endpoint: `POST /solicitudes/:id/cerrar`. | `cerrada_at = now()`; `resultado_cierre`, `cierre_comentario`; historial `cerrada` con `<Resultado>: <comentario>`; email `solicitud-cerrada` al creador. **No** toca `evento_calendario` ni `local.estado` (la actividad sigue reflejándose en reportes independientes). |
 | T11 | Reversión (caso excepcional) | Superadmin (no UI) | Solo mediante intervención directa en BD. | Registrado en `auditoria`. **No se documenta como flujo de UI.** |
+
 
 > **S-LockTimeout (ELIMINADO en T-V03):** el lock de 30 minutos NO existe. Lo que existe es la espera de 15 minutos en `enviada` antes de la auto-asignación (T2b). Una vez en `asignado` no hay timeout: el asignado toma cuando quiera, otro admin puede reasignar (T12) y el asignado puede liberar (T13).
 
@@ -122,6 +129,7 @@ stateDiagram-v2
 | **T2b (mismo evento, 1 email por supervisor)** | `solicitud-nueva-supervisor` | Cada supervisor de la subcategoría (0..5). Deduplicado si coincide con el responsable. | Encolado. |
 | T6 (`→ aprobada`) | `solicitud-aprobada` | Usuario creador (inquilino). | Encolado. |
 | T7 (`→ rechazada`) | `solicitud-rechazada` | Usuario creador. | Encolado. |
+| **T16 (`→ cerrada`)** | `solicitud-cerrada` | Usuario creador (inquilino). | Encolado. Variable `resultado` y `resultadoLabel` (T-091e-cerrar). |
 | T8 (`→ requerida_subsanacion`) | `solicitud-subsanacion` | Usuario creador. | Encolado. |
 | T9 (reenvío) | — (sin email inmediato) | El email llega con la re-asignación del cron (T2b). | — |
 | **T12 (reasignación manual o por cambio de responsable)** | `solicitud-reasignada` | Nuevo responsable. | Encolado. |
@@ -139,7 +147,7 @@ Por cada transición, se inserta una fila con:
 |---|---|
 | `solicitud_id` | El id de la solicitud. |
 | `usuario_id` | El usuario que causó el evento. |
-| `evento` | Uno de: `creada`, `enviada`, `tomada`, `aprobada`, `rechazada`, `subsanada`, `cancelada`, `comentario`, `adjunto_agregado`, `pausada`, `reanudada`. |
+| `evento` | Uno de: `creada`, `enviada`, `tomada`, `aprobada`, `cerrada`, `rechazada`, `subsanada`, `cancelada`, `comentario`, `adjunto_agregado`, `pausada`, `reanudada`. |
 | `estado_anterior` | El estado antes. |
 | `estado_nuevo` | El estado después (NULL para `comentario` y `adjunto_agregado`). |
 | `comentario` | El comentario asociado, si aplica. |
@@ -297,7 +305,7 @@ El SLA se precalcula en la vista materializada `solicitud_sla_view`, refrescada 
 | Métrica | Cálculo |
 |---|---|
 | **Solicitudes pendientes** | `COUNT` donde `estado IN ('enviada','en_revision','requerida_subsanacion')`. **`pausada` NO cuenta como pendiente`** (T-091d-pausar). |
-| **Tasa de aprobación** | `aprobadas / (aprobadas + rechazadas)` en el período. |
+| **Tasa de aprobación** | `(aprobadas + cerradas) / (aprobadas + cerradas + rechazadas)` en el período. (T-091e-cerrar: una aprobada que aún no se cerró sigue contando como aprobada, igual que una cerrada con cualquier resultado.) |
 | **Tiempo medio de respuesta** | `AVG(decision_at - enviada_at)` filtrado por estados terminales. |
 | **Solicitudes con subsanación** | `COUNT` donde hubo paso por `requerida_subsanacion`. |
 | **Eventos próximos (7 días)** | `COUNT` en `evento_calendario` con `inicio BETWEEN now AND now+7d`. |
@@ -309,7 +317,7 @@ El SLA se precalcula en la vista materializada `solicitud_sla_view`, refrescada 
 
 | ID | Supuesto |
 |---|---|
-| S-FS-A | Estados terminales: `aprobada`, `rechazada`, `cancelada`. |
+| S-FS-A | **REVISADO (2026-08-11, T-091e-cerrar):** estados terminales: `cerrada`, `rechazada`, `cancelada`. `aprobada` deja de ser terminal: representa "actividad autorizada, pendiente de ejecución" y debe pasar por `cerrada` para finalizar. |
 | S-FS-B | Reversión solo por superadmin vía BD; sin UI. |
 | S-FS-C | ~~Lock de revisión de 30 min~~ **ELIMINADO (T-V03)**: espera de 15 min en cola + asignación sin timeout. |
 | S-FS-D | SLA visual por tipo, configurable por plaza. |

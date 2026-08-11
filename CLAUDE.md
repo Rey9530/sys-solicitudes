@@ -92,8 +92,12 @@ Definición canónica en `docs/05-flujo-de-solicitudes.md` (revisado por **T-V03
                      │ tomar (SOLO el    │   cualquier admin_plaza, T-V04)
                      │ admin asignado)   │
                      ▼                   │
-                en_revision ─────────────┘──▶ aprobada (terminal; evento→calendario,
-                     │                          remodelación→local en_mantenimiento)
+                en_revision ─────────────┘──▶ aprobada (NO terminal: T-091e-cerrar)
+                     │                          │  evento→calendario,
+                     │                          │  remodelación→local en_mantenimiento
+                     │                          ▼
+                     │                       cerrada (terminal;
+                     │                          resultado de cierre + comentario)
                      ├──▶ rechazada (terminal, comentario obligatorio)
                      └──▶ requerida_subsanacion ──reenviar (inquilino)──▶ enviada
 ```

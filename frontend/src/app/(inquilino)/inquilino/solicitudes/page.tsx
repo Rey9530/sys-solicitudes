@@ -6,6 +6,7 @@ import { SolicitudesTable } from '@/components/client/solicitudes-table';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Pager } from '@/components/ui/pager';
+import { SOLICITUD_ESTADO_LABEL, SOLICITUD_ESTADO_OPCIONES } from '@/components/estado-badge';
 
 export const metadata: Metadata = { title: 'Mis solicitudes' };
 
@@ -61,15 +62,11 @@ export default async function SolicitudesPage({
             <label htmlFor="is-estado">Estado</label>
             <select id="is-estado" name="estado" defaultValue={sp.estado ?? ''} className="select">
               <option value="">Todos</option>
-              <option value="borrador">Borrador</option>
-              <option value="enviada">Enviada</option>
-              <option value="asignado">Asignada</option>
-              <option value="en_revision">En revisión</option>
-              <option value="requerida_subsanacion">Requiere subsanación</option>
-              <option value="pausada">Pausada</option>
-              <option value="aprobada">Aprobada</option>
-              <option value="rechazada">Rechazada</option>
-              <option value="cancelada">Cancelada</option>
+              {SOLICITUD_ESTADO_OPCIONES.map((e) => (
+                <option key={e} value={e}>
+                  {SOLICITUD_ESTADO_LABEL[e]}
+                </option>
+              ))}
             </select>
           </div>
           <div className="field">

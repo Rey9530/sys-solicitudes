@@ -266,7 +266,9 @@ export class AdjuntosService {
     const { solicitud, config, vivos } = pre;
 
     // Scope + estado según rol.
-    const terminal = ['aprobada', 'rechazada', 'cancelada'].includes(solicitud.estado);
+    // T-091e-cerrar: `aprobada` salió de la lista — el admin necesita poder
+    // subir evidencia de la ejecución (fotos, actas) ANTES de cerrar.
+    const terminal = ['cerrada', 'rechazada', 'cancelada'].includes(solicitud.estado);
     if (actor.rol === 'inquilino') {
       if (!actor.inquilinoId || solicitud.inquilino_id !== actor.inquilinoId) {
         this.throwNotFound('SOLICITUD_NOT_FOUND', 'La solicitud no existe.');

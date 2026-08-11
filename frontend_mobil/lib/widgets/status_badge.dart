@@ -92,7 +92,8 @@ class StatusBadge extends StatelessWidget {
 }
 
 /// Mapeo SolicitudEstado → (label, tone). Replica `estado-badge.tsx:60-69`.
-/// Estados terminales: aprobada, rechazada, cancelada.
+/// Estados terminales: cerrada, rechazada, cancelada (T-091e-cerrar).
+/// `aprobada` pasó a ser "pendiente de cierre" (no terminal).
 class SolicitudEstadoMapper {
   static (String, BadgeTone) map(String estado) => switch (estado) {
         'borrador' => ('Borrador', BadgeTone.neutral),
@@ -101,6 +102,7 @@ class SolicitudEstadoMapper {
         'en_revision' => ('En revisión', BadgeTone.warn),
         'requerida_subsanacion' => ('Subsanación', BadgeTone.orange),
         'aprobada' => ('Aprobada', BadgeTone.ok),
+        'cerrada' => ('Cerrada', BadgeTone.violet),
         'rechazada' => ('Rechazada', BadgeTone.danger),
         'cancelada' => ('Cancelada', BadgeTone.neutral),
         'pausada' => ('Pausada', BadgeTone.cyan),

@@ -12,7 +12,17 @@ interface ConfiguracionSla {
   sla_multiplicador_por_prioridad: unknown;
 }
 
-const TERMINALES = ['aprobada', 'rechazada', 'cancelada', 'pausada'];
+/**
+ * Estados SIN semáforo SLA. Ojo: NO es la lista de estados terminales del
+ * flujo (`ESTADOS_TERMINALES` en solicitud-state.service.ts). Aquí entra todo
+ * lo que congela el reloj de RESPUESTA:
+ *   - terminales reales: cerrada, rechazada, cancelada
+ *   - `aprobada`: ya hubo decisión; el reloj de respuesta paró (T-091e-cerrar
+ *     decidió NO añadir un SLA de ejecución hasta el cierre)
+ *   - `pausada`: congelado explícitamente (T-091d-pausar)
+ * Debe mantenerse alineada con el WHERE de la matview `solicitud_sla_view`.
+ */
+const SIN_SLA = ['aprobada', 'cerrada', 'rechazada', 'cancelada', 'pausada'];
 
 /**
  * Semáforo SLA (T-100, S-SLA / S-SLA-Prioridad, revisado T-V03):
@@ -25,7 +35,7 @@ export function calcularSlaStatus(
   configuracion: ConfiguracionSla | null,
   ahora: Date = new Date(),
 ): SlaStatus {
-  if (TERMINALES.includes(solicitud.estado) || !solicitud.enviada_at) return null;
+  if (SIN_SLA.includes(solicitud.estado) || !solicitud.enviada_at) return null;
 
   const dias = (configuracion?.sla_dias_por_tipo ?? {}) as Record<string, number>;
   const mult = (configuracion?.sla_multiplicador_por_prioridad ?? {}) as Record<string, number>;

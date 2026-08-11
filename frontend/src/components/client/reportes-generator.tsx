@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import type { SolicitudTipo } from '@app/contracts';
 import { Button } from '@/components/ui/button';
 import { previewReporteAction } from '@/app/(admin-plaza)/admin/reportes/actions';
+import { SOLICITUD_ESTADO_LABEL, SOLICITUD_ESTADO_OPCIONES } from '@/components/estado-badge';
 
 const ENTIDADES = [
   { value: 'solicitudes', label: 'Solicitudes' },
@@ -11,16 +12,6 @@ const ENTIDADES = [
   { value: 'inquilinos', label: 'Inquilinos' },
 ] as const;
 const FORMATOS = ['csv', 'xlsx', 'pdf'] as const;
-const ESTADOS_SOLICITUD = [
-  'borrador',
-  'enviada',
-  'asignado',
-  'en_revision',
-  'requerida_subsanacion',
-  'aprobada',
-  'rechazada',
-  'cancelada',
-];
 const ESTADOS_LOCAL = ['disponible', 'alquilado', 'en_mantenimiento', 'fuera_de_servicio'];
 
 /** T-144: generador de reportes con filtros contextuales y preview.
@@ -105,9 +96,9 @@ export function ReportesGenerator({
                 onChange={(e) => setF('estado', e.target.value)}
               >
                 <option value="">Todos</option>
-                {ESTADOS_SOLICITUD.map((e) => (
+                {SOLICITUD_ESTADO_OPCIONES.map((e) => (
                   <option key={e} value={e}>
-                    {e}
+                    {SOLICITUD_ESTADO_LABEL[e]}
                   </option>
                 ))}
               </select>

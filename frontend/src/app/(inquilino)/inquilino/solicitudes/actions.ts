@@ -42,7 +42,18 @@ export async function createSolicitudAction(
 ): Promise<ActionResult<SolicitudOutput>> {
   await assertInquilino();
   const parsed = CreateSolicitudSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: 'Datos inválidos' };
+  if (!parsed.success) {
+    // DEBUG_TEMP: loguear issues en server-side Y exponerlos al FE.
+    // eslint-disable-next-line no-console
+    console.error(
+      '[createSolicitudAction] Zod issues:',
+      JSON.stringify(parsed.error.issues, null, 2),
+    );
+    const detalle = parsed.error.issues
+      .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+      .join('; ');
+    return { ok: false, error: `Datos inválidos (${detalle})` };
+  }
   const res = await apiFetch('/solicitudes', {
     method: 'POST',
     body: JSON.stringify(parsed.data),

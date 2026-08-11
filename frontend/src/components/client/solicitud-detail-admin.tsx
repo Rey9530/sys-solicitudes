@@ -3,11 +3,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import type { SolicitudDetailOutput } from '@app/contracts';
+import type { SolicitudDetailOutput, SolicitudResultadoCierre } from '@app/contracts';
+import { esEstadoTerminal } from '@app/contracts';
 import {
   tomarAction,
   liberarAction,
   aprobarAction,
+  cerrarAction,
   rechazarAction,
   pedirSubsanacionAction,
   reasignarAction,
@@ -39,6 +41,7 @@ import {
   PrioridadBadge,
   SlaSemaforo,
   SOLICITUD_ESTADO_LABEL,
+  ResultadoCierreBadge,
 } from '@/components/estado-badge';
 import { formatDateInPlazaTz } from '@/lib/datetime';
 
@@ -79,6 +82,7 @@ const EVENTO_LABEL: Record<string, string> = {
   asignada: 'Auto-asignada',
   tomada: 'Tomada en revisión',
   aprobada: 'Aprobada',
+  cerrada: 'Cerrada',
   rechazada: 'Rechazada',
   subsanada: 'Subsanación solicitada',
   reasignada: 'Reasignada',
@@ -107,12 +111,18 @@ export function SolicitudDetailAdmin({
   const [pending, setPending] = useState(false);
   const [comentario, setComentario] = useState('');
   const [motivoPausa, setMotivoPausa] = useState('');
-  const [modal, setModal] = useState<'aprobar' | 'rechazar' | 'subsanar' | 'reasignar' | 'pausar' | null>(null);
+  const [cerrarResultado, setCerrarResultado] = useState<SolicitudResultadoCierre | ''>('');
+  const [cerrarComentario, setCerrarComentario] = useState('');
+  const [modal, setModal] = useState<
+    'aprobar' | 'rechazar' | 'subsanar' | 'reasignar' | 'pausar' | 'cerrar' | null
+  >(null);
 
   const estado = solicitud.estado;
   const soyAsignado = solicitud.adminAsignadoId === miUsuarioId;
   const soyCreador = solicitud.usuarioCreadorId === miUsuarioId; // SC-4
-  const esTerminal = ['aprobada', 'rechazada', 'cancelada'].includes(estado);
+  // T-091e-cerrar: `aprobada` YA NO es terminal — queda pendiente de cierre.
+  const esTerminal = esEstadoTerminal(estado);
+  const esAprobadaPendienteCierre = estado === 'aprobada';
   // T-091d-pausar: `pausada` NO es terminal (es reversible), pero tampoco
   // admite las acciones de decisión (aprobar/rechazar/pedir subsanación).
   const esPausada = estado === 'pausada';
@@ -443,7 +453,38 @@ export function SolicitudDetailAdmin({
                   admin de la plaza puede reanudarla.
                 </p>
               )}
-              {esTerminal && (
+              {/* T-091e-cerrar: aprobada → cerrada. Solo el admin asignado. */}
+              {esAprobadaPendienteCierre && soyAsignado && (
+                <Can permiso="solicitudes.cerrar">
+                  <Button variant="success" size="block" disabled={pending} onClick={() => setModal('cerrar')}>
+                    Cerrar solicitud
+                  </Button>
+                </Can>
+              )}
+              {esAprobadaPendienteCierre && !soyAsignado && (
+                <p className="muted text-sm">
+                  Aprobada, pendiente de cierre
+                  {solicitud.adminAsignado?.nombre ? ` por ${solicitud.adminAsignado.nombre}` : ''}. Solo el
+                  administrador asignado puede cerrarla.
+                </p>
+              )}
+              {estado === 'cerrada' && (
+                <div className="text-sm">
+                  <p className="muted">
+                    Solicitud cerrada
+                    {solicitud.cerradaAt ? ` el ${formatDateInPlazaTz(solicitud.cerradaAt)}` : ''}.
+                  </p>
+                  {solicitud.resultadoCierre && (
+                    <p style={{ marginTop: 6 }}>
+                      <ResultadoCierreBadge resultado={solicitud.resultadoCierre} />
+                    </p>
+                  )}
+                  {solicitud.cierreComentario && (
+                    <p style={{ marginTop: 6 }}>{solicitud.cierreComentario}</p>
+                  )}
+                </div>
+              )}
+              {esTerminal && estado !== 'cerrada' && (
                 <p className="muted text-sm">
                   Solicitud {SOLICITUD_ESTADO_LABEL[estado].toLowerCase()}. No hay acciones pendientes.
                 </p>
@@ -521,7 +562,7 @@ export function SolicitudDetailAdmin({
                       )}
                     </>
                   )}
-                  {!esTerminal && (
+                  {!esTerminal && !esAprobadaPendienteCierre && (
                     <Can permiso="solicitudes.cancelar">
                       <Button
                         variant="danger"
@@ -529,6 +570,7 @@ export function SolicitudDetailAdmin({
                         disabled={pending}
                         onClick={() => {
                           const motivo = prompt('Motivo de cancelación:') ?? undefined;
+                          if (!motivo) return;
                           void run(() => cancelarAdminAction(solicitud.id, motivo), 'Cancelada');
                         }}
                       >
@@ -591,6 +633,30 @@ export function SolicitudDetailAdmin({
             </div>
           </DialogContent>
         </Dialog>
+      )}
+      {modal === 'cerrar' && (
+        <CerrarDialog
+          pending={pending}
+          resultado={cerrarResultado}
+          comentario={cerrarComentario}
+          onResultadoChange={(v) => setCerrarResultado(v)}
+          onComentarioChange={(v) => setCerrarComentario(v)}
+          onClose={() => {
+            setModal(null);
+            setCerrarResultado('');
+            setCerrarComentario('');
+          }}
+          onSubmit={() => {
+            if (!cerrarResultado) return;
+            const dto = cerrarResultado === 'exitoso'
+              ? { resultado: 'exitoso' as const }
+              : { resultado: cerrarResultado, comentario: cerrarComentario.trim() };
+            void run(
+              () => cerrarAction(solicitud.id, dto),
+              'Solicitud cerrada',
+            );
+          }}
+        />
       )}
       {modal === 'reasignar' && (
         <ReasignarDialog
@@ -741,6 +807,93 @@ function ReasignarDialog({
               Reasignar
             </Button>
           </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Modal de cierre (T-091e-cerrar): resultado + comentario cuando != exitoso. */
+function CerrarDialog({
+  pending,
+  resultado,
+  comentario,
+  onResultadoChange,
+  onComentarioChange,
+  onClose,
+  onSubmit,
+}: {
+  pending: boolean;
+  resultado: SolicitudResultadoCierre | '';
+  comentario: string;
+  onResultadoChange: (v: SolicitudResultadoCierre | '') => void;
+  onComentarioChange: (v: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}) {
+  const requiereComentario = resultado !== '' && resultado !== 'exitoso';
+  const comentarioOk = !requiereComentario || comentario.trim().length > 0;
+  const submitDisabled = pending || resultado === '' || !comentarioOk;
+
+  const OPCIONES: { value: SolicitudResultadoCierre; label: string }[] = [
+    { value: 'exitoso', label: 'Cerrada con éxito' },
+    { value: 'parcial', label: 'Cerrada parcialmente' },
+    { value: 'fallido', label: 'Cerrada sin éxito' },
+    { value: 'no_realizado', label: 'No realizada' },
+  ];
+
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Cerrar solicitud</DialogTitle>
+          <DialogDescription>
+            Registra el resultado de la actividad. Esta acción es terminal: no se puede reabrir.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-3">
+          <label className="grid gap-1">
+            <span className="text-sm font-medium">Resultado</span>
+            <select
+              className="select"
+              autoFocus
+              value={resultado}
+              onChange={(e) => onResultadoChange(e.target.value as SolicitudResultadoCierre | '')}
+            >
+              <option value="">Selecciona resultado…</option>
+              {OPCIONES.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-1">
+            <span className="text-sm font-medium">
+              Comentario {requiereComentario ? '(obligatorio)' : '(opcional)'}
+            </span>
+            <textarea
+              rows={4}
+              maxLength={4000}
+              className="textarea"
+              placeholder="Detalle del resultado, evidencia o motivo…"
+              value={comentario}
+              onChange={(e) => onComentarioChange(e.target.value)}
+            />
+            {requiereComentario && !comentarioOk && (
+              <span className="text-sm" style={{ color: 'var(--danger-600, #b91c1c)' }}>
+                El comentario es obligatorio cuando el cierre no es exitoso.
+              </span>
+            )}
+          </label>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button variant="success" disabled={submitDisabled} onClick={onSubmit}>
+            Cerrar solicitud
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

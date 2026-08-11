@@ -81,6 +81,10 @@ export function solicitudToOutput(s: SolicitudModel): SolicitudOutput {
     enviadaAt: s.enviada_at?.toISOString() ?? null,
     asignadaAt: s.asignada_at?.toISOString() ?? null,
     decisionAt: s.decision_at?.toISOString() ?? null,
+    // T-091e-cerrar: solo poblados en estado `cerrada`.
+    resultadoCierre: s.resultado_cierre ?? null,
+    cierreComentario: s.cierre_comentario ?? null,
+    cerradaAt: s.cerrada_at?.toISOString() ?? null,
     createdAt: s.created_at.toISOString(),
     updatedAt: s.updated_at.toISOString(),
   };
