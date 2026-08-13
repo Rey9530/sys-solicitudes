@@ -21,6 +21,22 @@ export function contratoToOutput(c: ContratoModel): ContratoOutput {
     estado: c.estado,
     fechaFinEfectiva: c.fecha_fin_efectiva ? toIsoDate(c.fecha_fin_efectiva) : null,
     motivoFin: c.motivo_fin,
+
+    // ── Campos nuevos Excel Hoja 2 U-AK (T-V14+) ─────────────────────────────
+    plazoAnios: c.plazo_anios,
+    areaMt2MedicionReal:
+      c.area_mt2_medicion_real === null ? null : Number(c.area_mt2_medicion_real),
+    cuotaArrendamiento:
+      c.cuota_arrendamiento === null ? null : Number(c.cuota_arrendamiento),
+    cuotaCam: c.cuota_cam === null ? null : Number(c.cuota_cam),
+    depositoGarantia: c.deposito_garantia === null ? null : Number(c.deposito_garantia),
+    fechaPagoDeposito: c.fecha_pago_deposito ? toIsoDate(c.fecha_pago_deposito) : null,
+    fechaEntregaLocal: c.fecha_entrega_local ? toIsoDate(c.fecha_entrega_local) : null,
+    periodoGracia: c.periodo_gracia,
+    inicioOperaciones: c.inicio_operaciones ? toIsoDate(c.inicio_operaciones) : null,
+    avisoTerminacion: c.aviso_terminacion ? toIsoDate(c.aviso_terminacion) : null,
+    condicionesIncrementoCanon: c.condiciones_incremento_canon,
+
     createdAt: c.created_at.toISOString(),
     updatedAt: c.updated_at.toISOString(),
   };

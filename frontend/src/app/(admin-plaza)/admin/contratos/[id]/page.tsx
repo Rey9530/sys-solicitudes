@@ -27,6 +27,13 @@ export default async function ContratoDetailPage({
   const contrato = (await res.json()) as ContratoDetailOutput;
   const adjuntos = adjuntosRes.ok ? ((await adjuntosRes.json()) as AdjuntoOutput[]) : [];
 
+  // Totales derivados (Y/Z/AA — T-V14+): se calculan en frontend, no se persisten.
+  const canon = Number(contrato.cuotaArrendamiento ?? 0);
+  const cam = Number(contrato.cuotaCam ?? 0);
+  const totalCanon = canon + cam;
+  const totalCam = cam;
+  const total = totalCanon + totalCam;
+
   return (
     <div className="page">
       {/* Banner de ventana de vencimiento (T-060) */}
@@ -60,46 +67,170 @@ export default async function ContratoDetailPage({
         }
       />
 
+      {/* ── Sección: Términos contractuales (Excel U-AK; T-V14+) ─────────── */}
       <Card pad>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide muted">
+          Términos contractuales
+        </h2>
         <dl className="dl">
           <div>
-            <div className="dt">Inicio</div>
-            <div className="dd">{contrato.fechaInicio}</div>
+            <div className="dt">Plazo (años)</div>
+            <div className="dd">{contrato.plazoAnios ?? '—'}</div>
           </div>
           <div>
-            <div className="dt">Fin</div>
-            <div className="dd">{contrato.fechaFin ?? 'Indefinido'}</div>
+            <div className="dt">Período de gracia</div>
+            <div className="dd">{contrato.periodoGracia ?? '—'}</div>
           </div>
           <div>
-            <div className="dt">Monto mensual</div>
+            <div className="dt">Área (medición real)</div>
             <div className="dd">
-              {contrato.montoMensual !== null ? `${contrato.moneda} ${contrato.montoMensual}` : '—'}
+              {contrato.areaMt2MedicionReal !== null
+                ? `${contrato.areaMt2MedicionReal} m²`
+                : '—'}
             </div>
           </div>
           <div>
-            <div className="dt">Creado</div>
-            <div className="dd">{formatDateInPlazaTz(contrato.createdAt)}</div>
+            <div className="dt">Fecha entrega del local</div>
+            <div className="dd">{contrato.fechaEntregaLocal ?? '—'}</div>
           </div>
-          {contrato.condiciones && (
-            <div className="full">
-              <div className="dt">Condiciones</div>
-              <div className="dd whitespace-pre-wrap">{contrato.condiciones}</div>
-            </div>
-          )}
-          {contrato.estado !== 'vigente' && (
-            <>
-              <div>
-                <div className="dt">Fin efectivo</div>
-                <div className="dd">{contrato.fechaFinEfectiva ?? '—'}</div>
-              </div>
-              <div className="full">
-                <div className="dt">Motivo de cierre</div>
-                <div className="dd">{contrato.motivoFin ?? '—'}</div>
-              </div>
-            </>
-          )}
+          <div>
+            <div className="dt">Inicio de operaciones</div>
+            <div className="dd">{contrato.inicioOperaciones ?? '—'}</div>
+          </div>
+          <div>
+            <div className="dt">Aviso de terminación</div>
+            <div className="dd">{contrato.avisoTerminacion ?? '—'}</div>
+          </div>
         </dl>
       </Card>
+
+      {/* ── Sección: Pagos (Excel U/AB/AC + W/X/AA derivados) ─────────────── */}
+      <div style={{ marginTop: 16 }}>
+        <Card pad>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide muted">Pagos</h2>
+          <dl className="dl">
+            <div>
+              <div className="dt">Monto mensual</div>
+              <div className="dd">
+                {contrato.montoMensual !== null ? `${contrato.moneda} ${contrato.montoMensual}` : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="dt">Canon arrendamiento</div>
+              <div className="dd">
+                {contrato.cuotaArrendamiento !== null
+                  ? `${contrato.moneda} ${contrato.cuotaArrendamiento}`
+                  : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="dt">CAM</div>
+              <div className="dd">
+                {contrato.cuotaCam !== null ? `${contrato.moneda} ${contrato.cuotaCam}` : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="dt">Depósito de garantía</div>
+              <div className="dd">
+                {contrato.depositoGarantia !== null
+                  ? `${contrato.moneda} ${contrato.depositoGarantia}`
+                  : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="dt">Fecha pago del depósito</div>
+              <div className="dd">{contrato.fechaPagoDeposito ?? '—'}</div>
+            </div>
+            {/* Totales derivados Y/Z/AA — T-V14+ */}
+            <div className="full">
+              <div className="dt">Totales derivados</div>
+              <div className="dd">
+                <p>
+                  <span className="muted">Total canon (Y):</span>{' '}
+                  <span className="font-mono">{totalCanon.toFixed(2)}</span>
+                  <span className="muted"> (canon + CAM)</span>
+                </p>
+                <p>
+                  <span className="muted">Total CAM (Z):</span>{' '}
+                  <span className="font-mono">{totalCam.toFixed(2)}</span>
+                </p>
+                <p>
+                  <span className="muted">Total (AA):</span>{' '}
+                  <span className="font-mono font-semibold">{total.toFixed(2)}</span>
+                  <span className="muted"> (total canon + CAM)</span>
+                </p>
+              </div>
+            </div>
+          </dl>
+        </Card>
+      </div>
+
+      {/* ── Sección: Vigencia y estado (sin cambios) ───────────────────────── */}
+      <div style={{ marginTop: 16 }}>
+        <Card pad>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide muted">
+            Vigencia y estado
+          </h2>
+          <dl className="dl">
+            <div>
+              <div className="dt">Inicio</div>
+              <div className="dd">{contrato.fechaInicio}</div>
+            </div>
+            <div>
+              <div className="dt">Fin</div>
+              <div className="dd">{contrato.fechaFin ?? 'Indefinido'}</div>
+            </div>
+            <div>
+              <div className="dt">Estado</div>
+              <div className="dd">
+                <ContratoEstadoBadge estado={contrato.estado} />
+              </div>
+            </div>
+            <div>
+              <div className="dt">Creado</div>
+              <div className="dd">{formatDateInPlazaTz(contrato.createdAt)}</div>
+            </div>
+            {contrato.estado !== 'vigente' && (
+              <>
+                <div>
+                  <div className="dt">Fin efectivo</div>
+                  <div className="dd">{contrato.fechaFinEfectiva ?? '—'}</div>
+                </div>
+                <div className="full">
+                  <div className="dt">Motivo de cierre</div>
+                  <div className="dd">{contrato.motivoFin ?? '—'}</div>
+                </div>
+              </>
+            )}
+          </dl>
+        </Card>
+      </div>
+
+      {/* ── Sección: Notas (Excel AK + general) ──────────────────────────── */}
+      <div style={{ marginTop: 16 }}>
+        <Card pad>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide muted">Notas</h2>
+          <dl className="dl">
+            {contrato.condiciones && (
+              <div className="full">
+                <div className="dt">Condiciones generales</div>
+                <div className="dd whitespace-pre-wrap">{contrato.condiciones}</div>
+              </div>
+            )}
+            {contrato.condicionesIncrementoCanon && (
+              <div className="full">
+                <div className="dt">Condiciones de incremento de canon</div>
+                <div className="dd whitespace-pre-wrap">{contrato.condicionesIncrementoCanon}</div>
+              </div>
+            )}
+            {!contrato.condiciones && !contrato.condicionesIncrementoCanon && (
+              <div className="full">
+                <div className="dd muted">Sin notas registradas.</div>
+              </div>
+            )}
+          </dl>
+        </Card>
+      </div>
 
       <div className="stack" style={{ marginTop: 20, gap: 12 }}>
         <h2 className="text-[15px] font-semibold">Contrato firmado (PDF)</h2>

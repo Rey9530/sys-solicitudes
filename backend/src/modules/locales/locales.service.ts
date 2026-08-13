@@ -18,6 +18,8 @@ import type {
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { SolicitudStateService } from '../solicitudes/state/solicitud-state.service';
+import { SOLICITUD_INCLUDE } from '../solicitudes/solicitud.mapper';
+import { buildSolicitudEmailContext } from '../notificaciones/solicitud-email.builder';
 import { contratoToOutput, ordenarHistorial } from '../contratos/contrato.mapper';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
@@ -109,12 +111,19 @@ export class LocalesService {
           // T-126: 'solicitud-rechazada' es CRÍTICA — EmailService la encola
           // aunque email_invalido sea true (antes se filtraba aquí).
           if (solicitud.usuario_creador) {
+            // T-127-bis: hidratar la solicitud con relaciones para construir el
+            // contexto completo del email (tipo, categoría, local, descripción, etc.).
+            const full = await tx.solicitud.findFirst({
+              where: { id: solicitud.id },
+              include: SOLICITUD_INCLUDE,
+            });
             await this.solicitudState.enqueueEmail(tx, {
               plazaId,
               destinatario: solicitud.usuario_creador.email,
               plantilla: 'solicitud-rechazada',
               solicitudId: solicitud.id,
               variables: {
+                ...(full ? buildSolicitudEmailContext(full) : {}),
                 solicitudCodigo: solicitud.codigo,
                 solicitudTitulo: solicitud.titulo,
                 comentario,
@@ -149,11 +158,11 @@ export class LocalesService {
           data: {
             plaza_id: plazaId,
             codigo: dto.codigo,
-            nombre: dto.nombre ?? null,
-            metraje_m2: dto.metrajeM2 ?? null,
-            piso: dto.piso ?? null,
-            sector: dto.sector ?? null,
-            descripcion: dto.descripcion ?? null,
+            modulo: dto.modulo ?? null,
+            nivel: dto.nivel ?? null,
+            area_m2: dto.areaM2 ?? null,
+            medidor_energia: this.normalizarMedidor(dto.medidorEnergia),
+            medidor_agua: this.normalizarMedidor(dto.medidorAgua),
           },
         }),
       )
@@ -177,18 +186,18 @@ export class LocalesService {
   // ── Listar (admin: todos; inquilino: solo con contrato vigente suyo) ──────────
   async findAll(query: ListLocalesQuery, actor: AuthenticatedUser): Promise<Paginated<LocalOutput>> {
     const plazaId = this.requirePlaza(actor);
-    const { page, pageSize, estado, piso, sector, search } = query;
+    const { page, pageSize, estado, modulo, nivel, search } = query;
 
     const where: Prisma.localWhereInput = {
       deleted_at: null,
       ...(estado ? { estado } : {}),
-      ...(piso ? { piso } : {}),
-      ...(sector ? { sector } : {}),
+      ...(modulo ? { modulo } : {}),
+      ...(nivel ? { nivel } : {}),
       ...(search
         ? {
             OR: [
               { codigo: { contains: search, mode: 'insensitive' as const } },
-              { nombre: { contains: search, mode: 'insensitive' as const } },
+              { modulo: { contains: search, mode: 'insensitive' as const } },
             ],
           }
         : {}),
@@ -323,11 +332,15 @@ export class LocalesService {
       const updated = await tx.local.update({
         where: { id },
         data: {
-          ...(dto.nombre !== undefined ? { nombre: dto.nombre } : {}),
-          ...(dto.metrajeM2 !== undefined ? { metraje_m2: dto.metrajeM2 } : {}),
-          ...(dto.piso !== undefined ? { piso: dto.piso } : {}),
-          ...(dto.sector !== undefined ? { sector: dto.sector } : {}),
-          ...(dto.descripcion !== undefined ? { descripcion: dto.descripcion } : {}),
+          ...(dto.modulo !== undefined ? { modulo: dto.modulo } : {}),
+          ...(dto.nivel !== undefined ? { nivel: dto.nivel } : {}),
+          ...(dto.areaM2 !== undefined ? { area_m2: dto.areaM2 } : {}),
+          ...(dto.medidorEnergia !== undefined
+            ? { medidor_energia: this.normalizarMedidor(dto.medidorEnergia) }
+            : {}),
+          ...(dto.medidorAgua !== undefined
+            ? { medidor_agua: this.normalizarMedidor(dto.medidorAgua) }
+            : {}),
           ...(dto.estado !== undefined ? { estado: dto.estado } : {}),
         },
       });
@@ -441,15 +454,22 @@ export class LocalesService {
       id: l.id,
       plazaId: l.plaza_id,
       codigo: l.codigo,
-      nombre: l.nombre,
-      metrajeM2: l.metraje_m2 === null ? null : Number(l.metraje_m2),
-      piso: l.piso,
-      sector: l.sector,
-      descripcion: l.descripcion,
+      modulo: l.modulo,
+      nivel: l.nivel,
+      areaM2: l.area_m2 === null ? null : Number(l.area_m2),
+      medidorEnergia: l.medidor_energia,
+      medidorAgua: l.medidor_agua,
       estado: l.estado,
       createdAt: l.created_at.toISOString(),
       updatedAt: l.updated_at.toISOString(),
       deletedAt: l.deleted_at?.toISOString() ?? null,
     };
+  }
+
+  /** Normaliza un medidor: trim + descarta string vacío → null. */
+  private normalizarMedidor(value: string | null | undefined): string | null {
+    if (value === null || value === undefined) return null;
+    const t = value.trim();
+    return t === '' ? null : t;
   }
 }

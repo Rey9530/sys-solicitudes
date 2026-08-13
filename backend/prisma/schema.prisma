@@ -333,15 +333,20 @@ enum adjunto_entidad_tipo {
 /// Local/unidad de la plaza (T-047). Materializa RN-LO-1..RN-LO-6.
 /// `estado='alquilado'` solo se setea automáticamente al crear contrato vigente
 /// (T-054); `disponible` no se permite si hay contrato vigente (RI-2, app).
+///
+/// Campos alineados al formato Excel "INFORMACION PARA CREACION DE LOCALES":
+///   MODULO, NIVEL, LOCAL (codigo), ÁREA (area_m2), MEDIDOR ENERGIA, MEDIDOR AGUA.
+/// Renombres vs modelo previo: sector→modulo, piso→nivel, metraje_m2→area_m2.
+/// Se eliminaron `nombre` y `descripcion` (no aparecen en el formato del cliente).
 model local {
   id                         String       @id @default(uuid()) @db.Uuid
   plaza_id                   String       @db.Uuid
   codigo                     String
-  nombre                     String?
-  metraje_m2                 Decimal?     @db.Decimal(10, 2)
-  piso                       String?
-  sector                     String?
-  descripcion                String?
+  modulo                     String?
+  nivel                      String?
+  area_m2                    Decimal?     @db.Decimal(10, 2)
+  medidor_energia            String?      @db.VarChar(20)
+  medidor_agua               String?      @db.VarChar(20)
   estado                     local_estado @default(disponible)
   // T-103: ventana de mantenimiento por remodelación aprobada (módulo 07).
   fecha_inicio_mantenimiento DateTime?    @db.Date
@@ -360,21 +365,58 @@ model local {
   @@map("local")
 }
 
+/// Tipo de cliente del inquilino (Hoja 2 del Excel — segmentación comercial).
+/// Decisión: enum cerrado en v1 (GRANDE/MEDIANO/OTRO del formato del cliente).
+enum inquilino_tipo_cliente {
+  grande
+  mediano
+  otro
+}
+
 /// Inquilino (empresa/persona que alquila) (T-048). CU-LO-10..CU-LO-13.
 /// UNIQUE parcial (plaza_id, identificacion) WHERE identificacion IS NOT NULL
 /// se crea con SQL manual en la migración (Prisma no soporta índices parciales).
+///
+/// Campos alineados al formato Excel "INFORMACION PARA CREACION DE
+/// INQUILINOS" (Hoja 2, columnas B-T + AL). Los 16 campos del primer
+/// contrato (U-AK) NO están aquí — esos viven en el modelo `contrato`.
+///
+/// Inmutables: `razon_social` e `identificacion` no se aceptan en el
+/// esquema de update (trazabilidad legal/contable).
 model inquilino {
-  id                String    @id @default(uuid()) @db.Uuid
-  plaza_id          String    @db.Uuid
-  razon_social      String
-  identificacion    String?
-  direccion         String?
-  contacto_nombre   String?
-  contacto_email    String?
-  contacto_telefono String?
-  created_at        DateTime  @default(now()) @db.Timestamptz(6)
-  updated_at        DateTime  @updatedAt @db.Timestamptz(6)
-  deleted_at        DateTime? @db.Timestamptz(6)
+  id                   String    @id @default(uuid()) @db.Uuid
+  plaza_id             String    @db.Uuid
+  // Identidad
+  razon_social         String
+  identificacion       String?
+  nombre_comercial     String?   @db.VarChar(160)
+  representante_legal  String?   @db.VarChar(160)
+  numero_nrc           String?   @db.VarChar(40)
+  // Canales del inquilino
+  correo_recepcion_dte String?   @db.VarChar(160)
+  numero_telefono      String?   @db.VarChar(40)
+  direccion            String?
+  // Contacto 1
+  contacto1_nombre     String?
+  contacto1_cargo      String?   @db.VarChar(80)
+  contacto1_email      String?
+  contacto1_telefono   String?
+  // Contacto 2
+  contacto2_nombre     String?   @db.VarChar(120)
+  contacto2_cargo      String?   @db.VarChar(80)
+  contacto2_email      String?   @db.VarChar(160)
+  contacto2_telefono   String?   @db.VarChar(40)
+  // Clasificación
+  tipo_cliente         inquilino_tipo_cliente?
+  giro_autorizado      String?   @db.VarChar(160)
+  categoria            String?   @db.VarChar(120)
+  subcategoria         String?   @db.VarChar(120)
+  // Otros
+  comentarios          String?   @db.Text
+  // Auditoría
+  created_at           DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at           DateTime? @db.Timestamptz(6)
 
   plaza       plaza       @relation(fields: [plaza_id], references: [id])
   contratos   contrato[]
@@ -389,21 +431,38 @@ model inquilino {
 /// (`fecha_fin` NULL = indefinido) y RN-CO-1..RN-CO-5.
 /// CHECK (fecha_fin IS NULL OR fecha_fin >= fecha_inicio) y el trigger
 /// anti-solapamiento (T-050) van en SQL manual en las migraciones.
+///
+/// Campos adicionales (Hoja 2 del Excel U-AK — excluye AD/AE ya en BD,
+/// AI ignorado, Y/Z/AA derivados en frontend). T-V14+.
 model contrato {
-  id                 String          @id @default(uuid()) @db.Uuid
-  plaza_id           String          @db.Uuid
-  local_id           String          @db.Uuid
-  inquilino_id       String          @db.Uuid
-  fecha_inicio       DateTime        @db.Date
-  fecha_fin          DateTime?       @db.Date
-  monto_mensual      Decimal?        @db.Decimal(12, 2)
-  moneda             String          @default("USD") @db.Char(3)
-  condiciones        String?
-  estado             contrato_estado @default(vigente)
-  fecha_fin_efectiva DateTime?       @db.Date
-  motivo_fin         String?
-  created_at         DateTime        @default(now()) @db.Timestamptz(6)
-  updated_at         DateTime        @updatedAt @db.Timestamptz(6)
+  id                            String          @id @default(uuid()) @db.Uuid
+  plaza_id                      String          @db.Uuid
+  local_id                      String          @db.Uuid
+  inquilino_id                  String          @db.Uuid
+  fecha_inicio                  DateTime        @db.Date
+  fecha_fin                     DateTime?       @db.Date
+  monto_mensual                 Decimal?        @db.Decimal(12, 2)
+  moneda                        String          @default("USD") @db.Char(3)
+  condiciones                   String?
+  estado                        contrato_estado @default(vigente)
+  fecha_fin_efectiva            DateTime?       @db.Date
+  motivo_fin                    String?
+
+  // ── Campos nuevos Excel Hoja 2 (U-AK, excluyendo AD/AE/AI/Y/Z/AA) ──────────
+  plazo_anios                   Int?                                       // U: PLAZO (AÑOS)
+  area_mt2_medicion_real        Decimal?        @db.Decimal(12, 2)         // V: ÁREA mt2 MEDICION REAL
+  cuota_arrendamiento           Decimal?        @db.Decimal(12, 2)         // W: CUOTA ARRENDAMIENTO
+  cuota_cam                     Decimal?        @db.Decimal(12, 2)         // X: CUOTA CAM
+  deposito_garantia             Decimal?        @db.Decimal(12, 2)         // AB: DEPÓSITO DE GARANTÍA
+  fecha_pago_deposito           DateTime?       @db.Date                   // AC: FECHA PAGO DEPOSITO
+  fecha_entrega_local           DateTime?       @db.Date                   // AF: FECHA ENTREGA DE LOCAL
+  periodo_gracia                String?         @db.VarChar(40)            // AG: PERIODO DE GRACIA
+  inicio_operaciones            DateTime?       @db.Date                   // AH: INICIO DE OPERACIONES
+  aviso_terminacion             DateTime?       @db.Date                   // AJ: AVISO DE TERMINACIÓN
+  condiciones_incremento_canon  String?                                    // AK: CONDICIONES DE INCREMENTO CANON
+
+  created_at                    DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at                    DateTime        @updatedAt @db.Timestamptz(6)
 
   plaza     plaza     @relation(fields: [plaza_id], references: [id])
   local     local     @relation(fields: [local_id], references: [id])

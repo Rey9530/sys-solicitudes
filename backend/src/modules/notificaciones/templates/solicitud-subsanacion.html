@@ -1,12 +1,13 @@
 {{> _header}}
-<h2 style="margin:0 0 12px;font-size:18px;color:#b45309;">Tu solicitud requiere cambios</h2>
+<h2 style=”margin:0 0 12px;font-size:18px;color:#b45309;”>Tu solicitud requiere cambios</h2>
 <p>La administración revisó tu solicitud <strong>{{solicitudCodigo}}</strong>{{#if solicitudTitulo}} — “{{solicitudTitulo}}”{{/if}} y necesita que la corrijas antes de poder aprobarla.</p>
-<div style="border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0;">
-  <p style="margin:0 0 4px;font-weight:600;color:#92400e;">Qué debes corregir</p>
-  <p style="margin:0;color:#92400e;">{{comentario}}</p>
+{{> _solicitud-detalles}}
+<div style=”border-left:4px solid #b45309;background:#fffbeb;padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0;”>
+  <p style=”margin:0 0 4px;font-weight:600;color:#92400e;”>Qué debes corregir</p>
+  <p style=”margin:0;color:#92400e;”>{{comentario}}</p>
 </div>
 <p>Edita la solicitud y reenvíala; volverá a la cola de revisión.</p>
-<p style="margin:20px 0;">
-  <a href="{{appUrl}}/inquilino/solicitudes" style="display:inline-block;padding:10px 18px;background:{{plaza.colorPrimario}};color:#fff;text-decoration:none;border-radius:6px;">Corregir solicitud</a>
+<p style=”margin:20px 0;”>
+  <a href=”{{appUrl}}/inquilino/solicitudes” style=”display:inline-block;padding:10px 18px;background:{{plaza.colorPrimario}};color:#fff;text-decoration:none;border-radius:6px;”>Corregir solicitud</a>
 </p>
 {{> _footer}}

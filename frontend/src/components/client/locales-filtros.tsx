@@ -3,21 +3,21 @@
 import { useRouter } from 'next/navigation';
 import { LocalEstadoSchema } from '@app/contracts';
 
-/** Filtros de listado de locales por estado/piso/sector (T-057). */
+/** Filtros de listado de locales por estado/módulo/nivel (T-057). */
 export function LocalesFiltros({
   estado,
-  piso,
-  sector,
+  modulo,
+  nivel,
 }: {
   estado?: string;
-  piso?: string;
-  sector?: string;
+  modulo?: string;
+  nivel?: string;
 }) {
   const router = useRouter();
 
   const apply = (next: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
-    const merged = { estado, piso, sector, ...next };
+    const merged = { estado, modulo, nivel, ...next };
     for (const [k, v] of Object.entries(merged)) {
       if (v) params.set(k, v);
     }
@@ -44,36 +44,36 @@ export function LocalesFiltros({
           </select>
         </div>
         <div className="field">
-          <label htmlFor="lf-piso">Piso</label>
+          <label htmlFor="lf-modulo">Módulo</label>
           <input
-            id="lf-piso"
+            id="lf-modulo"
             className="input"
-            style={{ width: 112 }}
-            defaultValue={piso ?? ''}
+            style={{ width: 144 }}
+            defaultValue={modulo ?? ''}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') apply({ piso: e.currentTarget.value || undefined });
+              if (e.key === 'Enter') apply({ modulo: e.currentTarget.value || undefined });
             }}
             onBlur={(e) => {
-              if (e.target.value !== (piso ?? '')) apply({ piso: e.target.value || undefined });
+              if (e.target.value !== (modulo ?? '')) apply({ modulo: e.target.value || undefined });
             }}
           />
         </div>
         <div className="field">
-          <label htmlFor="lf-sector">Sector</label>
+          <label htmlFor="lf-nivel">Nivel</label>
           <input
-            id="lf-sector"
+            id="lf-nivel"
             className="input"
-            style={{ width: 144 }}
-            defaultValue={sector ?? ''}
+            style={{ width: 112 }}
+            defaultValue={nivel ?? ''}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') apply({ sector: e.currentTarget.value || undefined });
+              if (e.key === 'Enter') apply({ nivel: e.currentTarget.value || undefined });
             }}
             onBlur={(e) => {
-              if (e.target.value !== (sector ?? '')) apply({ sector: e.target.value || undefined });
+              if (e.target.value !== (nivel ?? '')) apply({ nivel: e.target.value || undefined });
             }}
           />
         </div>
-        {(estado || piso || sector) && (
+        {(estado || modulo || nivel) && (
           <button
             type="button"
             className="btn btn-ghost btn-sm"

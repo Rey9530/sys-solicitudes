@@ -70,7 +70,8 @@ export function RenovarContratoDialog({ contrato }: { contrato: ContratoOutput }
         <DialogHeader>
           <DialogTitle>Renovar contrato</DialogTitle>
           <DialogDescription>
-            El contrato actual se cierra con motivo «renovado» y se crea uno nuevo vigente.
+            El contrato actual se cierra con motivo «renovado» y se crea uno nuevo vigente. Se
+            mantienen los términos contractuales (canon, CAM, depósito, etc.) del contrato actual.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="grid gap-3" noValidate>

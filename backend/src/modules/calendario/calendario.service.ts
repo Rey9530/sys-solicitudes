@@ -13,6 +13,7 @@ import type {
   ChoquesQuery,
   IcsQuery,
   MoverEventoFechas,
+  SolicitudEstado,
 } from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
@@ -27,6 +28,30 @@ export interface RequestMeta {
 /** Colores por tipo (T-133); `evento` usa el color de la fila. */
 const COLOR_MANTENIMIENTO = '#f59e0b';
 const COLOR_HITO_CONTRATO = '#8b5cf6';
+
+/**
+ * Paleta por estado de solicitud para items `tipo === 'solicitud'` del feed
+ * del inquilino. El admin NO recibe items `solicitud` (ver `feed()`),
+ * por lo que esta paleta solo se aplica del lado del inquilino.
+ *  ⚠️ Decisión owner 2026-08-13 (bug fix calendario inquilino): se decidió
+ *  mostrar TODAS las solicitudes del inquilino en su calendario (no solo las
+ *  aprobadas) usando `fecha_evento_inicio` como pivote. Mantenimientos e
+ *  hitos contractuales siguen funcionando igual. Los items `solicitud` no
+ *  participan en `marcarChoques` ni en `exportIcs` (ver marcas dentro de
+ *  cada helper).
+ */
+const COLOR_POR_ESTADO_SOLICITUD: Record<SolicitudEstado, string> = {
+  borrador: '#9ca3af', // gray-400
+  enviada: '#3b82f6', // blue-500
+  asignado: '#6366f1', // indigo-500
+  en_revision: '#f59e0b', // amber-500 (mismo tono que mantenimiento para coherencia visual)
+  requerida_subsanacion: '#f97316', // orange-500
+  pausada: '#06b6d4', // cyan-500
+  aprobada: '#10b981', // emerald-500 (mismo tono que un evento aprobado)
+  cerrada: '#8b5cf6', // violet-500
+  rechazada: '#ef4444', // red-500
+  cancelada: '#6b7280', // gray-500
+};
 
 /** Offset fijo de la plaza (T-V08: America/El_Salvador, UTC-6 sin DST). */
 const PLAZA_UTC_OFFSET_MS = 6 * 3_600_000;
@@ -60,7 +85,11 @@ export class CalendarioService {
         message: '`to` debe ser posterior a `from`.',
       });
     }
-    const tipos = query.tipo ?? ['evento', 'mantenimiento', 'hito_contrato'];
+    const tipos =
+      query.tipo ??
+      (actor.rol === 'inquilino'
+        ? ['evento', 'mantenimiento', 'hito_contrato', 'solicitud']
+        : ['evento', 'mantenimiento', 'hito_contrato']);
     const inquilinoScope = actor.rol === 'inquilino' ? this.requireInquilino(actor) : null;
 
     return this.prisma.withTenant(plazaId, async (tx) => {
@@ -77,6 +106,21 @@ export class CalendarioService {
         if (config?.calendar_mostrar_hitos_contrato) {
           items.push(...(await this.hitosContractuales(tx, query, from, to, inquilinoScope)));
         }
+      }
+      // ⚠️ Solo el INQUILINO recibe items `solicitud`: muestra TODAS sus
+      //  solicitudes con `fecha_evento_inicio` poblada y en el rango (no solo
+      //  aprobadas). El admin nunca las ve (por su tipo de feed).
+      //  `inquilinoScope` está garantizado no-nulo por `requireInquilino` arriba.
+      if (actor.rol === 'inquilino' && tipos.includes('solicitud')) {
+        items.push(
+          ...(await this.solicitudesCalendario(
+            tx,
+            query,
+            from,
+            to,
+            inquilinoScope as string,
+          )),
+        );
       }
 
       this.marcarChoques(items);
@@ -228,6 +272,74 @@ export class CalendarioService {
         }
       }
     }
+  }
+
+  /**
+   * Solicitudes del inquilino en el rango `[from, to]` (decisión owner 2026-08-13):
+   * muestra TODAS sus solicitudes con `fecha_evento_inicio` poblada, sin importar
+   * estado. Es el complemento del feed existente de `evento_calendario` (que
+   * solo cubre aprobadas) para que el calendario del inquilino muestre la
+   * "misma información que su bandeja de /solicitudes".
+   *
+   *   - Scope por inquilino: ya viene garantizado por `requireInquilino` en `feed()`.
+   *   - RLS: corre dentro de `withTenant(plazaId, ...)`.
+   *   - Sin choques (T-131 aplica solo a `evento` aprobados): los items
+   *     `solicitud` se filtran antes del cálculo en `marcarChoques`.
+   *   - Sin export iCal (T-130 exporta solo eventos aprobados): ver `exportIcs`.
+   *   - Sin drag-and-drop: el frontend los pinta `editable: false` porque su
+   *     `extendedProps.tipo !== 'evento'`.
+   */
+  private async solicitudesCalendario(
+    tx: Prisma.TransactionClient,
+    query: Pick<CalendarioQuery, 'localId'>,
+    from: Date,
+    to: Date,
+    inquilinoScope: string,
+  ): Promise<CalendarioEventoOutput[]> {
+    const rows = await tx.solicitud.findMany({
+      where: {
+        inquilino_id: inquilinoScope,
+        // Solo solicitudes con fecha de evento asignada y dentro del rango visible.
+        fecha_evento_inicio: { not: null, gte: from, lte: to },
+        ...(query.localId?.length ? { local_id: { in: query.localId } } : {}),
+      },
+      select: {
+        id: true,
+        codigo: true,
+        titulo: true,
+        estado: true,
+        prioridad: true,
+        local_id: true,
+        inquilino_id: true,
+        fecha_evento_inicio: true,
+        fecha_evento_fin: true,
+        hora_inicio: true,
+        hora_fin: true,
+        local: { select: { codigo: true } },
+      },
+      orderBy: { fecha_evento_inicio: 'asc' },
+    });
+    return rows.map((s) => ({
+      id: `sol-${s.id}`,
+      // "<codigo> · <titulo>" truncado a 80 chars (T-133 longitudes razonables).
+      title: `${s.codigo} · ${s.titulo}`.slice(0, 80),
+      start: this.combinarFechaHora(s.fecha_evento_inicio as Date, s.hora_inicio),
+      end: this.combinarFechaHora(
+        (s.fecha_evento_fin as Date | null) ?? (s.fecha_evento_inicio as Date),
+        s.hora_fin ?? s.hora_inicio ?? '00:00',
+      ),
+      color: COLOR_POR_ESTADO_SOLICITUD[s.estado as SolicitudEstado],
+      extendedProps: {
+        tipo: 'solicitud' as const,
+        solicitudId: s.id,
+        solicitudCodigo: s.codigo,
+        estado: s.estado as SolicitudEstado,
+        prioridad: s.prioridad,
+        localId: s.local_id,
+        localCodigo: s.local.codigo,
+        inquilinoId: s.inquilino_id,
+      },
+    }));
   }
 
   // ── T-131: endpoint de choques ───────────────────────────────────────────────
@@ -445,6 +557,19 @@ export class CalendarioService {
   /** Fecha civil YYYY-MM-DD (las columnas DATE vienen a medianoche UTC). */
   private soloFecha(d: Date): string {
     return d.toISOString().slice(0, 10);
+  }
+
+  /** Combina un DATE civil (medianoche UTC) con un "HH:MM" en hora de la
+   *  plaza (UTC-6 fija) y devuelve el instante en UTC como ISO. Se usa en
+   *  `solicitudesCalendario` para construir `start`/`end` de items
+   *  `solicitud` a partir de `fecha_evento_*` + `hora_*` de la tabla
+   *  `solicitud` (T-V22 + T-129). Es coherente con cómo `moverEvento`
+   *  interpreta el par fecha/hora de la plaza y con `fechaCivilPlaza`. */
+  private combinarFechaHora(fecha: Date, hhmm?: string | null): string {
+    const [hRaw = '0', mRaw = '0'] = (hhmm ?? '00:00').split(':');
+    const d = new Date(fecha);
+    d.setUTCHours(Number.parseInt(hRaw, 10) || 0, Number.parseInt(mRaw, 10) || 0, 0, 0);
+    return d.toISOString();
   }
 
   /** Fecha civil de la plaza (UTC-6 fija) como Date a medianoche UTC. */

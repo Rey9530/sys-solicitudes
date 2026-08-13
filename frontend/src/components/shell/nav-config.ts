@@ -4,6 +4,7 @@ import {
   Building2,
   CalendarDays,
   FileText,
+  Globe,
   Inbox,
   LayoutDashboard,
   type LucideIcon,
@@ -127,7 +128,7 @@ export const NAV: Record<AppRole, NavGroup[]> = {
       items: [
         {
           key: 'usuarios-plaza',
-          label: 'Usuarios de plaza',
+          label: 'Usuarios | Roles',
           icon: UserCog,
           href: '/admin/usuarios-plaza',
           permisoRequerido: 'usuarios_plaza.listar',
@@ -169,6 +170,19 @@ export const NAV: Record<AppRole, NavGroup[]> = {
       label: 'Plataforma',
       items: [{ key: 'plazas', label: 'Plazas', icon: Building2, href: '/superadmin/plazas' }],
     },
+    // T-V25: vistas cross-plaza (sin scope de plaza). Separadas visualmente
+    // del grupo "Operación" (que sí es plaza-scoped y usa impersonación).
+    {
+      label: 'Operación global',
+      items: [
+        {
+          key: 'sa-solicitudes',
+          label: 'Solicitudes globales',
+          icon: Globe,
+          href: '/superadmin/solicitudes',
+        },
+      ],
+    },
     // El superadmin también puede operar la consola de plaza (el guard de
     // /admin/* lo permite). Estas secciones son plaza-scoped en el backend.
     // No llevan permisoRequerido: superadmin tiene wildcard '*' y siempre ve.
@@ -197,7 +211,7 @@ export const NAV: Record<AppRole, NavGroup[]> = {
     {
       label: 'Gestión',
       items: [
-        { key: 'usuarios-plaza', label: 'Usuarios de plaza', icon: UserCog, href: '/admin/usuarios-plaza' },
+        { key: 'usuarios-plaza', label: 'Usuarios | Roles', icon: UserCog, href: '/admin/usuarios-plaza' },
         { key: 'reportes', label: 'Reportes', icon: BarChart3, href: '/admin/reportes' },
         { key: 'auditoria', label: 'Auditoría', icon: ScrollText, href: '/admin/auditoria' },
         { key: 'notificaciones', label: 'Notificaciones', icon: Bell, href: '/admin/notificaciones' },

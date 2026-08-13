@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Inbox } from 'lucide-react';
-import type { SolicitudListItem } from '@app/contracts';
+import type { PlazaRef, SolicitudListItem } from '@app/contracts';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SolicitudEstadoBadge, PrioridadBadge, SlaSemaforo } from '@/components/estado-badge';
@@ -20,18 +20,30 @@ const TIPO_LABEL: Record<string, string> = {
   otro: 'Otro',
 };
 
+/** Variante de `SolicitudListItem` con `plaza` opcional. Se usa en la vista
+ *  cross-plataforma del superadmin (`/superadmin/solicitudes`) donde cada fila
+ *  necesita mostrar a qué plaza pertenece la solicitud. */
+type SolicitudListItemConPlaza = SolicitudListItem & { plaza?: PlazaRef | null };
+
 /** Tabla compartida de solicitudes (T-087 inquilino / T-106 admin).
- *  En móvil cada registro se muestra como una tarjeta. */
-export function SolicitudesTable({
+ *  En móvil cada registro se muestra como una tarjeta.
+ *
+ *  T-V25: cuando se pasa `showPlaza`, se renderiza una columna extra "Plaza"
+ *  entre Local y Estado. El caller debe garantizar que los items traen el
+ *  campo `plaza?: PlazaRef` (típicamente `SolicitudPlataformaListItem`).
+ */
+export function SolicitudesTable<T extends SolicitudListItem = SolicitudListItem>({
   solicitudes,
   baseHref,
   showSla = false,
   showAsignado = false,
+  showPlaza = false,
 }: {
-  solicitudes: SolicitudListItem[];
+  solicitudes: T[];
   baseHref: string;
   showSla?: boolean;
   showAsignado?: boolean;
+  showPlaza?: boolean;
 }) {
   if (solicitudes.length === 0) {
     return (
@@ -45,7 +57,7 @@ export function SolicitudesTable({
     );
   }
 
-  const columns: ResponsiveColumn<SolicitudListItem>[] = [
+  const columns: ResponsiveColumn<SolicitudListItemConPlaza>[] = [
     {
       key: 'codigo',
       header: 'Código',
@@ -76,6 +88,18 @@ export function SolicitudesTable({
       cardLabel: 'Local',
       cell: (s) => <span className="mono">{s.localCodigo ?? '—'}</span>,
     },
+    ...(showPlaza
+      ? [
+          {
+            key: 'plaza' as const,
+            header: 'Plaza',
+            cardLabel: 'Plaza',
+            cell: (s: SolicitudListItemConPlaza) => (
+              <span className="muted">{s.plaza?.nombreComercial ?? '—'}</span>
+            ),
+          },
+        ]
+      : []),
     {
       key: 'estado',
       header: 'Estado',
@@ -94,7 +118,7 @@ export function SolicitudesTable({
             key: 'sla' as const,
             header: 'SLA',
             cardLabel: 'SLA',
-            cell: (s: SolicitudListItem) => <SlaSemaforo status={s.slaStatus} />,
+            cell: (s: SolicitudListItemConPlaza) => <SlaSemaforo status={s.slaStatus} />,
           },
         ]
       : []),
@@ -104,7 +128,7 @@ export function SolicitudesTable({
             key: 'asignado' as const,
             header: 'Asignada a',
             cardLabel: 'Asignada a',
-            cell: (s: SolicitudListItem) =>
+            cell: (s: SolicitudListItemConPlaza) =>
               s.adminAsignado?.nombre ? (
                 <span className="inline-flex items-center gap-2">
                   <Avatar name={s.adminAsignado.nombre} sm />
@@ -134,7 +158,11 @@ export function SolicitudesTable({
 
   return (
     <Card>
-      <ResponsiveDataView rows={solicitudes} columns={columns} rowKey={(s) => s.id} />
+      <ResponsiveDataView
+        rows={solicitudes as SolicitudListItemConPlaza[]}
+        columns={columns}
+        rowKey={(s) => s.id}
+      />
     </Card>
   );
 }

@@ -19,13 +19,13 @@ interface Paginated {
 export default async function AdminLocalesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ estado?: string; piso?: string; sector?: string; page?: string }>;
+  searchParams: Promise<{ estado?: string; modulo?: string; nivel?: string; page?: string }>;
 }) {
   const sp = await searchParams;
   const qs = new URLSearchParams({ page: sp.page ?? '1', pageSize: '20' });
   if (sp.estado) qs.set('estado', sp.estado);
-  if (sp.piso) qs.set('piso', sp.piso);
-  if (sp.sector) qs.set('sector', sp.sector);
+  if (sp.modulo) qs.set('modulo', sp.modulo);
+  if (sp.nivel) qs.set('nivel', sp.nivel);
 
   const res = await apiFetch(`/locales?${qs.toString()}`);
   const data: Paginated = res.ok
@@ -47,7 +47,7 @@ export default async function AdminLocalesPage({
         }
       />
       <div className="mb-4">
-        <LocalesFiltros estado={sp.estado} piso={sp.piso} sector={sp.sector} />
+        <LocalesFiltros estado={sp.estado} modulo={sp.modulo} nivel={sp.nivel} />
       </div>
       <LocalesTable locales={data.items} />
       <div className="mt-4">

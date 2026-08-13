@@ -43,7 +43,7 @@ export default async function LocalDetailPage({
         title={
           <>
             <span className="mono">{local.codigo}</span>
-            {local.nombre ? ` · ${local.nombre}` : ''}
+            {local.modulo ? ` · Módulo ${local.modulo}` : ''}
           </>
         }
         badges={<LocalEstadoBadge estado={local.estado} />}

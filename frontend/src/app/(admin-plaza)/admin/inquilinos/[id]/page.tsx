@@ -58,8 +58,8 @@ export default async function InquilinoDetailPage({
           <AltaUsuarioInquilinoDialog
             inquilinoId={inquilino.id}
             razonSocial={inquilino.razonSocial}
-            contactoEmail={inquilino.contactoEmail}
-            contactoNombre={inquilino.contactoNombre}
+            contacto1Email={inquilino.contacto1Email}
+            contacto1Nombre={inquilino.contacto1Nombre}
           />
         }
       />

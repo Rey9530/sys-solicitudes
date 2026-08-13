@@ -6,8 +6,22 @@ import { z } from 'zod';
 // ─────────────────────────────────────────────────────────────────────────────
 // Primitivos
 
-/** UUID v4. */
-export const UuidSchema = z.uuid();
+/**
+ * UUID en formato canónico `8-4-4-4-12` (32 hex chars con guiones).
+ *
+ * ⚠️ NO usamos `z.uuid()` de Zod 4: ese valida variante RFC-4122 (último
+ * segmento debe empezar por 8/9/a/b). Esto rechaza UUIDs NIL (`00000000-…`)
+ * y otros formatos válidos que pueden aparecer en BD legacy o seeds con
+ * sentinels deterministas (ej. `00000000-0000-0000-0000-000000000001`).
+ * Como `UuidSchema` se usa para IDs que Prisma devuelve desde Postgres
+ * (no para validar UUIDs generados por la app), preferimos formato a variant.
+ */
+export const UuidSchema = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+    'UUID inválido (formato esperado 8-4-4-4-12 hex)',
+  );
 export type Uuid = z.infer<typeof UuidSchema>;
 
 /** Email normalizado (lowercase, sin espacios). */

@@ -19,7 +19,7 @@ interface UsuarioRefRow {
 }
 
 export type SolicitudConRelaciones = SolicitudModel & {
-  local?: { codigo: string } | null;
+  local?: { codigo: string; modulo: string | null } | null;
   inquilino?: { razon_social: string } | null;
   categoria?: { nombre: string } | null;
   subcategoria?: { nombre: string } | null;
@@ -30,9 +30,10 @@ export type SolicitudConRelaciones = SolicitudModel & {
 export type HistorialConUsuario = HistorialModel & { usuario?: UsuarioRefRow | null };
 export type ComentarioConUsuario = ComentarioModel & { usuario?: UsuarioRefRow | null };
 
-/** Include estándar de relaciones para listado/detalle. */
+/** Include estándar de relaciones para listado/detalle.
+ *  T-127-bis: incluye `local.modulo` para enriquecer emails de admin. */
 export const SOLICITUD_INCLUDE = {
-  local: { select: { codigo: true } },
+  local: { select: { codigo: true, modulo: true } },
   inquilino: { select: { razon_social: true } },
   categoria: { select: { nombre: true } },
   subcategoria: { select: { nombre: true } },

@@ -21,14 +21,29 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { SolicitudEstadoBadge } from '@/components/estado-badge';
 import { fetchCalendarioFeedAction, moverEventoAction } from '@/app/calendario-actions';
 
 const TZ_PLAZA = 'America/El_Salvador';
+/**
+ * Tipos visualizados en el panel de filtros. `solicitud` es exclusivo del
+ * inquilino (el admin no recibe items `solicitud` del backend, y aunque los
+ * recibiera `TIPOS_VISIBLES_POR_ROL` lo oculta en el checkbox).
+ */
 const TIPOS = [
-  { value: 'evento', label: 'Eventos', color: '#10b981' },
+  { value: 'evento', label: 'Eventos aprobados', color: '#10b981' },
   { value: 'mantenimiento', label: 'Mantenimientos', color: '#f59e0b' },
   { value: 'hito_contrato', label: 'Hitos contractuales', color: '#8b5cf6' },
+  { value: 'solicitud', label: 'Mis solicitudes', color: '#a78bfa' },
 ] as const;
+type TipoValor = (typeof TIPOS)[number]['value'];
+
+/** Tipos que se muestran en el panel según el rol actual. */
+function tiposVisibles(rol: 'admin' | 'inquilino'): readonly TipoValor[] {
+  return rol === 'inquilino'
+    ? TIPOS.map((t) => t.value)
+    : TIPOS.filter((t) => t.value !== 'solicitud').map((t) => t.value);
+}
 
 export interface OpcionFiltro {
   id: string;
@@ -82,10 +97,14 @@ export function CalendarioView({
     () => (searchParams.get('inquilinoId')?.split(',') ?? []).filter(Boolean),
     [searchParams],
   );
+  const visibles = useMemo(() => tiposVisibles(rol), [rol]);
   const filtroTipos = useMemo(() => {
     const t = (searchParams.get('tipo')?.split(',') ?? []).filter(Boolean);
-    return t.length ? t : TIPOS.map((x) => x.value as string);
-  }, [searchParams]);
+    // Si el link compartido trae tipos no visibles para el rol actual, los
+    // descartamos silenciosamente (e.g. un admin abriendo ?tipo=solicitud,...).
+    const filtrados = t.filter((v): v is TipoValor => visibles.includes(v as TipoValor));
+    return filtrados.length ? filtrados : [...visibles];
+  }, [searchParams, visibles]);
   const tzPlaza = searchParams.get('tz') === 'plaza';
 
   const setParam = useCallback(
@@ -113,7 +132,8 @@ export function CalendarioView({
         to: info.endStr,
         localId: filtroLocales.length ? filtroLocales : undefined,
         inquilinoId: filtroInquilinos.length ? filtroInquilinos : undefined,
-        tipo: filtroTipos.length === TIPOS.length ? undefined : filtroTipos,
+        // Omite el param si están todos los tipos visibles activos (reduce ruido en la URL).
+        tipo: filtroTipos.length === visibles.length ? undefined : filtroTipos,
       });
       if (!res.ok) {
         setError(res.error);
@@ -138,7 +158,7 @@ export function CalendarioView({
         })),
       );
     },
-    [filtroLocales, filtroInquilinos, filtroTipos, rol],
+    [filtroLocales, filtroInquilinos, filtroTipos, rol, visibles.length],
   );
 
   // Refetch al cambiar filtros + auto-refresh cada 5 min (T-133).
@@ -205,23 +225,28 @@ export function CalendarioView({
       <aside className="card card-pad space-y-4 text-sm">
         <div>
           <p className="mb-1 font-medium text-gray-700">Tipo</p>
-          {TIPOS.filter((t) => t.value !== 'hito_contrato' || mostrarHitosConfig).map((t) => (
-            <label key={t.value} className="flex items-center gap-2 py-0.5">
-              <input
-                type="checkbox"
-                checked={filtroTipos.includes(t.value)}
-                onChange={() => {
-                  const next = toggleEnLista(filtroTipos, t.value);
-                  setParam('tipo', next.length === TIPOS.length ? null : next.join(','));
-                }}
-              />
-              <span
-                className="inline-block h-2.5 w-2.5 rounded-full"
-                style={{ background: t.color }}
-              />
-              {t.label}
-            </label>
-          ))}
+          {TIPOS.filter((t) => t.value !== 'hito_contrato' || mostrarHitosConfig)
+            .filter((t) => visibles.includes(t.value))
+            .map((t) => (
+              <label key={t.value} className="flex items-center gap-2 py-0.5">
+                <input
+                  type="checkbox"
+                  checked={filtroTipos.includes(t.value)}
+                  onChange={() => {
+                    const next = toggleEnLista(filtroTipos, t.value);
+                    setParam(
+                      'tipo',
+                      next.length === visibles.length ? null : next.join(','),
+                    );
+                  }}
+                />
+                <span
+                  className="inline-block h-2.5 w-2.5 rounded-full"
+                  style={{ background: t.color }}
+                />
+                {t.label}
+              </label>
+            ))}
         </div>
         <div>
           <p className="mb-1 font-medium text-gray-700">Local</p>
@@ -341,6 +366,17 @@ export function CalendarioView({
               <p className="text-gray-500">
                 Tipo: {TIPOS.find((t) => t.value === seleccionado.props.tipo)?.label}
               </p>
+              {/* Items `solicitud` exponen el estado de la solicitud del inquilino
+                  (decisión owner 2026-08-13: el calendario del inquilino muestra
+                  todas sus solicitudes, no solo aprobadas). El admin nunca recibe
+                  items de este tipo, así que el badge solo aparece del lado
+                  inquilino. */}
+              {seleccionado.props.tipo === 'solicitud' && seleccionado.props.estado && (
+                <div className="flex items-center gap-2 text-gray-600">
+                  <span>Estado:</span>
+                  <SolicitudEstadoBadge estado={seleccionado.props.estado} />
+                </div>
+              )}
               {seleccionado.props.solicitudId && (
                 <Button asChild size="sm">
                   <Link href={`${detalleHref}/${seleccionado.props.solicitudId}`}>

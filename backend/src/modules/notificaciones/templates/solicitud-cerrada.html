@@ -1,24 +1,25 @@
 {{> _header}}
 {{#if exitoso}}
-<h2 style="margin:0 0 12px;font-size:18px;color:#15803d;">✓ Solicitud cerrada</h2>
+<h2 style=”margin:0 0 12px;font-size:18px;color:#15803d;”>✓ Solicitud cerrada</h2>
 {{else}}
-<h2 style="margin:0 0 12px;font-size:18px;color:#b45309;">Solicitud cerrada</h2>
+<h2 style=”margin:0 0 12px;font-size:18px;color:#b45309;”>Solicitud cerrada</h2>
 {{/if}}
 <p>Tu solicitud <strong>{{solicitudCodigo}}</strong>{{#if solicitudTitulo}} — “{{solicitudTitulo}}”{{/if}} fue cerrada. La actividad se dio por finalizada.</p>
-<p style="margin:12px 0;">
+{{> _solicitud-detalles}}
+<p style=”margin:12px 0;”>
   Resultado:
   {{#if exitoso}}
-  <strong style="color:#15803d;">{{resultadoLabel}}</strong>
+  <strong style=”color:#15803d;”>{{resultadoLabel}}</strong>
   {{else}}
-  <strong style="color:#b45309;">{{resultadoLabel}}</strong>
+  <strong style=”color:#b45309;”>{{resultadoLabel}}</strong>
   {{/if}}
 </p>
 {{#if comentario}}
-<div style="border-left:4px solid {{#if exitoso}}#15803d{{else}}#b45309{{/if}};background:{{#if exitoso}}#f0fdf4{{else}}#fffbeb{{/if}};padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0;">
-  <p style="margin:0;color:{{#if exitoso}}#166534{{else}}#92400e{{/if}};">{{comentario}}</p>
+<div style=”border-left:4px solid {{#if exitoso}}#15803d{{else}}#b45309{{/if}};background:{{#if exitoso}}#f0fdf4{{else}}#fffbeb{{/if}};padding:10px 14px;margin:12px 0;border-radius:0 6px 6px 0;”>
+  <p style=”margin:0;color:{{#if exitoso}}#166534{{else}}#92400e{{/if}};”>{{comentario}}</p>
 </div>
 {{/if}}
-<p style="margin:20px 0;">
-  <a href="{{appUrl}}/inquilino/solicitudes" style="display:inline-block;padding:10px 18px;background:{{plaza.colorPrimario}};color:#fff;text-decoration:none;border-radius:6px;">Ver detalle</a>
+<p style=”margin:20px 0;”>
+  <a href=”{{appUrl}}/inquilino/solicitudes” style=”display:inline-block;padding:10px 18px;background:{{plaza.colorPrimario}};color:#fff;text-decoration:none;border-radius:6px;”>Ver detalle</a>
 </p>
 {{> _footer}}

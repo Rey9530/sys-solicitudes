@@ -20,6 +20,8 @@ import type {
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { SolicitudStateService } from '../solicitudes/state/solicitud-state.service';
+import { SOLICITUD_INCLUDE } from '../solicitudes/solicitud.mapper';
+import { buildSolicitudEmailContext } from '../notificaciones/solicitud-email.builder';
 import { StaffForSubcategoriaValidator } from './validators/staff-for-subcategoria.validator';
 import {
   categoriaToOutput,
@@ -485,12 +487,18 @@ export class CategoriasService {
           'Cambio de responsable de subcategoría',
         );
         if (nuevo && !nuevo.email_invalido) {
+          // T-127-bis: contexto completo (tipo, categoría, local, descripción, etc.)
+          const full = await tx.solicitud.findFirst({
+            where: { id: solicitud.id },
+            include: SOLICITUD_INCLUDE,
+          });
           await this.solicitudState.enqueueEmail(tx, {
             plazaId,
             destinatario: nuevo.email,
             plantilla: 'solicitud-reasignada',
             solicitudId: solicitud.id,
             variables: {
+              ...(full ? buildSolicitudEmailContext(full) : {}),
               solicitudCodigo: solicitud.codigo,
               solicitudTitulo: solicitud.titulo,
               motivo: 'Cambio de responsable de subcategoría',

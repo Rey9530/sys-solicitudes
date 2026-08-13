@@ -23,13 +23,50 @@ export const CreateContratoSchema = z
       .regex(MONEDA_REGEX, 'Moneda debe ser código ISO 4217 (3 letras mayúsculas)')
       .default('USD'),
     condiciones: z.string().trim().max(4000).optional(),
+
+    // ── Campos nuevos Excel Hoja 2 U-AK (T-V14+; excluye AD/AE ya en BD,
+    // AI ignorado, Y/Z/AA derivados en frontend) ────────────────────────────
+    plazoAnios: z.coerce.number().int().min(1).max(100).nullable().optional(),
+    areaMt2MedicionReal: z.coerce.number().min(0).max(1_000_000).nullable().optional(),
+    cuotaArrendamiento: z.coerce.number().min(0).max(1_000_000_000).nullable().optional(),
+    cuotaCam: z.coerce.number().min(0).max(1_000_000_000).nullable().optional(),
+    depositoGarantia: z.coerce.number().min(0).max(1_000_000_000).nullable().optional(),
+    fechaPagoDeposito: z.iso.date().nullable().optional(),
+    fechaEntregaLocal: z.iso.date().nullable().optional(),
+    periodoGracia: z.string().trim().max(40).nullable().optional(),
+    inicioOperaciones: z.iso.date().nullable().optional(),
+    avisoTerminacion: z.iso.date().nullable().optional(),
+    condicionesIncrementoCanon: z.string().trim().max(4000).nullable().optional(),
   })
   .refine(
     (v) => v.fechaFin == null || v.fechaFin >= v.fechaInicio,
     { message: 'fechaFin debe ser >= fechaInicio', path: ['fechaFin'] },
+  )
+  .refine(
+    (v) => v.fechaEntregaLocal == null || v.fechaEntregaLocal >= v.fechaInicio,
+    { message: 'fechaEntregaLocal debe ser >= fechaInicio', path: ['fechaEntregaLocal'] },
+  )
+  .refine(
+    (v) => v.fechaPagoDeposito == null || v.fechaPagoDeposito >= v.fechaInicio,
+    { message: 'fechaPagoDeposito debe ser >= fechaInicio', path: ['fechaPagoDeposito'] },
+  )
+  .refine(
+    (v) =>
+      v.avisoTerminacion == null || v.fechaFin == null || v.avisoTerminacion <= v.fechaFin,
+    { message: 'avisoTerminacion debe ser <= fechaFin', path: ['avisoTerminacion'] },
+  )
+  .refine(
+    (v) => v.plazoAnios == null || (v.plazoAnios >= 1 && v.plazoAnios <= 100),
+    { message: 'plazoAnios debe estar entre 1 y 100', path: ['plazoAnios'] },
   );
 export type CreateContratoInput = z.infer<typeof CreateContratoSchema>;
 
+/**
+ * Update sigue limitado a `montoMensual` y `condiciones` (regla RN-CO-5
+ * vigente: cambiar fechas/local/inquilino requiere cerrar y crear uno nuevo).
+ * Los 11 campos contractuales del Excel NO son editables en PATCH — se
+ * capturan al crear/renovar. Para modificarlos: cerrar + crear nuevo.
+ */
 export const UpdateContratoSchema = z.object({
   montoMensual: z.coerce.number().min(0).max(1_000_000_000).optional(),
   condiciones: z.string().trim().max(4000).nullable().optional(),
@@ -76,6 +113,20 @@ export const ContratoOutputSchema = z.object({
   estado: ContratoEstadoSchema,
   fechaFinEfectiva: z.iso.date().nullable(),
   motivoFin: z.string().nullable(),
+
+  // ── Campos nuevos Excel Hoja 2 U-AK ─────────────────────────────────────
+  plazoAnios: z.number().int().nullable(),
+  areaMt2MedicionReal: z.number().nullable(),
+  cuotaArrendamiento: z.number().nullable(),
+  cuotaCam: z.number().nullable(),
+  depositoGarantia: z.number().nullable(),
+  fechaPagoDeposito: z.iso.date().nullable(),
+  fechaEntregaLocal: z.iso.date().nullable(),
+  periodoGracia: z.string().nullable(),
+  inicioOperaciones: z.iso.date().nullable(),
+  avisoTerminacion: z.iso.date().nullable(),
+  condicionesIncrementoCanon: z.string().nullable(),
+
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
 });

@@ -64,10 +64,29 @@ export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
         </Link>
       ),
     },
-    { key: 'nombre', header: 'Nombre', cardLabel: 'Nombre', className: 'lead', cell: (l) => l.nombre ?? '—' },
-    { key: 'piso', header: 'Piso', cardLabel: 'Piso', className: 'muted', cell: (l) => l.piso ?? '—' },
-    { key: 'sector', header: 'Sector', cardLabel: 'Sector', className: 'muted', cell: (l) => l.sector ?? '—' },
-    { key: 'metraje', header: 'm²', cardLabel: 'm²', className: 'num muted', cell: (l) => l.metrajeM2 ?? '—' },
+    { key: 'modulo', header: 'Módulo', cardLabel: 'Módulo', className: 'muted', cell: (l) => l.modulo ?? '—' },
+    { key: 'nivel', header: 'Nivel', cardLabel: 'Nivel', className: 'muted', cell: (l) => l.nivel ?? '—' },
+    {
+      key: 'area',
+      header: 'Área (m²)',
+      cardLabel: 'Área',
+      className: 'num muted',
+      cell: (l) => l.areaM2 ?? '—',
+    },
+    {
+      key: 'medidorE',
+      header: 'Med. energía',
+      cardLabel: 'Med. energía',
+      className: 'mono muted',
+      cell: (l) => l.medidorEnergia ?? '—',
+    },
+    {
+      key: 'medidorA',
+      header: 'Med. agua',
+      cardLabel: 'Med. agua',
+      className: 'mono muted',
+      cell: (l) => l.medidorAgua ?? '—',
+    },
     {
       key: 'estado',
       header: 'Estado',

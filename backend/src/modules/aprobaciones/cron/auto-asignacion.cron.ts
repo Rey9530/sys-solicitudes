@@ -3,6 +3,9 @@ import { Cron } from '@nestjs/schedule';
 import { PrismaAdminService } from '../../../prisma/prisma-admin.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { SolicitudStateService } from '../../solicitudes/state/solicitud-state.service';
+import { SOLICITUD_INCLUDE } from '../../solicitudes/solicitud.mapper';
+import { buildSolicitudEmailContext } from '../../notificaciones/solicitud-email.builder';
+import type { SolicitudConRelaciones } from '../../solicitudes/solicitud.mapper';
 
 /** Espera antes de auto-asignar (T-V03: 15 minutos, NO lock de 30). */
 const ESPERA_MINUTOS = 15;
@@ -100,6 +103,16 @@ export class AutoAsignacionCron {
 
           await this.state.autoAsignar(tx, solicitud, r.id);
 
+          // T-127-bis: hidratar la solicitud con relaciones para construir el
+          // contexto completo del email (tipo, categoría, local, descripción, etc.).
+          const full = (await tx.solicitud.findFirst({
+            where: { id: solicitud.id },
+            include: SOLICITUD_INCLUDE,
+          })) as SolicitudConRelaciones | null;
+          const variablesEmail = full
+            ? buildSolicitudEmailContext(full)
+            : { solicitudCodigo: solicitud.codigo, solicitudTitulo: solicitud.titulo };
+
           // Emails: responsable + supervisores (dedup si coincide con responsable).
           if (!r.email_invalido) {
             await this.state.enqueueEmail(tx, {
@@ -107,7 +120,7 @@ export class AutoAsignacionCron {
               destinatario: r.email,
               plantilla: 'solicitud-asignada-responsable',
               solicitudId: solicitud.id,
-              variables: { solicitudCodigo: solicitud.codigo, solicitudTitulo: solicitud.titulo },
+              variables: variablesEmail as Record<string, unknown>,
             });
           }
           const notificados = new Set([r.email]);
@@ -120,7 +133,7 @@ export class AutoAsignacionCron {
               destinatario: u.email,
               plantilla: 'solicitud-nueva-supervisor',
               solicitudId: solicitud.id,
-              variables: { solicitudCodigo: solicitud.codigo, solicitudTitulo: solicitud.titulo },
+              variables: variablesEmail as Record<string, unknown>,
             });
           }
           return true;

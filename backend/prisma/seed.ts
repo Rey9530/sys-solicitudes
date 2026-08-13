@@ -248,9 +248,9 @@ async function main(): Promise<void> {
       where: { id: '00000000-0000-0000-0000-000000000001' },
       update: {
         razon_social: INQUILINO_RAZON_SOCIAL,
-        contacto_nombre: 'María Pérez',
-        contacto_email: INQUILINO_DEMO_EMAIL,
-        contacto_telefono: '+503 7000-0001',
+        contacto1_nombre: 'María Pérez',
+        contacto1_email: INQUILINO_DEMO_EMAIL,
+        contacto1_telefono: '+503 7000-0001',
       },
       create: {
         // UUID fijo para idempotencia determinista.
@@ -259,35 +259,35 @@ async function main(): Promise<void> {
         razon_social: INQUILINO_RAZON_SOCIAL,
         identificacion: 'SOL-050101-001-1',
         direccion: 'San Salvador, El Salvador',
-        contacto_nombre: 'María Pérez',
-        contacto_email: INQUILINO_DEMO_EMAIL,
-        contacto_telefono: '+503 7000-0001',
+        contacto1_nombre: 'María Pérez',
+        contacto1_email: INQUILINO_DEMO_EMAIL,
+        contacto1_telefono: '+503 7000-0001',
       },
     });
     await prisma.local.upsert({
       where: { plaza_id_codigo: { plaza_id: plazaDemo.id, codigo: 'L-SOL-1' } },
-      update: { nombre: 'Local 101 · Ropa infantil' },
+      update: {},
       create: {
         plaza_id: plazaDemo.id,
         codigo: 'L-SOL-1',
-        nombre: 'Local 101 · Ropa infantil',
-        metraje_m2: '42.50',
-        piso: '1',
-        sector: 'Norte',
-        descripcion: 'Local comercial alquilado por Tienda Sol.',
+        area_m2: '42.50',
+        nivel: '1',
+        modulo: 'NORTE',
+        medidor_energia: '10456050',
+        medidor_agua: '9999991',
       },
     });
     await prisma.local.upsert({
       where: { plaza_id_codigo: { plaza_id: plazaDemo.id, codigo: 'L-SOL-2' } },
-      update: { nombre: 'Local 202 · Accesorios' },
+      update: {},
       create: {
         plaza_id: plazaDemo.id,
         codigo: 'L-SOL-2',
-        nombre: 'Local 202 · Accesorios',
-        metraje_m2: '28.00',
-        piso: '2',
-        sector: 'Sur',
-        descripcion: 'Segundo local de Tienda Sol.',
+        area_m2: '28.00',
+        nivel: '2',
+        modulo: 'SUR',
+        medidor_energia: '10456051',
+        medidor_agua: '9999992',
       },
     });
     const today = new Date();
@@ -301,6 +301,14 @@ async function main(): Promise<void> {
         fecha_fin: fin,
         monto_mensual: '1250.00',
         condiciones: 'Contrato demo generado por seed (solo dev).',
+        // Campos nuevos Excel Hoja 2 U-AK (T-V14+; demo).
+        plazo_anios: 1,
+        area_mt2_medicion_real: '42.50',
+        cuota_arrendamiento: '1200.00',
+        cuota_cam: '50.00',
+        deposito_garantia: '1250.00',
+        periodo_gracia: '3 meses',
+        condiciones_incremento_canon: 'Incremento anual según IPC.',
       },
       create: {
         id: '00000000-0000-0000-0000-000000000002',
@@ -318,6 +326,14 @@ async function main(): Promise<void> {
         moneda: 'USD',
         condiciones: 'Contrato demo generado por seed (solo dev).',
         estado: 'vigente',
+        // Campos nuevos Excel Hoja 2 U-AK (T-V14+; demo).
+        plazo_anios: 1,
+        area_mt2_medicion_real: '42.50',
+        cuota_arrendamiento: '1200.00',
+        cuota_cam: '50.00',
+        deposito_garantia: '1250.00',
+        periodo_gracia: '3 meses',
+        condiciones_incremento_canon: 'Incremento anual según IPC.',
       },
     });
 

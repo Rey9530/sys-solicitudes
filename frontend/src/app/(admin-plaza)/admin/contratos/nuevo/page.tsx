@@ -27,7 +27,7 @@ export default async function NuevoContratoPage() {
         breadcrumb={[{ label: 'Contratos', href: '/admin/contratos' }, { label: 'Nuevo' }]}
       />
       <NuevoContratoForm
-        locales={locales.map((l) => ({ id: l.id, codigo: l.codigo, nombre: l.nombre }))}
+        locales={locales.map((l) => ({ id: l.id, codigo: l.codigo, modulo: l.modulo }))}
         inquilinos={inquilinos.map((i) => ({ id: i.id, razonSocial: i.razonSocial }))}
       />
     </div>

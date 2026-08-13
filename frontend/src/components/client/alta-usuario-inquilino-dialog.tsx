@@ -32,13 +32,13 @@ type FormValues = z.infer<typeof FormSchema>;
 export function AltaUsuarioInquilinoDialog({
   inquilinoId,
   razonSocial,
-  contactoEmail,
-  contactoNombre,
+  contacto1Email,
+  contacto1Nombre,
 }: {
   inquilinoId: string;
   razonSocial: string;
-  contactoEmail: string | null;
-  contactoNombre: string | null;
+  contacto1Email: string | null;
+  contacto1Nombre: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +50,7 @@ export function AltaUsuarioInquilinoDialog({
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
-    defaultValues: { email: contactoEmail ?? '', nombre: contactoNombre ?? '' },
+    defaultValues: { email: contacto1Email ?? '', nombre: contacto1Nombre ?? '' },
   });
 
   const onSubmit = async (values: FormValues) => {

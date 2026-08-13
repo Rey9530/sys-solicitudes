@@ -3,11 +3,22 @@
  */
 import { z } from 'zod';
 import { UuidSchema } from '../common/index.js';
+import { SolicitudEstadoSchema } from '../solicitudes/index.js';
+import { SolicitudPrioridadSchema } from '../categorias/index.js';
 
 /** Tipos de entrada del feed. ⚠️ `remodelacion` no es distinguible en v1:
  *  los locales en mantenimiento no guardan qué tipo de solicitud los originó,
- *  por lo que todo aparece como `mantenimiento` (ver bitácora T-129). */
-export const CalendarioTipoSchema = z.enum(['evento', 'mantenimiento', 'hito_contrato']);
+ *  por lo que todo aparece como `mantenimiento` (ver bitácora T-129).
+ *  ⚠️ `solicitud` se incluye solo para el feed del INQUILINO: el backend emite
+ *  items `solicitud` únicamente cuando `actor.rol === 'inquilino'` y
+ *  automáticamente los excluye para el admin. La UI del calendario del admin
+ *  no muestra el checkbox 'solicitud' (no viene en su `TIPOS`). */
+export const CalendarioTipoSchema = z.enum([
+  'evento',
+  'mantenimiento',
+  'hito_contrato',
+  'solicitud',
+]);
 export type CalendarioTipo = z.infer<typeof CalendarioTipoSchema>;
 
 /** Fecha ISO: date-only o datetime con offset (FullCalendar manda ambas). */
@@ -50,6 +61,11 @@ export interface CalendarioEventoOutput {
     contratoId?: string;
     /** T-131: marcado cuando el evento se solapa con otro del mismo local. */
     choque?: boolean;
+    /** Solo en items `tipo === 'solicitud'`: estado y prioridad de la solicitud
+     *  reflejados en el calendario del inquilino (causa raíz del bug original:
+     *  el feed solo exponía aprobadas, ahora expone todas las del inquilino). */
+    estado?: z.infer<typeof SolicitudEstadoSchema>;
+    prioridad?: z.infer<typeof SolicitudPrioridadSchema>;
   };
 }
 

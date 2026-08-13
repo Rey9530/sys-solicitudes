@@ -58,11 +58,17 @@ export function ContratosTable({ contratos }: { contratos: ContratoListItem[] })
       cell: (c) => c.fechaFin ?? 'Indefinido',
     },
     {
-      key: 'monto',
-      header: 'Monto',
-      cardLabel: 'Monto',
+      // T-V14+: canon arrendamiento (Excel W) si está poblado; fallback a montoMensual.
+      key: 'canon',
+      header: 'Canon',
+      cardLabel: 'Canon',
       className: 'num muted',
-      cell: (c) => (c.montoMensual !== null ? `${c.moneda} ${c.montoMensual}` : '—'),
+      cell: (c) =>
+        c.cuotaArrendamiento !== null
+          ? `${c.moneda} ${c.cuotaArrendamiento.toFixed(2)}`
+          : c.montoMensual !== null
+            ? `${c.moneda} ${c.montoMensual}`
+            : '—',
     },
     {
       key: 'estado',

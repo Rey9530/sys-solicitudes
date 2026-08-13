@@ -43,7 +43,12 @@ export interface InquilinoDetail extends InquilinoOutput {
  *
  * Escritura: admin_plaza/superadmin. El rol `inquilino` solo ve su propio
  * registro (id === actor.inquilinoId). Baja lógica solo sin contratos vigentes.
- * `razon_social` e `identificacion` son inmutables tras la creación (UX).
+ * `razon_social` e `identificacion` son inmutables tras la creación (UX) —
+ * no se exponen en `UpdateInquilinoInput` (regla trazabilidad legal/contable).
+ *
+ * Campos alineados al formato Excel "INFORMACION PARA CREACION DE INQUILINOS"
+ * (Hoja 2, columnas B-T + AL). Excluye los 16 campos del primer contrato
+ * (U-AK) — esos viven en `contrato`.
  */
 @Injectable()
 export class InquilinosService {
@@ -64,12 +69,33 @@ export class InquilinosService {
         tx.inquilino.create({
           data: {
             plaza_id: plazaId,
+            // Identidad
             razon_social: dto.razonSocial,
             identificacion: dto.identificacion ?? null,
+            nombre_comercial: dto.nombreComercial ?? null,
+            representante_legal: dto.representanteLegal ?? null,
+            numero_nrc: dto.numeroNrc ?? null,
+            // Canales
+            correo_recepcion_dte: dto.correoRecepcionDte ?? null,
+            numero_telefono: dto.numeroTelefono ?? null,
             direccion: dto.direccion ?? null,
-            contacto_nombre: dto.contactoNombre ?? null,
-            contacto_email: dto.contactoEmail ?? null,
-            contacto_telefono: dto.contactoTelefono ?? null,
+            // Contacto 1
+            contacto1_nombre: dto.contacto1Nombre ?? null,
+            contacto1_cargo: dto.contacto1Cargo ?? null,
+            contacto1_email: dto.contacto1Email ?? null,
+            contacto1_telefono: dto.contacto1Telefono ?? null,
+            // Contacto 2
+            contacto2_nombre: dto.contacto2Nombre ?? null,
+            contacto2_cargo: dto.contacto2Cargo ?? null,
+            contacto2_email: dto.contacto2Email ?? null,
+            contacto2_telefono: dto.contacto2Telefono ?? null,
+            // Clasificación
+            tipo_cliente: dto.tipoCliente ?? null,
+            giro_autorizado: dto.giroAutorizado ?? null,
+            categoria: dto.categoria ?? null,
+            subcategoria: dto.subcategoria ?? null,
+            // Otros
+            comentarios: dto.comentarios ?? null,
           },
         }),
       )
@@ -191,7 +217,7 @@ export class InquilinosService {
     };
   }
 
-  // ── Actualizar (solo contacto y dirección) ────────────────────────────────────
+  // ── Actualizar (todo menos los inmutables `razon_social` y `identificacion`) ─
   async update(
     id: string,
     dto: UpdateInquilinoInput,
@@ -207,12 +233,57 @@ export class InquilinosService {
       const updated = await tx.inquilino.update({
         where: { id },
         data: {
-          ...(dto.contactoNombre !== undefined ? { contacto_nombre: dto.contactoNombre } : {}),
-          ...(dto.contactoEmail !== undefined ? { contacto_email: dto.contactoEmail } : {}),
-          ...(dto.contactoTelefono !== undefined
-            ? { contacto_telefono: dto.contactoTelefono }
+          // Identidad (sin razon_social ni identificacion)
+          ...(dto.nombreComercial !== undefined
+            ? { nombre_comercial: dto.nombreComercial }
+            : {}),
+          ...(dto.representanteLegal !== undefined
+            ? { representante_legal: dto.representanteLegal }
+            : {}),
+          ...(dto.numeroNrc !== undefined ? { numero_nrc: dto.numeroNrc } : {}),
+          // Canales
+          ...(dto.correoRecepcionDte !== undefined
+            ? { correo_recepcion_dte: dto.correoRecepcionDte }
+            : {}),
+          ...(dto.numeroTelefono !== undefined
+            ? { numero_telefono: dto.numeroTelefono }
             : {}),
           ...(dto.direccion !== undefined ? { direccion: dto.direccion } : {}),
+          // Contacto 1
+          ...(dto.contacto1Nombre !== undefined
+            ? { contacto1_nombre: dto.contacto1Nombre }
+            : {}),
+          ...(dto.contacto1Cargo !== undefined
+            ? { contacto1_cargo: dto.contacto1Cargo }
+            : {}),
+          ...(dto.contacto1Email !== undefined
+            ? { contacto1_email: dto.contacto1Email }
+            : {}),
+          ...(dto.contacto1Telefono !== undefined
+            ? { contacto1_telefono: dto.contacto1Telefono }
+            : {}),
+          // Contacto 2
+          ...(dto.contacto2Nombre !== undefined
+            ? { contacto2_nombre: dto.contacto2Nombre }
+            : {}),
+          ...(dto.contacto2Cargo !== undefined
+            ? { contacto2_cargo: dto.contacto2Cargo }
+            : {}),
+          ...(dto.contacto2Email !== undefined
+            ? { contacto2_email: dto.contacto2Email }
+            : {}),
+          ...(dto.contacto2Telefono !== undefined
+            ? { contacto2_telefono: dto.contacto2Telefono }
+            : {}),
+          // Clasificación
+          ...(dto.tipoCliente !== undefined ? { tipo_cliente: dto.tipoCliente } : {}),
+          ...(dto.giroAutorizado !== undefined
+            ? { giro_autorizado: dto.giroAutorizado }
+            : {}),
+          ...(dto.categoria !== undefined ? { categoria: dto.categoria } : {}),
+          ...(dto.subcategoria !== undefined ? { subcategoria: dto.subcategoria } : {}),
+          // Otros
+          ...(dto.comentarios !== undefined ? { comentarios: dto.comentarios } : {}),
         },
       });
       return { before, updated };
@@ -318,12 +389,34 @@ export class InquilinosService {
     return {
       id: i.id,
       plazaId: i.plaza_id,
+      // Identidad
       razonSocial: i.razon_social,
       identificacion: i.identificacion,
+      nombreComercial: i.nombre_comercial,
+      representanteLegal: i.representante_legal,
+      numeroNrc: i.numero_nrc,
+      // Canales
+      correoRecepcionDte: i.correo_recepcion_dte,
+      numeroTelefono: i.numero_telefono,
       direccion: i.direccion,
-      contactoNombre: i.contacto_nombre,
-      contactoEmail: i.contacto_email,
-      contactoTelefono: i.contacto_telefono,
+      // Contacto 1
+      contacto1Nombre: i.contacto1_nombre,
+      contacto1Cargo: i.contacto1_cargo,
+      contacto1Email: i.contacto1_email,
+      contacto1Telefono: i.contacto1_telefono,
+      // Contacto 2
+      contacto2Nombre: i.contacto2_nombre,
+      contacto2Cargo: i.contacto2_cargo,
+      contacto2Email: i.contacto2_email,
+      contacto2Telefono: i.contacto2_telefono,
+      // Clasificación
+      tipoCliente: i.tipo_cliente,
+      giroAutorizado: i.giro_autorizado,
+      categoria: i.categoria,
+      subcategoria: i.subcategoria,
+      // Otros
+      comentarios: i.comentarios,
+      // Auditoría
       createdAt: i.created_at.toISOString(),
       updatedAt: i.updated_at.toISOString(),
       deletedAt: i.deleted_at?.toISOString() ?? null,

@@ -112,10 +112,11 @@ interface FilaSolicitud {
 }
 interface FilaLocal {
   codigo: string;
-  nombre: string;
-  piso: string;
-  sector: string;
-  metraje: string;
+  modulo: string;
+  nivel: string;
+  area: string;
+  medidorEnergia: string;
+  medidorAgua: string;
   estado: string;
   inquilino: string;
   contratoVence: string;
@@ -222,10 +223,11 @@ export class ReportesService {
       const vigente = l.contratos[0];
       return {
         codigo: l.codigo,
-        nombre: l.nombre ?? '',
-        piso: l.piso ?? '',
-        sector: l.sector ?? '',
-        metraje: l.metraje_m2?.toString() ?? '',
+        modulo: l.modulo ?? '',
+        nivel: l.nivel ?? '',
+        area: l.area_m2?.toString() ?? '',
+        medidorEnergia: l.medidor_energia ?? '',
+        medidorAgua: l.medidor_agua ?? '',
         estado: l.estado,
         inquilino: vigente?.inquilino.razon_social ?? '',
         contratoVence: vigente?.fecha_fin?.toISOString().slice(0, 10) ?? '',
@@ -253,9 +255,9 @@ export class ReportesService {
       (i): FilaInquilino => ({
         razonSocial: i.razon_social,
         identificacion: i.identificacion ?? '',
-        contacto: i.contacto_nombre ?? '',
-        email: i.contacto_email ?? '',
-        telefono: i.contacto_telefono ?? '',
+        contacto: i.contacto1_nombre ?? '',
+        email: i.contacto1_email ?? '',
+        telefono: i.contacto1_telefono ?? '',
         contratosVigentes: i.contratos.length,
         locales: i.contratos.map((c) => c.local.codigo).join(' | '),
       }),
@@ -378,10 +380,11 @@ export class ReportesService {
         generadoEl: this.fechaLegibleSv(),
         local: {
           codigo: local.codigo,
-          nombre: local.nombre ?? '',
-          piso: local.piso ?? '',
-          sector: local.sector ?? '',
-          metraje: local.metraje_m2?.toString() ?? '',
+          modulo: local.modulo ?? '',
+          nivel: local.nivel ?? '',
+          area: local.area_m2?.toString() ?? '',
+          medidorEnergia: local.medidor_energia ?? '',
+          medidorAgua: local.medidor_agua ?? '',
           estado: local.estado,
         },
         contratos: local.contratos.map((c) => ({
@@ -438,9 +441,9 @@ export class ReportesService {
         inquilino: {
           razonSocial: inquilino.razon_social,
           identificacion: inquilino.identificacion ?? '',
-          contacto: inquilino.contacto_nombre ?? '',
-          email: inquilino.contacto_email ?? '',
-          telefono: inquilino.contacto_telefono ?? '',
+          contacto: inquilino.contacto1_nombre ?? '',
+          email: inquilino.contacto1_email ?? '',
+          telefono: inquilino.contacto1_telefono ?? '',
           direccion: inquilino.direccion ?? '',
         },
         contratos: inquilino.contratos.map((c) => ({
@@ -504,10 +507,11 @@ export class ReportesService {
           local: {
             select: {
               codigo: true,
-              nombre: true,
-              piso: true,
-              sector: true,
-              metraje_m2: true,
+              modulo: true,
+              nivel: true,
+              area_m2: true,
+              medidor_energia: true,
+              medidor_agua: true,
               estado: true,
             },
           },
@@ -516,9 +520,9 @@ export class ReportesService {
               razon_social: true,
               identificacion: true,
               direccion: true,
-              contacto_nombre: true,
-              contacto_email: true,
-              contacto_telefono: true,
+              contacto1_nombre: true,
+              contacto1_email: true,
+              contacto1_telefono: true,
             },
           },
           categoria: { select: { nombre: true } },
@@ -653,19 +657,20 @@ export class ReportesService {
           razonSocial: solicitud.inquilino?.razon_social ?? 'n/a',
           identificacion: solicitud.inquilino?.identificacion ?? 'n/a',
           direccion: solicitud.inquilino?.direccion ?? 'n/a',
-          contactoNombre: solicitud.inquilino?.contacto_nombre ?? 'n/a',
-          contactoEmail: solicitud.inquilino?.contacto_email ?? 'n/a',
-          contactoTelefono: solicitud.inquilino?.contacto_telefono ?? 'n/a',
+          contacto1Nombre: solicitud.inquilino?.contacto1_nombre ?? 'n/a',
+          contacto1Email: solicitud.inquilino?.contacto1_email ?? 'n/a',
+          contacto1Telefono: solicitud.inquilino?.contacto1_telefono ?? 'n/a',
         },
         // Local.
         local: {
           codigo: solicitud.local?.codigo ?? 'n/a',
-          nombre: solicitud.local?.nombre ?? 'n/a',
-          piso: solicitud.local?.piso ?? 'n/a',
-          sector: solicitud.local?.sector ?? 'n/a',
-          metraje: solicitud.local?.metraje_m2
-            ? `${solicitud.local.metraje_m2.toString()} m²`
+          modulo: solicitud.local?.modulo ?? 'n/a',
+          nivel: solicitud.local?.nivel ?? 'n/a',
+          area: solicitud.local?.area_m2
+            ? `${solicitud.local.area_m2.toString()} m²`
             : 'n/a',
+          medidorEnergia: solicitud.local?.medidor_energia ?? 'n/a',
+          medidorAgua: solicitud.local?.medidor_agua ?? 'n/a',
           estado: solicitud.local?.estado ?? 'n/a',
         },
         // Contrato vigente.

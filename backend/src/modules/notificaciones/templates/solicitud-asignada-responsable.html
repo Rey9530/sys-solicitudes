@@ -1,8 +1,9 @@
 {{> _header}}
-<h2 style="margin:0 0 12px;font-size:18px;">Nueva solicitud asignada</h2>
+<h2 style=”margin:0 0 12px;font-size:18px;”>Nueva solicitud asignada</h2>
 <p>Se te asignó la solicitud <strong>{{solicitudCodigo}}</strong>{{#if solicitudTitulo}} — “{{solicitudTitulo}}”{{/if}} para su revisión.</p>
 <p>Tienes 15 minutos desde el envío antes de la asignación automática; la solicitud ya está en tu bandeja.</p>
-<p style="margin:20px 0;">
-  <a href="{{appUrl}}/admin/solicitudes" style="display:inline-block;padding:10px 18px;background:{{plaza.colorPrimario}};color:#fff;text-decoration:none;border-radius:6px;">Ir a mi bandeja</a>
+{{> _solicitud-detalles}}
+<p style=”margin:20px 0;”>
+  <a href=”{{appUrl}}/admin/solicitudes” style=”display:inline-block;padding:10px 18px;background:{{plaza.colorPrimario}};color:#fff;text-decoration:none;border-radius:6px;”>Ir a mi bandeja</a>
 </p>
 {{> _footer}}

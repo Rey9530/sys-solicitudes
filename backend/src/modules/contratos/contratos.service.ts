@@ -89,6 +89,18 @@ export class ContratosService {
             monto_mensual: dto.montoMensual,
             moneda: dto.moneda,
             condiciones: dto.condiciones ?? null,
+            // ── Campos nuevos Excel Hoja 2 U-AK (T-V14+) ──────────────────────
+            plazo_anios: dto.plazoAnios ?? null,
+            area_mt2_medicion_real: dto.areaMt2MedicionReal ?? null,
+            cuota_arrendamiento: dto.cuotaArrendamiento ?? null,
+            cuota_cam: dto.cuotaCam ?? null,
+            deposito_garantia: dto.depositoGarantia ?? null,
+            fecha_pago_deposito: dto.fechaPagoDeposito ? new Date(dto.fechaPagoDeposito) : null,
+            fecha_entrega_local: dto.fechaEntregaLocal ? new Date(dto.fechaEntregaLocal) : null,
+            periodo_gracia: dto.periodoGracia ?? null,
+            inicio_operaciones: dto.inicioOperaciones ? new Date(dto.inicioOperaciones) : null,
+            aviso_terminacion: dto.avisoTerminacion ? new Date(dto.avisoTerminacion) : null,
+            condiciones_incremento_canon: dto.condicionesIncrementoCanon ?? null,
           },
         });
         // RI-2: el local pasa a alquilado en la MISMA transacción.
@@ -268,6 +280,18 @@ export class ContratosService {
             monto_mensual: dto.nuevoMontoMensual ?? before.monto_mensual,
             moneda: before.moneda,
             condiciones: before.condiciones,
+            // Heredar campos contractuales Excel (T-V14+) — se mantienen al renovar.
+            plazo_anios: before.plazo_anios,
+            area_mt2_medicion_real: before.area_mt2_medicion_real,
+            cuota_arrendamiento: before.cuota_arrendamiento,
+            cuota_cam: before.cuota_cam,
+            deposito_garantia: before.deposito_garantia,
+            fecha_pago_deposito: before.fecha_pago_deposito,
+            fecha_entrega_local: before.fecha_entrega_local,
+            periodo_gracia: before.periodo_gracia,
+            inicio_operaciones: before.inicio_operaciones,
+            aviso_terminacion: before.aviso_terminacion,
+            condiciones_incremento_canon: before.condiciones_incremento_canon,
           },
         });
         // El local sigue/queda alquilado.

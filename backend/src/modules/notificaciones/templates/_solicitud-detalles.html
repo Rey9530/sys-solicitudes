@@ -1,0 +1,129 @@
+{{!--
+  Parcial compartido T-127-bis: bloque "Detalles de la solicitud" para todos
+  los emails transaccionales de `solicitud-*`.
+
+  Variables esperadas (todas opcionales con `{{#if}}`):
+    solicitudCodigo, solicitudTitulo, tipo, tipoLabel,
+    prioridad, prioridadLabel, prioridadColor,
+    estado, estadoLabel,
+    categoriaNombre, subcategoriaNombre,
+    localCodigo, localModulo, localLabel,
+    inquilinoRazonSocial,
+    usuarioCreadorNombre, usuarioCreadorEmail,
+    adminAsignadoNombre, adminAsignadoEmail,
+    descripcion, descripcionCompleta,
+    fechaEventoInicio, fechaEventoFin, horaInicio, horaFin, rangoEvento,
+    empresaNombre, empresaResponsable, empresaTelefono, empresaEmail,
+    esEmergencia, emergenciaContacto, emergenciaTelefono,
+    camposExtra: { tipoLabel, items: [{etiqueta, valor}] }
+
+  NOTAS de implementación:
+   - La descripción puede contener HTML saneado (vía sanitizeHtml). Usamos
+     `{{{...}}}` (triple mustache) para NO escapar y preservar formato
+     (párrafos, saltos). El backend ya saneó el contenido.
+   - Los badges usan `display:inline-block` para mantener en una línea.
+   - El bloque "Creador" (`usuarioCreadorNombre`) se le pasa al parcial
+     opcionalmente; los templates de admin lo setean, los de inquilino no
+     (no aporta que el inquilino vea su propio nombre).
+   - El bloque `esEmergencia` pinta fondo rojo en la cabecera si es true.
+--}}
+
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;color:#27272a;">
+  <tbody>
+    {{!-- Cabecera: código + título + badges --}}
+    <tr>
+      <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;background:{{#if esEmergencia}}#fef2f2{{else}}#f9fafb{{/if}};">
+        <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:#52525b;letter-spacing:0.4px;">{{solicitudCodigo}}</div>
+        <div style="font-weight:600;font-size:15px;color:#18181b;margin:2px 0 6px;">{{solicitudTitulo}}</div>
+        <div>
+          <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#eef2ff;color:#3730a3;font-size:11px;font-weight:600;margin-right:6px;">{{tipoLabel}}</span>
+          <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:{{prioridadColor}};color:#ffffff;font-size:11px;font-weight:600;margin-right:6px;">Prioridad {{prioridad}} · {{prioridadLabel}}</span>
+          {{#if estadoLabel}}
+          <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#f4f4f5;color:#27272a;font-size:11px;font-weight:600;">Estado: {{estadoLabel}}</span>
+          {{/if}}
+          {{#if esEmergencia}}
+          <span style="display:inline-block;padding:2px 8px;border-radius:999px;background:#b91c1c;color:#ffffff;font-size:11px;font-weight:600;margin-left:6px;">⚠ EMERGENCIA</span>
+          {{/if}}
+        </div>
+      </td>
+    </tr>
+
+    {{!-- Categoría / Subcategoría / Local / Inquilino --}}
+    {{#if categoriaNombre}}
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #f4f4f5;"><span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Categoría</span><div style="margin-top:2px;">{{categoriaNombre}}</div></td></tr>
+    {{/if}}
+    {{#if subcategoriaNombre}}
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #f4f4f5;"><span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Subcategoría</span><div style="margin-top:2px;">{{subcategoriaNombre}}</div></td></tr>
+    {{/if}}
+    {{#if localLabel}}
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #f4f4f5;"><span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Local</span><div style="margin-top:2px;">{{localLabel}}</div></td></tr>
+    {{/if}}
+    {{#if inquilinoRazonSocial}}
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #f4f4f5;"><span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Inquilino</span><div style="margin-top:2px;">{{inquilinoRazonSocial}}</div></td></tr>
+    {{/if}}
+
+    {{!-- Fechas del evento --}}
+    {{#if rangoEvento}}
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #f4f4f5;"><span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Cuándo</span><div style="margin-top:2px;">{{rangoEvento}}</div></td></tr>
+    {{/if}}
+
+    {{!-- Empresa ejecutante (T-V22) --}}
+    {{#if empresaNombre}}
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #f4f4f5;">
+      <span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Empresa ejecutante</span>
+      <div style="margin-top:2px;">
+        <strong>{{empresaNombre}}</strong>
+        {{#if empresaResponsable}} · responsable: {{empresaResponsable}}{{/if}}
+        {{#if empresaTelefono}} · tel: {{empresaTelefono}}{{/if}}
+        {{#if empresaEmail}} · {{empresaEmail}}{{/if}}
+      </div>
+    </td></tr>
+    {{/if}}
+
+    {{!-- Campos extra por tipo (formateados por formatCamposExtraPorTipo) --}}
+    {{#if camposExtra}}
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #f4f4f5;">
+      <span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Datos de {{camposExtra.tipoLabel}}</span>
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin-top:6px;">
+        {{#each camposExtra.items}}
+        <tr>
+          <td style="padding:3px 0;color:#71717a;font-size:12px;width:40%;vertical-align:top;">{{etiqueta}}</td>
+          <td style="padding:3px 0;color:#27272a;font-size:12px;font-weight:500;">{{valor}}</td>
+        </tr>
+        {{/each}}
+      </table>
+    </td></tr>
+    {{/if}}
+
+    {{!-- Emergencia (T-V22): bloque destacado --}}
+    {{#if esEmergencia}}
+    {{#if emergenciaContacto}}
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #f4f4f5;background:#fef2f2;">
+      <span style="color:#b91c1c;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;font-weight:600;">Contacto de emergencia</span>
+      <div style="margin-top:2px;"><strong>{{emergenciaContacto}}</strong>{{#if emergenciaTelefono}} · {{emergenciaTelefono}}{{/if}}</div>
+    </td></tr>
+    {{/if}}
+    {{/if}}
+
+    {{!-- Descripción (HTML saneado, triple mustache) --}}
+    {{#if descripcion}}
+    <tr><td style="padding:12px;border-bottom:1px solid #f4f4f5;">
+      <span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Descripción</span>
+      <div style="margin-top:6px;padding:10px 12px;background:#fafafa;border-left:3px solid #d4d4d8;color:#27272a;font-size:13px;line-height:1.55;">
+        {{{descripcion}}}
+      </div>
+      {{#if descripcionCompleta}}
+      <div style="margin-top:6px;color:#71717a;font-size:11px;font-style:italic;">Descripción truncada. Ver el detalle completo en el sistema.</div>
+      {{/if}}
+    </td></tr>
+    {{/if}}
+
+    {{!-- Asignaciones / creador — solo si vienen del contexto --}}
+    {{#if adminAsignadoNombre}}
+    <tr><td style="padding:8px 12px;border-bottom:1px solid #f4f4f5;"><span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Responsable asignado</span><div style="margin-top:2px;">{{adminAsignadoNombre}}{{#if adminAsignadoEmail}} · <a href="mailto:{{adminAsignadoEmail}}" style="color:#2563eb;text-decoration:none;">{{adminAsignadoEmail}}</a>{{/if}}</div></td></tr>
+    {{/if}}
+    {{#if usuarioCreadorNombre}}
+    <tr><td style="padding:8px 12px;"><span style="color:#71717a;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">Creador</span><div style="margin-top:2px;">{{usuarioCreadorNombre}}{{#if usuarioCreadorEmail}} · <a href="mailto:{{usuarioCreadorEmail}}" style="color:#2563eb;text-decoration:none;">{{usuarioCreadorEmail}}</a>{{/if}}</div></td></tr>
+    {{/if}}
+  </tbody>
+</table>

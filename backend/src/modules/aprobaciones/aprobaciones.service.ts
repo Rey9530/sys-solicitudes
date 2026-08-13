@@ -27,6 +27,7 @@ import {
   solicitudToListItem,
   type SolicitudConRelaciones,
 } from '../solicitudes/solicitud.mapper';
+import { buildSolicitudEmailContext } from '../notificaciones/solicitud-email.builder';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
 export interface RequestMeta {
@@ -257,12 +258,15 @@ export class AprobacionesService {
       );
       const nuevo = await tx.usuario.findFirst({ where: { id: dto.nuevoResponsableId } });
       if (nuevo) {
+        // T-127-bis: contexto completo (tipo, categoría, local, descripción, etc.)
+        const full = await this.fetchSolicitudParaEmail(tx, solicitud.id);
         await this.state.enqueueEmail(tx, {
           plazaId,
           destinatario: nuevo.email,
           plantilla: 'solicitud-reasignada',
           solicitudId: solicitud.id,
           variables: {
+            ...(full ? buildSolicitudEmailContext(full) : {}),
             solicitudCodigo: solicitud.codigo,
             solicitudTitulo: solicitud.titulo,
             motivo: dto.comentario ?? null,
@@ -414,6 +418,11 @@ export class AprobacionesService {
    * Encola el email de decisión al creador de la solicitud. El bloqueo por
    * email_invalido lo decide EmailService (T-121): las plantillas CRÍTICAS
    * (aprobada/rechazada/subsanacion) se encolan aunque el flag esté en true.
+   *
+   * T-127-bis: en vez de pasar solo código+título, ahora se hidrata la
+   * solicitud con `SOLICITUD_INCLUDE` y se construye el contexto completo
+   * mediante `buildSolicitudEmailContext`. Una sola query (mismo `tx`)
+   * trae local, inquilino, categoría, subcategoría, creador y admin.
    */
   private async emailAlCreador(
     tx: Prisma.TransactionClient,
@@ -427,17 +436,34 @@ export class AprobacionesService {
       select: { email: true },
     });
     if (!creador) return;
+    const full = await this.fetchSolicitudParaEmail(tx, solicitud.id);
+    if (!full) return;
     await this.state.enqueueEmail(tx, {
       plazaId: solicitud.plaza_id,
       destinatario: creador.email,
       plantilla,
       solicitudId: solicitud.id,
       variables: {
-        solicitudCodigo: solicitud.codigo,
-        solicitudTitulo: solicitud.titulo,
+        ...buildSolicitudEmailContext(full),
         comentario: comentario ?? null,
         ...extraVars,
       },
+    });
+  }
+
+  /**
+   * Recupera la solicitud con las relaciones necesarias para armar el
+   * email (T-127-bis). Reutiliza `SOLICITUD_INCLUDE` (mapper). Devuelve
+   * `null` si la solicitud desapareció entre la transición y la query
+   * (carrera rara; el handler superior ya validó la existencia).
+   */
+  private async fetchSolicitudParaEmail(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<SolicitudConRelaciones | null> {
+    return tx.solicitud.findFirst({
+      where: { id },
+      include: SOLICITUD_INCLUDE,
     });
   }
 
