@@ -28,6 +28,9 @@ import {
   emailBasicoValido,
   maxFechaFinEmergencia,
   maxFechaFinEstandar,
+  maxFechaInicioEmergencia,
+  maxFechaInicioEstandar,
+  minFechaInicioEmergencia,
   minFechaInicioEstandar,
   telefonoBasicoValido,
   validarRangoFechas,
@@ -692,7 +695,16 @@ export function SolicitudWizard({
                   <Input
                     type="date"
                     value={fechaInicio}
-                    min={esEmergencia ? undefined : minFechaInicioEstandar(momentoElaboracion)}
+                    min={
+                      esEmergencia
+                        ? minFechaInicioEmergencia(momentoElaboracion)
+                        : minFechaInicioEstandar(momentoElaboracion)
+                    }
+                    max={
+                      esEmergencia
+                        ? maxFechaInicioEmergencia(momentoElaboracion)
+                        : maxFechaInicioEstandar(momentoElaboracion)
+                    }
                     onChange={(e) => setFechaInicio(e.target.value)}
                   />
                 </div>
@@ -729,12 +741,13 @@ export function SolicitudWizard({
               </div>
               {esEmergencia ? (
                 <p className="mt-1 text-xs text-amber-700">
-                  Modo emergencia activo: fechas desde hoy y máximo 7 días.
+                  Modo emergencia activo: el inicio debe ser dentro de las próximas 48 horas; el
+                  permiso puede durar hasta 7 días.
                 </p>
               ) : (
                 <p className="mt-1 text-xs text-gray-500">
-                  La fecha de inicio debe ser al menos 48 horas después de este momento; el permiso
-                  puede durar hasta 7 días.
+                  La fecha de inicio debe ser entre 48 horas y 5 días después de este momento; el
+                  permiso puede durar hasta 7 días.
                 </p>
               )}
               {/* T-V22: toggle de emergencia. SweetAlert pide confirmación al activarlo. */}
@@ -745,8 +758,8 @@ export function SolicitudWizard({
                   onChange={(e) => void handleEmergenciaToggle(e.target.checked)}
                 />
                 <span>
-                  <b>Emergencia</b> — habilita fechas desde hoy (sin lead time de 48h) y permite
-                  hasta 3 permisos/mes. El backend rechazará el 4º.
+                  <b>Emergencia</b> — habilita el inicio dentro de las próximas 48h y permite hasta
+                  3 permisos/mes. El backend rechazará el 4º.
                 </span>
               </label>
             </div>

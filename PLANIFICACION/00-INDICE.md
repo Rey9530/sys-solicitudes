@@ -516,6 +516,13 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
   - **Próximos pasos:**
     - Verificación manual end-to-end con backend levantado (ver plan de implementación).
     - Considerar mover el límite 3/mes a `configuracion.max_emergencias_por_mes` (parametrizable por plaza) si el cliente lo pide.
+  - **actualización (2026-08-16):** Nueva ventana de anticipación para `fechaInicio` (decisión del cliente).
+    - Estándar: inicio ∈ [ahora+48h, ahora+5d] (antes sin tope superior; un permiso podía agendarse a meses vista).
+    - Emergencia: inicio ∈ [ahora, ahora+48h] (antes sin tope; un permiso "de emergencia" podía empezar en 3 días, vaciando el cupo de 3/mes).
+    - Duración máxima del permiso (fin ≤ inicio + 7d) sin cambios.
+    - Implementado en `frontend/src/lib/solicitud-fechas.ts` (helper `aYMDLocal` para evitar el desfase UTC de `toISOString().slice(0,10)`; nuevas constantes `MAX_LEAD_DAYS=5` y `MAX_LEAD_HOURS_EMERGENCIA=48`; tres funciones `maxFechaInicioEstandar`/`minFechaInicioEmergencia`/`maxFechaInicioEmergencia`; rama extra en `validarRangoFechas`), en `frontend/src/components/client/solicitud-wizard.tsx` (atributos `min`/`max` del input Fecha inicio + textos de ayuda + label del toggle) y en `packages/contracts/src/solicitudes/index.ts` (espejado en el `superRefine` de `CreateSolicitudSchema` con los mismos mensajes).
+    - **Tareas dependientes potencialmente afectadas:** `docs/05-flujo-de-solicitudes.md` (§3 RN-SO-Fechas) y `docs/03-modulos-del-sistema.md` (§3 RN-SO-*) deben actualizarse para reflejar la nueva ventana.
+    - **Fuera de alcance:** `UpdateSolicitudSchema` sigue siendo `.partial()` sin `superRefine` (brecha preexistente; este cambio no la introduce ni la cierra). Las constantes siguen duplicadas entre `frontend/src/lib/solicitud-fechas.ts` y `packages/contracts` — un módulo compartido queda como sugerencia.
 
 ---
 

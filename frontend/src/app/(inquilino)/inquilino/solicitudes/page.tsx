@@ -24,7 +24,6 @@ export default async function SolicitudesPage({
   searchParams: Promise<{
     estado?: string;
     tipo?: string;
-    prioridad?: string;
     fechaDesde?: string;
     fechaHasta?: string;
     page?: string;
@@ -32,7 +31,7 @@ export default async function SolicitudesPage({
 }) {
   const sp = await searchParams;
   const qs = new URLSearchParams({ page: sp.page ?? '1', pageSize: '20' });
-  for (const k of ['estado', 'tipo', 'prioridad', 'fechaDesde', 'fechaHasta'] as const) {
+  for (const k of ['estado', 'tipo', 'fechaDesde', 'fechaHasta'] as const) {
     if (sp[k]) qs.set(k, sp[k] as string);
   }
 
@@ -77,17 +76,6 @@ export default async function SolicitudesPage({
               <option value="evento">Evento</option>
               <option value="remodelacion">Remodelación</option>
               <option value="otro">Otro</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="is-prioridad">Prioridad</label>
-            <select id="is-prioridad" name="prioridad" defaultValue={sp.prioridad ?? ''} className="select">
-              <option value="">Toda</option>
-              {['A', 'B', 'C', 'D', 'F'].map((p) => (
-                <option key={p} value={p}>
-                  {p}
-                </option>
-              ))}
             </select>
           </div>
           <div className="field">

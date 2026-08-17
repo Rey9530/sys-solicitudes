@@ -587,3 +587,206 @@
         (`rol-demo`, `rol-admin-2`); 2 usuarios admin_plaza
         (`admin@demo.com`, `staff-nuevo@demo.com`); 1 usuario
         `inquilino@demo.com` con su contrato.
+  - **⚠️ Actualización 2026-08-16 — Fix GRANTs faltantes para `syssol_app`
+    (root cause: 500 INTERNAL_ERROR en login admin_plaza):**
+    - **Síntoma:** `POST /api/v1/auth/login` con credenciales de
+      `admin_plaza` (`thebestalpha2.3@gmail.com`) devolvía 500
+      `INTERNAL_ERROR` con `PrismaClientKnownRequestError → DriverAdapterError:
+      permission denied for table rol_staff_permiso`. Login de `inquilino`
+      y `superadmin` funcionaba correctamente. Reportado por owner:
+      "el backend si esta funcionando por que si inicio sesion con otro no
+      me da error, solo con los que son rol admin_plaza".
+    - **Causa raíz:** la migración `20260624000001_modulo_14_rbac_permisos`
+      (la que crea `permiso`, `rol_staff_permiso`, las RLS policies y los
+      GRANTs) quedó registrada en `_prisma_migrations` con
+      `finished_at IS NOT NULL`, pero sus **3 últimas sentencias** (el
+      `GRANT SELECT ON "permiso" TO syssol_app`, el `GRANT SELECT, INSERT,
+      UPDATE, DELETE ON "rol_staff_permiso" TO syssol_app`, y el GRANT
+      implícito a `rol_staff` que la policy EXISTS-necesita) **no se
+      ejecutaron** sobre la BD. Diagnóstico confirmado con
+      `has_table_privilege('syssol_app', 'rol_staff_permiso', 'SELECT')` →
+      `false`. Por qué admin_plaza es el único afectado: solo este rol
+      dispara `resolvePermisosEfectivos` en `token.service.ts:97-105` (que
+      hace `prismaRls.withTenant(...).rol_staff_permiso.findMany(...)`);
+      superadmin ya recibe `permisos: ['*']` por wildcard; inquilino v1
+      tiene `permisos: []` por diseño.
+    - **Fix manual:** aplicado vía psql el 2026-08-16 — `GRANT SELECT ON
+      "permiso" TO syssol_app; GRANT SELECT ON "rol_staff" TO syssol_app;
+      GRANT SELECT, INSERT, UPDATE, DELETE ON "rol_staff_permiso" TO
+      syssol_app;`. Login con `thebestalpha2.3@gmail.com` volvió a 200
+      con `permisos: [86 códigos]`.
+    - **Fix durable (nueva migración):**
+      `20260816110000_fix_rbac_grants` (`backend/prisma/migrations/
+      20260816110000_fix_rbac_grants/migration.sql`). SQL idempotente
+      guardado con guard `has_table_privilege` para que re-ejecutar sea
+      no-op. Marcada como `applied` con `prisma migrate resolve --applied`
+      porque la BD ya estaba sincronizada por el fix manual.
+    - **Verificación post-fix:**
+      - `POST /api/v1/auth/login` (admin_plaza) → 200 con JWT conteniendo
+        `permisos: [86 códigos]` (antes: 500).
+      - `GET /api/v1/auth/me/permisos` (Bearer) → 200 con array completo
+        (`permisos.ver_matriz`, `usuarios_plaza.listar`,
+        `solicitudes.aprobar`, etc.).
+      - `prisma migrate status` → 2 migraciones RBAC marcadas como
+        `applied` (`20260624000001_modulo_14_rbac_permisos` original y
+        `20260816110000_fix_rbac_grants` fix).
+      - Script de auditoría ejecuta `has_table_privilege` para
+        `permiso`/`rol_staff`/`rol_staff_permiso` → todas `true`.
+    - **Por qué no se detectó antes:** el seed
+      (`backend/prisma/seed.ts`) crea los 80 permisos y los asigna al rol
+      "admin" usando el cliente `prisma` (admin, bypass RLS), por lo que
+      la ausencia de GRANTs para `syssol_app` no rompió ni el seed ni
+      súper-admin (que usa wildcard). El bug solo se manifestó la primera
+      vez que un `admin_plaza` real intentó resolver sus permisos para
+      incluir en el JWT.
+    - **Lecciones / deuda técnica preventiva:**
+      - Considerar añadir un check de smoke test post-migración:
+        `psql -U syssol -d syssol -c "SELECT has_table_privilege('syssol_app',
+        'rol_staff_permiso', 'SELECT')"` después de cada `migrate deploy`.
+        Podría añadirse a `scripts/smoke-test-rls.sh` (no creado).
+      - `token.service.ts:97-105` podría refactorizarse para usar el
+        cliente `prisma` (admin) en la lectura de `rol_staff_permiso`
+        (la query ya es tenant-safe vía `rol_staff_id` FK) y así evitar
+        depender de los GRANTs finos en hot-path. No aplicado: el fix
+        actual respeta la arquitectura RLS-first del proyecto.
+  - **⚠️ Actualización 2026-08-16 (mismo día) — Fix GRANT para
+    materialized view `solicitud_sla_view` (causa: 500 en
+    `/solicitudes/bandeja`):**
+    - **Síntoma:** `GET /api/v1/solicitudes/bandeja` (T-099, ruta
+      estática en `AprobacionesController` que vive antes de `:id`)
+      devolvía 500 INTERNAL_ERROR aunque había 4 solicitudes
+      asignadas al admin en la BD. El frontend
+      `/admin/solicitudes` (T-106) mostraba "0 resultados" porque
+      el fallback del `page.tsx` convierte status != 200 en
+      `{items: [], total: 0}`. Reportado por owner: "no se muestran
+      las solicitudes, ni siquiera las asignadas a él".
+    - **Causa:** `aprobaciones.service.ts:349` ejecuta una raw query
+      sobre la materialized view `solicitud_sla_view`:
+      ```sql
+      SELECT id, status FROM solicitud_sla_view WHERE id = ANY(...)
+      ```
+      para anotar el semáforo SLA de los items de la bandeja. La
+      matview NO tenía GRANT para `syssol_app`. Auditoría:
+      `has_table_privilege('syssol_app', 'solicitud_sla_view',
+      'SELECT')` → `false`. La policy RLS no aplica a material views
+      (no son tablas), pero el GRANT sí es obligatorio para acceder
+      al resultset.
+    - **Por qué la migración `20260816120000` no lo cubrió:** el
+      bucle de esa migración filtra por `c.relkind = 'r'` (ordinary
+      tables), excluyendo implícitamente las material views cuyo
+      `relkind = 'm'`. Necesitaban un GRANT dedicado.
+    - **Fix manual:** `GRANT SELECT ON solicitud_sla_view TO
+      syssol_app` ejecutado vía psql el 2026-08-16. `GET
+      /solicitudes/bandeja?asignadasAMi=true` volvió a 200 con
+      `total=5` (4 asignadas al admin + 1 de otro admin, visible
+      porque el admin demo es `es_sistema=true` — ver comentario
+      en `aprobaciones.service.ts:317-321`).
+    - **Fix durable:** nueva migración
+      `20260816120100_grant_matviews_to_syssol_app`
+      (`backend/prisma/migrations/20260816120100_grant_matviews_to_syssol_app/migration.sql`).
+      Bucle `FOR v_matview IN SELECT matviewname FROM pg_matviews
+      WHERE schemaname='public'` con guard `has_table_privilege`.
+      Otorga `GRANT SELECT ON MATERIALIZED VIEW` solo si falta.
+      Marcada como `applied` con `prisma migrate resolve
+      --applied`.
+    - **Verificación post-fix (batería con admin_plaza):**
+      - `GET /solicitudes/bandeja` (sin filtros) → 200, `total=5`.
+      - `?asignadasAMi=true` → 200, `total=5` (admin demo es
+        `es_sistema=true`, ve toda la plaza).
+      - `?asignadasAMi=false` → 200, `total=5`.
+      - `?estado=asignado` → 200, `total=3`.
+      - `?estado=en_revision` → 200, `total=1`.
+      - `?estado=cerrada` → 200, `total=1`.
+      - `?prioridad=A` → 200, `total=0`.
+      - `?prioridad=B` → 200, `total=5`.
+    - **Lección de proceso (cierra el back-log del fix
+      sistémico anterior):**
+      - Las migraciones futuras DEBEN cubrir los 4 `relkind` de
+        `pg_class` que coexisten en `public`: `r` (ordinary
+        table), `m` (materialized view), `v` (view), `S` (special).
+        El bucle de `20260816120000` cubre solo `r`; el de
+        `20260816120100` cubre solo `m`. Migraciones futuras
+        deberían extender el patrón a `v` (views) y considerar
+        los `S` (sequences — `solicitud_codigo_seq` es `r` porque
+        se modeló como tabla, no sequence, pero es un caso
+        atípico).
+      - **Smoke test sugerido ampliado:**
+        `scripts/check-rls-grants.sh` debería iterar `relkind`
+        `'r'`, `'m'`, `'v'` y fallar si encuentra objetos sin
+        GRANT para `syssol_app`. Sin cambios sobre la propuesta
+        original; solo añadir el filtro `m` y `v`.
+      - **Falsa alarma descartada durante el diagnóstico:** los
+        401 que aparecieron en la primera batería
+        (`/locales`, `/solicitudes`, `/reportes/kpis`) NO eran
+        TOKEN_INVALID — eran 429 TOO_MANY_REQUESTS del
+        `@nestjs/throttler` (5 req/min en `/auth/login`) al
+        repetir 15+ logins seguidos. Ese error desapareció tras
+        esperar 60 s. Lección para el owner: no encadenar más
+        de 5 logins consecutivos sin esperar 1 min.
+  - **⚠️ Actualización 2026-08-16 (mismo día) — Hallazgo sistémico:
+    24 tablas de negocio SIN GRANT para `syssol_app` → 500 en 7 módulos:**
+    - **Síntoma:** horas después de aplicar el fix anterior
+      (`20260816110000_fix_rbac_grants`), una batería de smoke tests
+      contra todos los módulos del backend reveló 500 INTERNAL_ERROR
+      en `/locales`, `/contratos`, `/solicitudes`, `/reportes/kpis`,
+      `/reportes/dashboard`, `/categorias`, `/notificaciones`. El
+      `AllExceptionsFilter` enmascaraba el `PrismaClientKnownRequestError`
+      con mensaje genérico "Ha ocurrido un error inesperado".
+    - **Causa raíz (deuda técnica sistémica):** la migración temprana
+      `20260604_*_enable_rls` ejecutó un bucle `FOR t IN SELECT
+      table_name FROM information_schema.tables WHERE table_schema =
+      'public'` para aplicar `GRANT SELECT, INSERT, UPDATE, DELETE TO
+      syssol_app` a **las tablas existentes en ese momento**. Pero las
+      migraciones de los módulos 04-14 (`modulo_05_locales`,
+      `modulo_06_solicitudes`, etc.) que CREARON tablas nuevas
+      posteriormente NO replicaron el bucle de GRANT. Auditoría con
+      `has_table_privilege` confirmó 24 tablas sin GRANT:
+      `adjunto, auditoria, auditoria_login, categoria, comentario,
+      configuracion, contrato, email_log, evento_calendario, inquilino,
+      kpi_snapshot, local, password_reset_token, plaza, refresh_token,
+      rol, solicitud, solicitud_codigo_seq, solicitud_historial,
+      solicitud_tipo_config, subcategoria, subcategoria_supervisor,
+      unsubscribe, usuario`.
+    - **Por qué el incidente anterior (T-RBAC-1) no destapó esto:** el
+      `permissions.guard` y `token.service.ts` son los únicos caminos
+      que tocan `rol_staff_permiso` en el hot-path de login. Todos los
+      demás queries de backend se ejecutan en endpoints autenticados
+      que desarrollan su primera query (ej. `findMany({where:{plaza_id}})`)
+      sobre tablas de negocio — que era donde faltaba el GRANT.
+    - **Fix sistémico:** nueva migración
+      `20260816120000_grant_business_tables_to_syssol_app`
+      (`backend/prisma/migrations/20260816120000_grant_business_tables_to_syssol_app/migration.sql`).
+      Bucle `FOR v_table IN SELECT c.relname FROM pg_class WHERE
+      nspname='public' AND relkind='r' AND relname <> '_prisma_migrations'`
+      con guard `has_table_privilege` para idempotencia. Otorga
+      `GRANT SELECT, INSERT, UPDATE, DELETE` solo si falta SELECT.
+      Marcada como `applied` con `prisma migrate resolve --applied`.
+    - **Verificación post-fix (batería con admin_plaza):**
+      - `/locales` → 200 (antes 500)
+      - `/contratos` → 200 (antes 500)
+      - `/solicitudes` → 200 (antes 500)
+      - `/reportes/kpis` → 200 (antes 500)
+      - `/reportes/dashboard` → 200 (antes 500)
+      - `/categorias` → 200 (antes 500)
+      - `/notificaciones` → 200 (antes 500)
+      - Auditoría final: las 27 tablas de negocio (incluyendo las 3
+        RBAC del fix anterior) tienen `SELECT, INSERT, UPDATE, DELETE`
+        para `syssol_app`; solo `permiso` y `rol_staff` retienen
+        SELECT-only (catalog/admin, no se modifican por hot-path).
+    - **Lección de proceso (a cerrar en back-log):**
+      - **Patrón a estandarizar:** cada migración que cree una tabla
+        nueva DEBE incluir el GRANT a `syssol_app` en la misma
+        sentencia `CREATE TABLE`, o DOCUMENTAR que `public` ya tiene
+        GRANTs por convención. El estado actual de las migraciones
+        no es homogéneo.
+      - **Smoke test sugerido:** `scripts/check-rls-grants.sh` que
+        ejecute `psql -U syssol -d syssol -c "SELECT relname FROM
+        pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE
+        n.nspname='public' AND c.relkind='r' AND c.relname <>
+        '_prisma_migrations' AND NOT has_table_privilege('syssol_app',
+        c.oid, 'SELECT')"` y falle con exit 1 si devuelve alguna fila.
+      - **Procedencia de los datos:** los GRANTs se aplican con
+        `DATABASE_ADMIN_URL` (`syssol` superuser) — el cliente
+        `prismaRls` (`syssol_app`) NO puede otorgarse permisos a sí
+        mismo. No hay acción al respecto; solo documentar que el
+        backend migrations runner usa siempre el cliente admin.

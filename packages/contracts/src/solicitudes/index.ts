@@ -210,9 +210,12 @@ export const CreateSolicitudSchema = BaseSolicitudSchema.and(
     },
   )
   // T-V22: reglas dinámicas de fecha según modo (estándar vs emergencia).
-  //   - Estándar: fechaInicio >= ahora + 48h; fechaFin <= fechaInicio + 7d.
-  //   - Emergencia: fechaInicio >= ahora; fechaFin <= ahora + 7d.
+  //   - Estándar: fechaInicio ∈ [ahora + 48h, ahora + 5d]; fechaFin <= fechaInicio + 7d.
+  //   - Emergencia: fechaInicio ∈ [ahora, ahora + 48h]; fechaFin <= ahora + 7d.
   //   - En ambos modos: fechaFin >= fechaInicio (mismo día OK).
+  // Actualización (2026-08-16): se añade el tope superior de anticipación para
+  // evitar que un permiso se agende a meses vista (vacía el sentido del modo
+  // emergencia y su cupo de 3/mes). Espejado en `frontend/src/lib/solicitud-fechas.ts`.
   // El límite de "3 emergencias/mes" se valida en el servicio
   // (assertLimiteEmergencia, scope: inquilino + mes actual).
   .superRefine((v, ctx) => {
@@ -222,6 +225,9 @@ export const CreateSolicitudSchema = BaseSolicitudSchema.and(
     const ahora = new Date();
     const HORA = 60 * 60 * 1000;
     const DIA = 24 * HORA;
+    const MIN_LEAD_HORAS = 48;
+    const MAX_LEAD_DIAS = 5;
+    const MAX_LEAD_HORAS_EMERGENCIA = 48;
 
     if (fin < inicio) {
       ctx.addIssue({
@@ -239,6 +245,15 @@ export const CreateSolicitudSchema = BaseSolicitudSchema.and(
           message: 'La fecha/hora de inicio no puede ser en el pasado.',
         });
       }
+      const maxInicioEm = new Date(ahora.getTime() + MAX_LEAD_HORAS_EMERGENCIA * HORA);
+      if (inicio > maxInicioEm) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fechaEventoInicio'],
+          message:
+            'En modo emergencia el inicio debe ser dentro de las próximas 48 horas. Para fechas posteriores usa un permiso estándar.',
+        });
+      }
       const maxFin = new Date(ahora.getTime() + 7 * DIA);
       if (fin > maxFin) {
         ctx.addIssue({
@@ -248,12 +263,20 @@ export const CreateSolicitudSchema = BaseSolicitudSchema.and(
         });
       }
     } else {
-      const minInicio = new Date(ahora.getTime() + 48 * HORA);
+      const minInicio = new Date(ahora.getTime() + MIN_LEAD_HORAS * HORA);
       if (inicio < minInicio) {
         ctx.addIssue({
           code: 'custom',
           path: ['fechaEventoInicio'],
           message: 'La fecha de inicio debe ser al menos 48 horas después de este momento.',
+        });
+      }
+      const maxInicioStd = new Date(ahora.getTime() + MAX_LEAD_DIAS * DIA);
+      if (inicio > maxInicioStd) {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['fechaEventoInicio'],
+          message: 'La fecha de inicio no puede ser más de 5 días después de este momento.',
         });
       }
       const maxFin = new Date(inicio.getTime() + 7 * DIA);
