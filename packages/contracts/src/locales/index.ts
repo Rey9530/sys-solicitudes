@@ -36,7 +36,7 @@ export const CreateLocalSchema = z.object({
     .toUpperCase()
     .min(1)
     .max(16)
-    .regex(/^[A-Z0-9-]+$/, 'El código solo puede contener mayúsculas, dígitos y guiones'),
+    .regex(/^[A-Z0-9-]+$/, 'El local solo puede contener mayúsculas, dígitos y guiones'),
   modulo: z.string().trim().toUpperCase().min(1).max(20).optional(),
   nivel: z.string().trim().min(1).max(10).optional(),
   areaM2: z.coerce.number().positive().max(1_000_000).optional(),

@@ -23,7 +23,7 @@ export function contratoToOutput(c: ContratoModel): ContratoOutput {
     motivoFin: c.motivo_fin,
 
     // ── Campos nuevos Excel Hoja 2 U-AK (T-V14+) ─────────────────────────────
-    plazoAnios: c.plazo_anios,
+    plazoMeses: c.plazo_meses,
     areaMt2MedicionReal:
       c.area_mt2_medicion_real === null ? null : Number(c.area_mt2_medicion_real),
     cuotaArrendamiento:
@@ -32,7 +32,7 @@ export function contratoToOutput(c: ContratoModel): ContratoOutput {
     depositoGarantia: c.deposito_garantia === null ? null : Number(c.deposito_garantia),
     fechaPagoDeposito: c.fecha_pago_deposito ? toIsoDate(c.fecha_pago_deposito) : null,
     fechaEntregaLocal: c.fecha_entrega_local ? toIsoDate(c.fecha_entrega_local) : null,
-    periodoGracia: c.periodo_gracia,
+    periodoGraciaDias: c.periodo_gracia_dias,
     inicioOperaciones: c.inicio_operaciones ? toIsoDate(c.inicio_operaciones) : null,
     avisoTerminacion: c.aviso_terminacion ? toIsoDate(c.aviso_terminacion) : null,
     condicionesIncrementoCanon: c.condiciones_incremento_canon,

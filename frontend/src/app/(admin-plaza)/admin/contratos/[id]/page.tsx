@@ -28,10 +28,15 @@ export default async function ContratoDetailPage({
   const adjuntos = adjuntosRes.ok ? ((await adjuntosRes.json()) as AdjuntoOutput[]) : [];
 
   // Totales derivados (Y/Z/AA — T-V14+): se calculan en frontend, no se persisten.
+  // Fórmula de negocio (2026-08-21):
+  //   totalCanon = areaMt2MedicionReal × cuotaArrendamiento
+  //   totalCam   = areaMt2MedicionReal × cuotaCam
+  //   total      = totalCanon + totalCam
+  const area = Number(contrato.areaMt2MedicionReal ?? 0);
   const canon = Number(contrato.cuotaArrendamiento ?? 0);
   const cam = Number(contrato.cuotaCam ?? 0);
-  const totalCanon = canon + cam;
-  const totalCam = cam;
+  const totalCanon = area * canon;
+  const totalCam = area * cam;
   const total = totalCanon + totalCam;
 
   return (
@@ -74,12 +79,16 @@ export default async function ContratoDetailPage({
         </h2>
         <dl className="dl">
           <div>
-            <div className="dt">Plazo (años)</div>
-            <div className="dd">{contrato.plazoAnios ?? '—'}</div>
+            <div className="dt">Plazo (meses)</div>
+            <div className="dd">{contrato.plazoMeses ?? '—'}</div>
           </div>
           <div>
-            <div className="dt">Período de gracia</div>
-            <div className="dd">{contrato.periodoGracia ?? '—'}</div>
+            <div className="dt">Período de gracia (días)</div>
+            <div className="dd">
+              {contrato.periodoGraciaDias !== null
+                ? `${contrato.periodoGraciaDias} días`
+                : '—'}
+            </div>
           </div>
           <div>
             <div className="dt">Área (medición real)</div>
@@ -148,16 +157,17 @@ export default async function ContratoDetailPage({
                 <p>
                   <span className="muted">Total canon (Y):</span>{' '}
                   <span className="font-mono">{totalCanon.toFixed(2)}</span>
-                  <span className="muted"> (canon + CAM)</span>
+                  <span className="muted"> (área × canon)</span>
                 </p>
                 <p>
                   <span className="muted">Total CAM (Z):</span>{' '}
                   <span className="font-mono">{totalCam.toFixed(2)}</span>
+                  <span className="muted"> (área × CAM)</span>
                 </p>
                 <p>
                   <span className="muted">Total (AA):</span>{' '}
                   <span className="font-mono font-semibold">{total.toFixed(2)}</span>
-                  <span className="muted"> (total canon + CAM)</span>
+                  <span className="muted"> (área × canon + área × CAM)</span>
                 </p>
               </div>
             </div>

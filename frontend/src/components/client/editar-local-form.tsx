@@ -91,9 +91,9 @@ export function EditarLocalForm({
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label>Código</Label>
+          <Label>Local</Label>
           <Input value={local.codigo} disabled />
-          <p className="text-xs text-gray-400">El código es inmutable.</p>
+          <p className="text-xs text-gray-400">El local es inmutable.</p>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="estado">Estado</Label>

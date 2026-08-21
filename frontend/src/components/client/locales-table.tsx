@@ -53,10 +53,12 @@ export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
   }
 
   const columns: ResponsiveColumn<LocalOutput>[] = [
+    { key: 'modulo', header: 'Módulo', cardLabel: 'Módulo', className: 'muted', cell: (l) => l.modulo ?? '—' },
+    { key: 'nivel', header: 'Nivel', cardLabel: 'Nivel', className: 'muted', cell: (l) => l.nivel ?? '—' },
     {
       key: 'codigo',
-      header: 'Código',
-      cardLabel: 'Código',
+      header: 'Local',
+      cardLabel: 'Local',
       primary: true,
       cell: (l) => (
         <Link href={`/admin/locales/${l.id}`} className="cellcode">
@@ -64,8 +66,6 @@ export function LocalesTable({ locales }: { locales: LocalOutput[] }) {
         </Link>
       ),
     },
-    { key: 'modulo', header: 'Módulo', cardLabel: 'Módulo', className: 'muted', cell: (l) => l.modulo ?? '—' },
-    { key: 'nivel', header: 'Nivel', cardLabel: 'Nivel', className: 'muted', cell: (l) => l.nivel ?? '—' },
     {
       key: 'area',
       header: 'Área (m²)',

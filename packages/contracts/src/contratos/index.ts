@@ -26,14 +26,26 @@ export const CreateContratoSchema = z
 
     // ── Campos nuevos Excel Hoja 2 U-AK (T-V14+; excluye AD/AE ya en BD,
     // AI ignorado, Y/Z/AA derivados en frontend) ────────────────────────────
-    plazoAnios: z.coerce.number().int().min(1).max(100).nullable().optional(),
+    plazoMeses: z
+      .coerce.number()
+      .int()
+      .min(1)
+      .max(1200)
+      .nullable()
+      .optional(),
     areaMt2MedicionReal: z.coerce.number().min(0).max(1_000_000).nullable().optional(),
     cuotaArrendamiento: z.coerce.number().min(0).max(1_000_000_000).nullable().optional(),
     cuotaCam: z.coerce.number().min(0).max(1_000_000_000).nullable().optional(),
     depositoGarantia: z.coerce.number().min(0).max(1_000_000_000).nullable().optional(),
     fechaPagoDeposito: z.iso.date().nullable().optional(),
     fechaEntregaLocal: z.iso.date().nullable().optional(),
-    periodoGracia: z.string().trim().max(40).nullable().optional(),
+    periodoGraciaDias: z
+      .coerce.number()
+      .int()
+      .min(0)
+      .max(3650)
+      .nullable()
+      .optional(),
     inicioOperaciones: z.iso.date().nullable().optional(),
     avisoTerminacion: z.iso.date().nullable().optional(),
     condicionesIncrementoCanon: z.string().trim().max(4000).nullable().optional(),
@@ -54,10 +66,6 @@ export const CreateContratoSchema = z
     (v) =>
       v.avisoTerminacion == null || v.fechaFin == null || v.avisoTerminacion <= v.fechaFin,
     { message: 'avisoTerminacion debe ser <= fechaFin', path: ['avisoTerminacion'] },
-  )
-  .refine(
-    (v) => v.plazoAnios == null || (v.plazoAnios >= 1 && v.plazoAnios <= 100),
-    { message: 'plazoAnios debe estar entre 1 y 100', path: ['plazoAnios'] },
   );
 export type CreateContratoInput = z.infer<typeof CreateContratoSchema>;
 
@@ -115,14 +123,14 @@ export const ContratoOutputSchema = z.object({
   motivoFin: z.string().nullable(),
 
   // ── Campos nuevos Excel Hoja 2 U-AK ─────────────────────────────────────
-  plazoAnios: z.number().int().nullable(),
+  plazoMeses: z.number().int().nullable(),
   areaMt2MedicionReal: z.number().nullable(),
   cuotaArrendamiento: z.number().nullable(),
   cuotaCam: z.number().nullable(),
   depositoGarantia: z.number().nullable(),
   fechaPagoDeposito: z.iso.date().nullable(),
   fechaEntregaLocal: z.iso.date().nullable(),
-  periodoGracia: z.string().nullable(),
+  periodoGraciaDias: z.number().int().nullable(),
   inicioOperaciones: z.iso.date().nullable(),
   avisoTerminacion: z.iso.date().nullable(),
   condicionesIncrementoCanon: z.string().nullable(),

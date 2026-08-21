@@ -57,7 +57,7 @@ export function NuevoLocalForm() {
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label htmlFor="codigo">Código *</Label>
+          <Label htmlFor="codigo">Local *</Label>
           <Input id="codigo" placeholder="L-101" {...register('codigo')} />
           {errors.codigo && <p className="text-xs text-red-600">{errors.codigo.message}</p>}
         </div>

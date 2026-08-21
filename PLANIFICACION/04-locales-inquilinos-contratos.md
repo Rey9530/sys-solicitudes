@@ -347,3 +347,22 @@
   - Permisos (docs/06 §6.2.9): admin_plaza sube/borra cualquiera de su plaza; inquilino solo en SUS contratos y solo borra lo que subió (`403 ADJUNTO_DELETE_FORBIDDEN`).
   - `DELETE` → `moveToQuarantine` (bucket `quarantine-{plaza_id}`) + soft delete.
   - **Verificado:** subida 201 (admin e inquilino), no-PDF → 400, download pre-firmado 200, delete → objeto en cuarentena + `deleted_at`, todo con MinIO real.
+
+### Notas adicionales (2026-08-21)
+
+- **Fórmula Y/Z/AA corregida (afecta T-054 y T-060).** Los totales derivados que se muestran en `nuevo-contrato-form.tsx` y `admin/contratos/[id]/page.tsx` se calculaban mal como `canon + cam` y `cam`. Regla de negocio correcta:
+  - `totalCanon = areaMt2MedicionReal × cuotaArrendamiento`
+  - `totalCam   = areaMt2MedicionReal × cuotaCam`
+  - `total      = totalCanon + totalCam`
+
+- **`montoMensual` ahora es derivado.** El campo sigue siendo `required` en el schema (Zod) y persistido en BD (Prisma ya era `Decimal?`), pero el formulario lo autocompleta con `total` vía `useEffect` + `setValue`. El `<Input>` queda `readOnly` con badge «Calculado automáticamente». El backend NO recalcula — sigue la regla Y/Z/AA derivada en frontend documentada en `contrato.mapper.ts`. Si en el futuro se quiere defensa-en-profundidad, agregar un `superRefine` a `CreateContratoSchema` que advierta (sin bloquear) cuando `|montoMensual − (area × canon + area × cam)| > 0.01`. Fuera de scope de este cambio.
+
+- **`plazoAnios` → `plazoMeses` (T-V14+).** Cambio semántico: el plazo se expresa en meses, no años. Rango nuevo: `1..1200` (≈100 años). Columna Prisma renombrada `plazo_anios Int?` → `plazo_meses Int?`. Se eliminó el `.refine` redundante en `CreateContratoSchema` (el `min/max` ya produce mensaje). Migración `20260821000001_contrato_plazo_periodo_gracia_dias` multiplica por 12 los valores preexistentes antes del rename (datos del seed interpretaban el campo como años).
+
+- **`periodoGracia` → `periodoGraciaDias` (T-V14+).** El período de gracia era texto libre (`'3 meses'`); pasa a `Int` en días. Rango nuevo: `0..3650` (≈10 años). Columna Prisma renombrada `periodo_gracia String? @db.VarChar(40)` → `periodo_gracia_dias Int?`. Migración: DO block con `regexp_replace` para extraer dígitos y validar rango; valores no parseables o fuera de `0..3650` quedan `NULL`. El input del formulario cambió de texto a `type="number"` con `min="0" max="3650"`.
+
+- **CHECK constraints nuevos (defensa-en-profundidad).** `contrato_plazo_meses_range` y `contrato_periodo_gracia_dias_range` se agregan en la misma migración, **después** del UPDATE/ALTER para no rechazar datos en conversión. Zod sigue siendo la guard primaria; los CHECK son red de seguridad.
+
+- **Cambios propagados:** `CreateContratoSchema` + `ContratoOutputSchema` (packages/contracts), `model contrato` (schema.prisma), `contrato.mapper.ts`, `contratos.service.ts` (create + renovar), `seed.ts` (demo: `plazo_meses=12`, `periodo_gracia_dias=90`), `nuevo-contrato-form.tsx` y `admin/contratos/[id]/page.tsx`. No se tocaron `UpdateContratoSchema`, `CerrarContratoSchema`, `RenovarContratoSchema`, `contratos-table.tsx`, `renovar-contrato-dialog.tsx`, `actions.ts`.
+
+- **Verificado:** `npx prisma generate` OK, `npm -w backend run type-check` limpio, `npm -w frontend run type-check` limpio, `npm -w backend run lint` sin errores nuevos, `npm -w frontend run lint` sin errores nuevos, `rg 'plazoAnios|plazo_anios|periodoGracia\b|periodo_gracia\b'` devuelve 0 hits en `frontend/src`, `backend/src` y `packages/contracts/src`.

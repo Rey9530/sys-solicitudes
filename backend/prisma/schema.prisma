@@ -449,14 +449,14 @@ model contrato {
   motivo_fin                    String?
 
   // ── Campos nuevos Excel Hoja 2 (U-AK, excluyendo AD/AE/AI/Y/Z/AA) ──────────
-  plazo_anios                   Int?                                       // U: PLAZO (AÑOS)
+  plazo_meses                   Int?                                       // U: PLAZO (MESES)
   area_mt2_medicion_real        Decimal?        @db.Decimal(12, 2)         // V: ÁREA mt2 MEDICION REAL
   cuota_arrendamiento           Decimal?        @db.Decimal(12, 2)         // W: CUOTA ARRENDAMIENTO
   cuota_cam                     Decimal?        @db.Decimal(12, 2)         // X: CUOTA CAM
   deposito_garantia             Decimal?        @db.Decimal(12, 2)         // AB: DEPÓSITO DE GARANTÍA
   fecha_pago_deposito           DateTime?       @db.Date                   // AC: FECHA PAGO DEPOSITO
   fecha_entrega_local           DateTime?       @db.Date                   // AF: FECHA ENTREGA DE LOCAL
-  periodo_gracia                String?         @db.VarChar(40)            // AG: PERIODO DE GRACIA
+  periodo_gracia_dias           Int?                                       // AG: PERIODO DE GRACIA (DÍAS)
   inicio_operaciones            DateTime?       @db.Date                   // AH: INICIO DE OPERACIONES
   aviso_terminacion             DateTime?       @db.Date                   // AJ: AVISO DE TERMINACIÓN
   condiciones_incremento_canon  String?                                    // AK: CONDICIONES DE INCREMENTO CANON

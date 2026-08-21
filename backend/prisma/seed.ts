@@ -302,12 +302,12 @@ async function main(): Promise<void> {
         monto_mensual: '1250.00',
         condiciones: 'Contrato demo generado por seed (solo dev).',
         // Campos nuevos Excel Hoja 2 U-AK (T-V14+; demo).
-        plazo_anios: 1,
+        plazo_meses: 12,
         area_mt2_medicion_real: '42.50',
         cuota_arrendamiento: '1200.00',
         cuota_cam: '50.00',
         deposito_garantia: '1250.00',
-        periodo_gracia: '3 meses',
+        periodo_gracia_dias: 90,
         condiciones_incremento_canon: 'Incremento anual según IPC.',
       },
       create: {
@@ -327,12 +327,12 @@ async function main(): Promise<void> {
         condiciones: 'Contrato demo generado por seed (solo dev).',
         estado: 'vigente',
         // Campos nuevos Excel Hoja 2 U-AK (T-V14+; demo).
-        plazo_anios: 1,
+        plazo_meses: 12,
         area_mt2_medicion_real: '42.50',
         cuota_arrendamiento: '1200.00',
         cuota_cam: '50.00',
         deposito_garantia: '1250.00',
-        periodo_gracia: '3 meses',
+        periodo_gracia_dias: 90,
         condiciones_incremento_canon: 'Incremento anual según IPC.',
       },
     });

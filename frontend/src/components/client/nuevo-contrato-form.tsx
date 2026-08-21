@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,22 +28,38 @@ export function NuevoContratoForm({
     register,
     handleSubmit,
     control,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(CreateContratoSchema),
     defaultValues: { moneda: 'USD' },
   });
 
-  // Totales derivados (T-V14+): Y/Z/AA se calculan en frontend, no se persisten.
-  const [cuotaArrendamiento, cuotaCam] = useWatch({
+  // Totales derivados (Y/Z/AA — T-V14+): se calculan en frontend, no se persisten.
+  // Fórmula de negocio (2026-08-21):
+  //   totalCanon = areaMt2MedicionReal × cuotaArrendamiento
+  //   totalCam   = areaMt2MedicionReal × cuotaCam
+  //   total      = totalCanon + totalCam
+  // `montoMensual` se autocompleta con `total` (ver useEffect abajo).
+  const [areaMt2MedicionReal, cuotaArrendamiento, cuotaCam] = useWatch({
     control,
-    name: ['cuotaArrendamiento', 'cuotaCam'],
+    name: ['areaMt2MedicionReal', 'cuotaArrendamiento', 'cuotaCam'],
   });
+  const area = Number(areaMt2MedicionReal ?? 0);
   const canon = Number(cuotaArrendamiento ?? 0);
   const cam = Number(cuotaCam ?? 0);
-  const totalCanon = canon + cam;
-  const totalCam = cam;
+  const totalCanon = area * canon;
+  const totalCam = area * cam;
   const total = totalCanon + totalCam;
+
+  // Sincroniza el cálculo con el campo `montoMensual` (derivado del total).
+  // Zod lo sigue marcando como required; el form lo llena automáticamente.
+  useEffect(() => {
+    setValue('montoMensual', Number(total.toFixed(2)), {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+  }, [total, setValue]);
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);
@@ -119,25 +135,28 @@ export function NuevoContratoForm({
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="plazoAnios">Plazo (años)</Label>
+            <Label htmlFor="plazoMeses">Plazo (meses)</Label>
             <Input
-              id="plazoAnios"
+              id="plazoMeses"
               type="number"
               step="1"
               min="1"
-              max="100"
-              {...register('plazoAnios')}
+              max="1200"
+              {...register('plazoMeses')}
             />
-            {errors.plazoAnios && (
-              <p className="text-xs text-red-600">{errors.plazoAnios.message}</p>
+            {errors.plazoMeses && (
+              <p className="text-xs text-red-600">{errors.plazoMeses.message}</p>
             )}
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="periodoGracia">Período de gracia</Label>
+            <Label htmlFor="periodoGraciaDias">Período de gracia (días)</Label>
             <Input
-              id="periodoGracia"
-              placeholder="ej. 3 meses"
-              {...register('periodoGracia')}
+              id="periodoGraciaDias"
+              type="number"
+              step="1"
+              min="0"
+              max="3650"
+              {...register('periodoGraciaDias')}
             />
           </div>
         </div>
@@ -176,11 +195,16 @@ export function NuevoContratoForm({
         <h3 className="text-sm font-semibold uppercase tracking-wide muted">Pagos</h3>
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="grid gap-1.5">
-            <Label htmlFor="montoMensual">Monto mensual *</Label>
+            <Label htmlFor="montoMensual">
+              Monto mensual{' '}
+              <span className="text-xs muted">(calculado automáticamente)</span>
+            </Label>
             <Input
               id="montoMensual"
               type="number"
               step="0.01"
+              readOnly
+              aria-readonly
               {...register('montoMensual')}
             />
             {errors.montoMensual && (
@@ -255,16 +279,17 @@ export function NuevoContratoForm({
           <p>
             <span className="muted">Total canon:</span>{' '}
             <span className="font-mono">{totalCanon.toFixed(2)}</span>
-            <span className="muted"> (canon + CAM)</span>
+            <span className="muted"> (área × canon)</span>
           </p>
           <p>
             <span className="muted">Total CAM:</span>{' '}
             <span className="font-mono">{totalCam.toFixed(2)}</span>
+            <span className="muted"> (área × CAM)</span>
           </p>
           <p>
             <span className="muted">Total:</span>{' '}
             <span className="font-mono font-semibold">{total.toFixed(2)}</span>
-            <span className="muted"> (total canon + CAM)</span>
+            <span className="muted"> (área × canon + área × CAM)</span>
           </p>
         </div>
       </section>
