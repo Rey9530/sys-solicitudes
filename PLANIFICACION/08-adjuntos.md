@@ -214,6 +214,11 @@
     - Lista de extensiones ejecutables ampliada (ver arriba).
     - `MIME sin firma → aceptar` (no en el plan explícitamente, pero razonable para no romper formatos no comunes).
   - **Tareas dependientes afectadas:** T-112 (refactor de `uploadSolicitudAdjunto` y `uploadContratoAdjunto` para usar el validador); T-116 (mismo patrón al implementar locales).
+  - **Actualización 2026-09-24 — videos (MP4/MOV/WebM):**
+    - `MAGIC_BYTES` pasa de `Record<string, string[]>` a `Record<string, MagicSignature[]>` con `{ hex, offset? }`; la comparación lee exactamente `hex.length/2` bytes desde `offset` (antes: `startsWith` sobre los primeros 16 bytes). Las firmas existentes se conservan con offset 0.
+    - Firmas nuevas: `video/mp4` → `ftyp` en offset 4; `video/quicktime` → `ftyp`/`moov`/`mdat`/`wide`/`free`/`skip` en offset 4; `video/webm` → EBML `1a45dfa3` en offset 0 **más** DocType `webm` dentro de los primeros 64 bytes (rechaza `.mkv` declarado como WebM, simétrico al chequeo de WEBP).
+    - La allowlist del `PATCH /configuracion` y el fallback de 50 MB del service se leen de `@app/contracts` (`MIME_PERMITIDOS_DEFAULT`, `ADJUNTO_TAMANIO_MAX_MB_DEFAULT`); se eliminó el `MIME_ALLOWLIST` local de `configuracion.service.ts`.
+    - Verificado con `curl` multipart (ver bitácora T-V06 en `00-INDICE.md`): mp4/mov/webm reales (ffmpeg) → 201; `fake.mp4` con bytes PDF → 400 `ADJUNTO_MIME_INVALIDO`; `.mkv` como `video/webm` → 400; `video/x-msvideo` → 400; PATCH con `video/x-flv` → 400 `MIME_NO_PERMITIDO`; locales con `video/mp4` → 400.
 
 ### T-116 — Implementar endpoints análogos para locales y contratos
 

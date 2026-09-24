@@ -655,8 +655,8 @@ Gestionar el ciclo de vida de los archivos adjuntos a solicitudes y a locales/co
 
 ### 7.5 Reglas de negocio
 
-- **RN-AD-1:** tamaño máximo por archivo: **25 MB** (SUPUESTO S-TamañoMax). Configurable por plaza.
-- **RN-AD-2:** tipos MIME permitidos: `application/pdf`, `image/jpeg`, `image/png`, `image/webp`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `image/vnd.dwg` (SUPUESTO S-MimeTypes). Configurable por plaza.
+- **RN-AD-1:** tamaño máximo por archivo: **50 MB** (SUPUESTO S-TamañoMax, revisado en T-V06). Configurable por plaza.
+- **RN-AD-2:** tipos MIME permitidos: `application/pdf`, `image/jpeg`, `image/png`, `image/webp`, `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/dwg`, `video/mp4`, `video/quicktime`, `video/webm` (SUPUESTO S-MimeTypes; videos desde 2026-09-24). Configurable por plaza. Fuente única: `MIME_PERMITIDOS_DEFAULT` en `packages/contracts`.
 - **RN-AD-3:** el nombre del archivo en MinIO es siempre un UUID; el nombre original se guarda en BD.
 - **RN-AD-4:** las URLs pre-firmadas expiran en 15 min.
 - **RN-AD-5:** no se realiza escaneo antivirus en v1. (SUPUESTO — debería confirmarse con el cliente.)

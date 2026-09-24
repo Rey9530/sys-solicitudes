@@ -4,7 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import type { SolicitudDetailOutput, SolicitudResultadoCierre } from '@app/contracts';
-import { esEstadoTerminal } from '@app/contracts';
+import {
+  ADJUNTO_TAMANIO_MAX_BYTES_DEFAULT,
+  MIME_PERMITIDOS_DEFAULT,
+  esEstadoTerminal,
+} from '@app/contracts';
 import {
   tomarAction,
   liberarAction,
@@ -51,18 +55,6 @@ export interface AdminOption {
   email: string;
 }
 
-/** MIME permitidos por defecto para adjuntos de solicitud (T-V06, configurable por plaza). */
-const SOLICITUD_MIMES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/dwg',
-];
-const SOLICITUD_MAX_BYTES = 50 * 1024 * 1024; // 50 MB (T-V06)
 
 const CAMPOS_EXTRA_LABEL: Record<string, string> = {
   area_afectada: 'Área afectada',
@@ -380,8 +372,8 @@ export function SolicitudDetailAdmin({
                   <AdjuntoUploader
                     entidadTipo="solicitud"
                     adjuntosIniciales={solicitud.adjuntos}
-                    mimeAllowlist={SOLICITUD_MIMES}
-                    maxBytes={SOLICITUD_MAX_BYTES}
+                    mimeAllowlist={MIME_PERMITIDOS_DEFAULT}
+                    maxBytes={ADJUNTO_TAMANIO_MAX_BYTES_DEFAULT}
                     canDelete
                     subirAction={(fd) => subirAdjuntoAdminAction(solicitud.id, fd)}
                     descargarAction={descargarAdjuntoAdminAction}

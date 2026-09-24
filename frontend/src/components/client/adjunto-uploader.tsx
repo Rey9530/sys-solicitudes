@@ -4,7 +4,15 @@ import { useCallback, useState } from 'react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { File as FileIcon, Loader2, Trash2, Download, Image as ImageIcon } from 'lucide-react';
+import {
+  File as FileIcon,
+  FileVideo,
+  Loader2,
+  Trash2,
+  Download,
+  Image as ImageIcon,
+} from 'lucide-react';
+import { mimeAcceptMap, mimeLabels } from '@app/contracts';
 import type { AdjuntoOutput } from '@app/contracts';
 import { Button } from '@/components/ui/button';
 import { formatDateInPlazaTz } from '@/lib/datetime';
@@ -41,28 +49,12 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
-/** Construye la clave de `accept` para react-dropzone a partir de MIME allowlist. */
+/**
+ * Construye la clave de `accept` para react-dropzone a partir de MIME allowlist.
+ * Las extensiones salen de `MIME_INFO` (@app/contracts, fuente única).
+ */
 function buildAccept(mimes: string[]): Record<string, string[]> {
-  return mimes.reduce<Record<string, string[]>>((acc, m) => {
-    acc[m] = mimeToExts(m);
-    return acc;
-  }, {});
-}
-
-function mimeToExts(mime: string): string[] {
-  if (mime === 'application/pdf') return ['.pdf'];
-  if (mime === 'image/jpeg') return ['.jpg', '.jpeg'];
-  if (mime === 'image/png') return ['.png'];
-  if (mime === 'image/webp') return ['.webp'];
-  if (mime === 'application/dwg' || mime === 'application/acad') return ['.dwg'];
-  if (mime === 'application/vnd.ms-excel') return ['.xls'];
-  if (mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-    return ['.xlsx'];
-  }
-  if (mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-    return ['.docx'];
-  }
-  return [];
+  return mimeAcceptMap(mimes);
 }
 
 /**
@@ -199,7 +191,7 @@ export function AdjuntoUploader({
               .
             </p>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
-              Máx. {maxMb} MB por archivo · {mimeAllowlist.length} tipos permitidos
+              Máx. {maxMb} MB por archivo · {mimeLabels(mimeAllowlist).join(', ')}
             </p>
             {uploadingCount > 0 && (
               <p className="flex items-center gap-2 text-xs" style={{ color: 'var(--primary)' }}>
@@ -265,6 +257,13 @@ function AdjuntoIcon({ mime }: { mime: string }) {
     return (
       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400">
         <ImageIcon className="h-5 w-5" />
+      </div>
+    );
+  }
+  if (mime.startsWith('video/')) {
+    return (
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400">
+        <FileVideo className="h-5 w-5" />
       </div>
     );
   }

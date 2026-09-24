@@ -2,7 +2,16 @@
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, UploadCloud, FileText, Image as ImageIcon, AlertCircle, UserPlus, X } from 'lucide-react';
+import {
+  Check,
+  UploadCloud,
+  FileText,
+  FileVideo,
+  Image as ImageIcon,
+  AlertCircle,
+  UserPlus,
+  X,
+} from 'lucide-react';
 import { useDropzone, type FileRejection } from 'react-dropzone';
 import { toast } from 'sonner';
 import type {
@@ -10,6 +19,13 @@ import type {
   SolicitudDetailOutput,
   SolicitudListItem,
   SolicitudTipo,
+} from '@app/contracts';
+import {
+  ADJUNTO_TAMANIO_MAX_BYTES_DEFAULT,
+  ADJUNTO_TAMANIO_MAX_MB_DEFAULT,
+  MIME_PERMITIDOS_DEFAULT,
+  mimeAcceptMap,
+  mimeLabels,
 } from '@app/contracts';
 import {
   createSolicitudAction,
@@ -60,16 +76,14 @@ export interface TipoOption {
 
 const selectClass = 'select';
 const MAX_ADJUNTOS = 10;
-// T-V22: límites del módulo 08 (adjuntos). Espejan al backend (S-TamañoMax /
-// S-MimeTypes). El backend vuelve a validar en ZodValidationPipe; aquí solo
-// damos feedback rápido al usuario.
-const MAX_ADJUNTO_BYTES = 25 * 1024 * 1024; // 25 MB
-const ADJUNTO_MIME_PERMITIDOS: Record<string, string[]> = {
-  'application/pdf': ['.pdf'],
-  'image/png': ['.png'],
-  'image/jpeg': ['.jpg', '.jpeg'],
-  'image/webp': ['.webp'],
-};
+// T-V22: límites del módulo 08 (adjuntos), fuente única en @app/contracts
+// (S-TamañoMax / S-MimeTypes, T-V06; videos desde 2026-09-24). El backend
+// vuelve a validar en AdjuntoValidator (MIME de la plaza, tamaño, magic bytes);
+// aquí solo damos feedback rápido al usuario.
+const MAX_ADJUNTO_BYTES = ADJUNTO_TAMANIO_MAX_BYTES_DEFAULT;
+const MAX_ADJUNTO_MB = ADJUNTO_TAMANIO_MAX_MB_DEFAULT;
+const ADJUNTO_ACCEPT = mimeAcceptMap(MIME_PERMITIDOS_DEFAULT);
+const ADJUNTO_LABELS = mimeLabels(MIME_PERMITIDOS_DEFAULT).join(', ');
 const MAX_PERSONAL_WIZARD = MAX_PERSONAL; // T-V22: 1-20 (antes 0-10)
 const PASOS = ['Tipo y categoría', 'Detalles', 'Adjuntos y revisión'];
 
@@ -1040,6 +1054,7 @@ function formateaBytes(bytes: number): string {
 
 function iconoPorMime(tipo: string): React.ReactNode {
   if (tipo.startsWith('image/')) return <ImageIcon className="h-4 w-4" aria-hidden />;
+  if (tipo.startsWith('video/')) return <FileVideo className="h-4 w-4" aria-hidden />;
   return <FileText className="h-4 w-4" aria-hidden />;
 }
 
@@ -1059,9 +1074,9 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
         const first = r.errors[0];
         const msg =
           first?.code === 'file-too-large'
-            ? `"${r.file.name}" excede 25 MB.`
+            ? `"${r.file.name}" excede ${MAX_ADJUNTO_MB} MB.`
             : first?.code === 'file-invalid-type'
-              ? `"${r.file.name}" no es PDF, PNG, JPG o WebP.`
+              ? `"${r.file.name}" no es un tipo permitido (${ADJUNTO_LABELS}).`
               : `"${r.file.name}" rechazado.`;
         toast.error(msg);
       }
@@ -1074,7 +1089,7 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
     onDrop,
     multiple: true,
     maxSize: MAX_ADJUNTO_BYTES,
-    accept: ADJUNTO_MIME_PERMITIDOS,
+    accept: ADJUNTO_ACCEPT,
     disabled: files.length >= MAX_ADJUNTOS,
   });
 
@@ -1140,7 +1155,7 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
               <span className="text-blue-600 underline">haz clic para seleccionar</span>
             </p>
             <p className="text-xs wz-t3">
-              PDF, PNG, JPG o WebP · máx. 25 MB por archivo · {restantes} restantes
+              {ADJUNTO_LABELS} · máx. {MAX_ADJUNTO_MB} MB por archivo · {restantes} restantes
             </p>
           </>
         )}

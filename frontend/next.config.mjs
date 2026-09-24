@@ -4,7 +4,10 @@ const nextConfig = {
   devIndicators: false,
   experimental: {
     serverActions: {
-      bodySizeLimit: '2mb',
+      // Las subidas de adjuntos pasan por Server Actions (BFF). Igual al tope
+      // duro de multer en NestJS (ADJUNTO_HARD_LIMIT_BYTES = 100 MB); el máximo
+      // efectivo por archivo lo fija la plaza (configuracion, default 50 MB).
+      bodySizeLimit: '100mb',
     },
   },
   reactStrictMode: true,

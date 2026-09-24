@@ -220,6 +220,14 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
     - **S-Quarantine (Confirmado):** Cuarentena 30 días en bucket `quarantine-{plaza_id}`. Cron diario purga los de > 30 días.
     - **S-Preview (Confirmado):** Previsualización inline para PDF (primera página) e imágenes (thumbnail).
     - **Sin antivirus/OCR en v1 (Confirmado):** Solo validación de magic bytes + extensión.
+  - **Actualización 2026-09-24 — videos en adjuntos de solicitud:**
+    - **S-MimeTypes (AMPLIADO):** se añaden `video/mp4` (.mp4/.m4v), `video/quicktime` (.mov) y `video/webm` (.webm). El wizard de nueva solicitud, el uploader genérico, las vistas de detalle y la pantalla de configuración los aceptan; locales (solo imágenes) y contratos (solo PDF) no cambian.
+    - **S-TamañoMax:** se mantiene en 50 MB por archivo (decisión del owner; un video de teléfono debe venir comprimido/corto).
+    - **Fuente única de la lista:** `packages/contracts/src/adjuntos/index.ts` (`MimePermitidoSchema`, `MIME_INFO`, `MIME_PERMITIDOS_DEFAULT`, `ADJUNTO_TAMANIO_MAX_MB_DEFAULT`, `mimeAcceptMap`, `mimeLabels`). Se eliminaron las 6 listas duplicadas (wizard tenía 4 tipos/25 MB, detalle 8 tipos/50 MB, backend config 8, contracts 9, BD 8).
+    - **Migración:** `20260924000001_configuracion_mime_video` cambia el `DEFAULT` de `configuracion.mime_types_permitidos` y hace backfill idempotente (añade solo los MIME de video que falten) en las plazas existentes.
+    - **⚠️ Bloqueos de tamaño corregidos:** `frontend/next.config.mjs` tenía `serverActions.bodySizeLimit: '2mb'` (las subidas pasan por Server Actions, así que ningún archivo > 2 MB llegaba al backend) → `'100mb'`; `infrastructure/nginx-plazapp.conf` y `nginx-plazapp-s3.conf` tenían `client_max_body_size 25M` → `100M`. **Acción manual en el VPS:** copiar los `.conf` y ejecutar `sudo nginx -t && sudo systemctl reload nginx`.
+    - **Validador:** `AdjuntoValidator.MAGIC_BYTES` ahora soporta firmas con offset (`ftyp` en offset 4 para MP4/MOV; EBML + DocType `webm` para WebM). Detalle en T-115.
+    - **Archivos afectados:** `packages/contracts/src/adjuntos/index.ts`, `backend/src/modules/configuracion/configuracion.service.ts`, `backend/src/modules/adjuntos/validators/adjunto.validator.ts`, `backend/src/modules/adjuntos/adjuntos.service.ts`, `backend/prisma/schema.prisma`, `frontend/next.config.mjs`, `frontend/src/components/client/solicitud-wizard.tsx`, `adjunto-uploader.tsx`, `solicitud-detail-admin.tsx`, `solicitud-detail-inquilino.tsx`, `configuracion-form.tsx`, `infrastructure/nginx-plazapp*.conf`, `docs/02`, `docs/03`, `CLAUDE.md`.
   - **Tareas dependientes afectadas (⚠️ Revisar antes de implementar):**
     - **T-115 (en `08-adjuntos.md`):** ⚠️ Cambiar todos los `25 MB` a `50 MB` y los defaults de `configuracion.tamanio_max_archivo_mb` a `50`.
     - **T-117 (en `08-adjuntos.md`):** Ajustar el componente Client para mostrar "50 MB máx" en el uploader.

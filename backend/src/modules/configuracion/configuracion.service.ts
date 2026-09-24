@@ -1,22 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { configuracion as ConfiguracionModel } from '@prisma/client';
+import { MIME_PERMITIDOS_DEFAULT } from '@app/contracts';
 import type { Configuracion, UpdateConfiguracionInput } from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 import type { RequestMeta } from '../plazas/plazas.service';
-
-/** Lista cerrada de MIME permitidos (T-V06). El PATCH no puede salir de aquí. */
-const MIME_ALLOWLIST = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/dwg',
-];
 
 @Injectable()
 export class ConfiguracionService {
@@ -48,13 +37,16 @@ export class ConfiguracionService {
   ): Promise<Configuracion> {
     const plazaId = this.requirePlaza(actor);
 
+    // Lista cerrada de MIME permitidos (T-V06; fuente única en @app/contracts).
+    // El PATCH no puede salir de ella.
     if (dto.mimeTypesPermitidos) {
-      const invalid = dto.mimeTypesPermitidos.filter((m) => !MIME_ALLOWLIST.includes(m));
+      const permitidos: readonly string[] = MIME_PERMITIDOS_DEFAULT;
+      const invalid = dto.mimeTypesPermitidos.filter((m) => !permitidos.includes(m));
       if (invalid.length > 0) {
         throw new BadRequestException({
           code: 'MIME_NO_PERMITIDO',
           title: 'Solicitud inválida',
-          message: `MIME no permitido: ${invalid.join(', ')}. Permitidos: ${MIME_ALLOWLIST.join(', ')}.`,
+          message: `MIME no permitido: ${invalid.join(', ')}. Permitidos: ${MIME_PERMITIDOS_DEFAULT.join(', ')}.`,
         });
       }
     }
