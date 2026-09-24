@@ -11,7 +11,17 @@ import {
   type ResponsiveColumn,
 } from '@/components/client/responsive/responsive-data-view';
 
-export function ContratosTable({ contratos }: { contratos: ContratoListItem[] }) {
+export function ContratosTable({
+  contratos,
+  detalleBasePath = '/admin/contratos',
+  mostrarInquilino = true,
+}: {
+  contratos: ContratoListItem[];
+  /** Ruta base del detalle (el portal del inquilino usa `/inquilino/contratos`). */
+  detalleBasePath?: string;
+  /** El inquilino solo ve sus propios contratos: la columna sobra. */
+  mostrarInquilino?: boolean;
+}) {
   if (contratos.length === 0) {
     return (
       <Card>
@@ -24,14 +34,14 @@ export function ContratosTable({ contratos }: { contratos: ContratoListItem[] })
     );
   }
 
-  const columns: ResponsiveColumn<ContratoListItem>[] = [
+  const todas: ResponsiveColumn<ContratoListItem>[] = [
     {
       key: 'local',
       header: 'Local',
       cardLabel: 'Local',
       primary: true,
       cell: (c) => (
-        <Link href={`/admin/contratos/${c.id}`} className="cellcode">
+        <Link href={`${detalleBasePath}/${c.id}`} className="cellcode">
           {c.localCodigo ?? c.localId.slice(0, 8)}
         </Link>
       ),
@@ -47,14 +57,14 @@ export function ContratosTable({ contratos }: { contratos: ContratoListItem[] })
       key: 'inicio',
       header: 'Inicio',
       cardLabel: 'Inicio',
-      className: 'muted',
+      className: 'muted whitespace-nowrap',
       cell: (c) => c.fechaInicio,
     },
     {
       key: 'fin',
       header: 'Fin',
       cardLabel: 'Fin',
-      className: 'muted',
+      className: 'muted whitespace-nowrap',
       cell: (c) => c.fechaFin ?? 'Indefinido',
     },
     {
@@ -62,7 +72,7 @@ export function ContratosTable({ contratos }: { contratos: ContratoListItem[] })
       key: 'canon',
       header: 'Canon',
       cardLabel: 'Canon',
-      className: 'num muted',
+      className: 'num muted whitespace-nowrap',
       cell: (c) =>
         c.cuotaArrendamiento !== null
           ? `${c.moneda} ${c.cuotaArrendamiento.toFixed(2)}`
@@ -77,6 +87,7 @@ export function ContratosTable({ contratos }: { contratos: ContratoListItem[] })
       cell: (c) => <ContratoEstadoBadge estado={c.estado} />,
     },
   ];
+  const columns = todas.filter((col) => mostrarInquilino || col.key !== 'inquilino');
 
   return (
     <Card>

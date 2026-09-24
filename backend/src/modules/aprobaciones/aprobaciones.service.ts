@@ -336,7 +336,14 @@ export class AprobacionesService {
             where: whereConAsignacion,
             skip: (page - 1) * pageSize,
             take: pageSize,
-            orderBy: [{ prioridad: 'asc' }, { enviada_at: 'desc' }],
+            orderBy:
+              query.orden === 'prioridad'
+                ? [
+                    { prioridad: 'asc' },
+                    { enviada_at: { sort: 'desc', nulls: 'last' } },
+                    { created_at: 'desc' },
+                  ]
+                : [{ enviada_at: { sort: 'desc', nulls: 'last' } }, { created_at: 'desc' }],
             include: SOLICITUD_INCLUDE,
           }),
           tx.solicitud.count({ where: whereConAsignacion }),

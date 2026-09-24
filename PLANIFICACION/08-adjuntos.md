@@ -68,6 +68,13 @@
     - Ruta del archivo: `common/storage/minio.service.ts` en lugar de `common/minio/minio.service.ts` (más coherente con `storage.module.ts`).
     - `move` renombrado a `moveToQuarantine` con 3 args (deriva destino de `plazaId`).
   - **Tareas dependientes afectadas:** T-111, T-114, T-116 usan los métodos nuevos.
+  - **2026-09-24 — ⚠️ fix: URL pre-firmada conservaba `:9000` en producción.**
+    - **Síntoma:** con `MINIO_PUBLIC_ENDPOINT=s3.<dominio>` y `MINIO_PUBLIC_PORT=443`, `presignedGetUrl` devolvía `https://s3.<dominio>:9000/...`; el navegador no cargaba el adjunto/imagen y solo funcionaba quitando `:9000` a mano.
+    - **Causa raíz:** `rewritePresignedHost` hacía `u.protocol = pub.protocol; u.host = pub.host`. El setter `host` de WHATWG URL **no limpia el puerto** cuando el valor asignado no incluye uno (`pub.host` es solo el hostname porque 443 es default y `URL` lo omite), así que el `:9000` del endpoint interno `minio:9000` sobrevivía. Reproducido en Node 24.12.
+    - **Fix:** la URL se reconstruye como `${pub.origin}${u.pathname}${u.search}`. `pub.origin` ya trae scheme + host + puerto no default (o ninguno si es 443/80). Cubre puerto default, puerto custom (p. ej. `:8443` se conserva) y `MINIO_PUBLIC_ENDPOINT` vacío (sin reescritura). La firma SigV4 no cambia (path + query intactos; NGINX sigue fijando `Host: minio:9000` al upstream).
+    - **Limpieza sin cambio de comportamiento:** el cálculo de `publicHost` en el constructor leía `MINIO_PUBLIC_PORT` cuatro veces en una sola línea; se extrajo a `publicSsl` / `publicPort` / `isDefaultPort`.
+    - **Verificación:** script aislado con 4 casos (443, 8443, http 80, sin endpoint) en verde; `tsc --noEmit` y ESLint en verde; prueba del `MinioService` real contra MinIO local con `MINIO_PUBLIC_ENDPOINT` configurado (URL sin `:9000`).
+    - **Tareas dependientes afectadas:** T-041 (logo de plaza), T-062 (contrato PDF), T-112/T-116 (adjuntos de solicitudes y locales) consumen `presignedGetUrl`; ninguna requiere cambios.
 
 ### T-111 — Crear buckets por tenant (solicitudes-adjuntos-{plaza_id}, locales-planos-{plaza_id}, quarantine-{plaza_id})
 

@@ -329,6 +329,20 @@ sys-solicitudes/
   - Módulo 03 (plazas — desactivar).
   - Cualquier pantalla admin futura.
 
+### 7.4.6. Convenciones de UI (tablas responsive)
+
+> **Decisión adoptada el 2026-09-16 (fix responsive móvil).**
+
+- **Toda lista tabular** del frontend se renderiza con `ResponsiveDataView` (`frontend/src/components/client/responsive/responsive-data-view.tsx`). **Prohibido** montar `<table>` / `<Table>` "a mano" en pantallas de listado.
+- El componente decide la vista por el **ancho real del contenedor** (`ResizeObserver`), no por el viewport: el ancho útil depende del sidebar (256/76 px), del padding del `.main` y de la tarjeta que envuelve la tabla, así que un breakpoint fijo (el antiguo `768px`) dejaba las tablas cortadas entre 768 y ~1280 px (tablets, teléfonos en horizontal, laptops con sidebar abierto).
+- Reglas de decisión (mide el ancho natural de la tabla con una sonda oculta):
+  1. La tabla **cabe** en el contenedor → tabla.
+  2. No cabe y el contenedor es **≥ 900 px** (escritorio) → tabla densa (`.tbl-dense`) con scroll horizontal en `.table-wrap`.
+  3. No cabe y el contenedor es **< 900 px** (teléfono / tablet) → tarjetas (`.rdv-card`), una por registro, con la columna `primary` como título y las columnas `actions` en el pie.
+- Props útiles: `minTableWidth` (fija el umbral y salta la medición), `cardsDisabled` (siempre tabla, con scroll), `hideOnCard` por columna.
+- Tablas que no son listados (matrices) siguen su propio patrón: la **matriz de permisos** pasa a modo compacto "un rol a la vez" por debajo de 760 px de contenedor (`useContainerWidth`); la matriz de SLA va envuelta en `.table-wrap`.
+- Verificación manual mínima al tocar un listado: 390 px (iPhone), 768 px (iPad vertical), 1024 px (iPad horizontal / laptop con sidebar) y 1280 px. Ningún elemento debe salirse del viewport salvo dentro de un contenedor con `overflow-x: auto`.
+
 ### 7.4.4. Estructura de un módulo NestJS
 
 ```

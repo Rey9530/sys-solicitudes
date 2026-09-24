@@ -298,6 +298,8 @@ Renderizado como **Client Component** (requiere DOM).
 ## 2.11. Verificación funcional de endpoints
 
 > **Decisión del equipo.** No se escriben tests unitarios (Vitest, Jest), ni tests de integración (Supertest), ni tests e2e automatizados (Playwright). La verificación de cada endpoint se hace **manualmente** levantando el backend real y probando el endpoint con `curl`, Postman, Insomnia o Bruno. La validación de la respuesta se hace contra el Zod schema correspondiente en `packages/contracts/`.
+>
+> **Actualización 2026-09-24.** Existe una suite e2e **opcional** de Playwright (`frontend/e2e/`, `npm run test:e2e` desde `frontend/`, `@playwright/test` 1.63.0) creada como test de regresión del calendario (feed duplicado / hora desfasada del inquilino). No sustituye la verificación manual: asume el stack local levantado (`:3000` + `:4000`) y crea datos de prueba (`E2E-CAL-*`) en la BD de desarrollo. No corre en CI.
 
 ### 2.11.1. Procedimiento al crear o modificar un endpoint
 

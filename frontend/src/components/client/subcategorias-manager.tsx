@@ -30,13 +30,9 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+  ResponsiveDataView,
+  type ResponsiveColumn,
+} from '@/components/client/responsive/responsive-data-view';
 import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
 
@@ -98,6 +94,102 @@ export function SubcategoriasManager({
     }
   };
 
+  const renderAcciones = (s: SubcategoriaDetailOutput) => (
+    <>
+      <Can permiso="subcategorias.editar">
+        <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'editar', sub: s })}>
+          Editar
+        </Button>
+      </Can>
+      <Can permiso="subcategorias.asignar_responsable">
+        <Button variant="ghost" size="sm" onClick={() => setModal({ kind: 'responsable', sub: s })}>
+          Responsable
+        </Button>
+      </Can>
+      <Can permiso="subcategorias.gestionar_supervisores">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setModal({ kind: 'supervisores', sub: s })}
+        >
+          Supervisores
+        </Button>
+      </Can>
+      {s.activo && (
+        <Can permiso="subcategorias.deshabilitar">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-600 hover:bg-red-50"
+            disabled={pendingId === s.id}
+            onClick={() => onDelete(s)}
+          >
+            Desactivar
+          </Button>
+        </Can>
+      )}
+    </>
+  );
+
+  const columns: ResponsiveColumn<SubcategoriaDetailOutput>[] = [
+    {
+      key: 'nombre',
+      header: 'Nombre',
+      cardLabel: 'Nombre',
+      primary: true,
+      className: 'lead',
+      cell: (s) => s.nombre,
+    },
+    {
+      key: 'prioridad',
+      header: 'Prioridad',
+      cardLabel: 'Prioridad',
+      cell: (s) => <span className={`prio prio-${s.prioridad}`}>{s.prioridad}</span>,
+    },
+    {
+      key: 'responsable',
+      header: 'Responsable',
+      cardLabel: 'Responsable',
+      className: 'muted',
+      cell: (s) => s.responsable?.nombre ?? '—',
+    },
+    {
+      key: 'supervisores',
+      header: 'Supervisores',
+      cardLabel: 'Supervisores',
+      cell: (s) => (
+        <span
+          className={`rounded px-2 py-0.5 text-xs font-semibold ${
+            s.supervisores.length >= 5 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
+          }`}
+        >
+          {s.supervisores.length}/5
+        </span>
+      ),
+    },
+    {
+      key: 'estado',
+      header: 'Estado',
+      cardLabel: 'Estado',
+      cell: (s) => (
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+            s.activo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+          }`}
+        >
+          {s.activo ? 'Activa' : 'Inactiva'}
+        </span>
+      ),
+    },
+    {
+      key: 'acciones',
+      header: 'Acciones',
+      className: 'actions',
+      cell: (s) => <div className="row-actions justify-end">{renderAcciones(s)}</div>,
+      actions: (s) => renderAcciones(s),
+    },
+  ];
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -112,93 +204,7 @@ export function SubcategoriasManager({
         </div>
       ) : (
         <div className="card">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nombre</TableHead>
-                <TableHead>Prioridad</TableHead>
-                <TableHead>Responsable</TableHead>
-                <TableHead>Supervisores</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {subcategorias.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="lead">{s.nombre}</TableCell>
-                  <TableCell>
-                    <span className={`prio prio-${s.prioridad}`}>{s.prioridad}</span>
-                  </TableCell>
-                  <TableCell className="text-gray-600">{s.responsable?.nombre ?? '—'}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`rounded px-2 py-0.5 text-xs font-semibold ${
-                        s.supervisores.length >= 5
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}
-                    >
-                      {s.supervisores.length}/5
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        s.activo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {s.activo ? 'Activa' : 'Inactiva'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Can permiso="subcategorias.editar">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setModal({ kind: 'editar', sub: s })}
-                        >
-                          Editar
-                        </Button>
-                      </Can>
-                      <Can permiso="subcategorias.asignar_responsable">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setModal({ kind: 'responsable', sub: s })}
-                        >
-                          Responsable
-                        </Button>
-                      </Can>
-                      <Can permiso="subcategorias.gestionar_supervisores">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setModal({ kind: 'supervisores', sub: s })}
-                        >
-                          Supervisores
-                        </Button>
-                      </Can>
-                      {s.activo && (
-                        <Can permiso="subcategorias.deshabilitar">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:bg-red-50"
-                            disabled={pendingId === s.id}
-                            onClick={() => onDelete(s)}
-                          >
-                            Desactivar
-                          </Button>
-                        </Can>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <ResponsiveDataView rows={subcategorias} columns={columns} rowKey={(s) => s.id} />
         </div>
       )}
 
@@ -307,7 +313,13 @@ function SubcategoriaFormDialog({
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="sub-descripcion">Descripción</Label>
-            <textarea id="sub-descripcion" rows={2} maxLength={500} className="textarea" {...register('descripcion')} />
+            <textarea
+              id="sub-descripcion"
+              rows={2}
+              maxLength={500}
+              className="textarea"
+              {...register('descripcion')}
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="sub-prioridad">Prioridad por defecto</Label>
@@ -431,9 +443,7 @@ function SupervisoresDialog({
   const [seleccion, setSeleccion] = useState('');
   const [pending, setPending] = useState(false);
   const alLimite = sub.supervisores.length >= 5;
-  const disponibles = staffOptions.filter(
-    (u) => !sub.supervisores.some((s) => s.id === u.id),
-  );
+  const disponibles = staffOptions.filter((u) => !sub.supervisores.some((s) => s.id === u.id));
 
   const onAdd = async () => {
     if (!seleccion) return;
@@ -509,9 +519,7 @@ function SupervisoresDialog({
               onChange={(e) => setSeleccion(e.target.value)}
               disabled={alLimite || disponibles.length === 0}
             >
-              <option value="">
-                {alLimite ? 'Límite de 5 alcanzado' : 'Agregar supervisor…'}
-              </option>
+              <option value="">{alLimite ? 'Límite de 5 alcanzado' : 'Agregar supervisor…'}</option>
               {disponibles.map((u) => (
                 <option key={u.id} value={u.id}>
                   {u.nombre} ({u.email})

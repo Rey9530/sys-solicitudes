@@ -45,7 +45,8 @@ export const CreatePlazaSchema = z.object({
       email: z.string().trim().toLowerCase().email(),
       nombre: z.string().trim().min(1).max(120),
       password: z.string().min(8).max(128),
-      rolStaffCodigo: z.string().min(1).max(40),
+      // Por defecto el rol "admin" del sistema (todos los permisos).
+      rolStaffCodigo: z.string().min(1).max(40).default('admin'),
     })
     .optional(),
 });

@@ -955,6 +955,8 @@
     }
     .page-actions {
       width: auto;
+      max-width: 100%;
+      flex: none;
       justify-content: flex-end;
       flex-wrap: wrap;
     }
@@ -982,8 +984,14 @@
   }
 
   @media (max-width: 920px) {
+    /* El sidebar pasa a `position: fixed` (drawer) y sale del flujo del grid.
+       Con `0 1fr` el auto-placement metía `.main-col` en la columna de 0 px y
+       todo el contenido (tablas, tarjetas, títulos) quedaba aplastado. */
     .shell {
-      grid-template-columns: 0 1fr;
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .shell > .main-col {
+      grid-column: 1 / -1;
     }
     .side {
       position: fixed;
@@ -1511,6 +1519,8 @@
   /* Tables */
   .table-wrap {
     overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
   }
   table.tbl {
     width: 100%;
@@ -1643,6 +1653,28 @@
     border-bottom: 1px solid var(--border);
     margin-bottom: 22px;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+  .tab {
+    flex: none;
+    scroll-snap-align: start;
+  }
+  /* En móvil los scrollbars son invisibles: degradado como pista de que hay
+     más pestañas a la derecha. */
+  @media (max-width: 640px) {
+    .tabs::after {
+      content: '';
+      position: sticky;
+      right: 0;
+      flex: none;
+      width: 32px;
+      margin-left: -32px;
+      background: linear-gradient(to right, transparent, var(--bg));
+      pointer-events: none;
+    }
   }
   .tab {
     position: relative;
@@ -2430,6 +2462,32 @@
     border-radius: var(--r-md);
     padding: 16px;
   }
+  /* Texto y superficies del wizard con tokens del tema (legibles en dark):
+     los grises fijos de Tailwind quedaban negro sobre negro en el paso 3. */
+  .wz-extra .wz-t1 {
+    color: var(--text);
+  }
+  .wz-extra .wz-t2 {
+    color: var(--text-2);
+  }
+  .wz-extra .wz-t3 {
+    color: var(--text-3);
+  }
+  .wz-extra .wz-tile {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+  .wz-extra .wz-chip {
+    background: var(--surface-3);
+    color: var(--text-2);
+  }
+  .wz-extra .wz-drop {
+    border-color: var(--border-strong);
+    background: var(--surface-inset);
+  }
+  .wz-extra .wz-drop:hover {
+    background: var(--surface-3);
+  }
 
   .type-grid {
     display: grid;
@@ -2594,6 +2652,25 @@
     font-weight: 600;
     color: var(--text);
   }
+  /* Móvil: la barra (prev/next/hoy · título · 4 vistas) no cabe en una fila. */
+  @media (max-width: 640px) {
+    .fc .fc-header-toolbar {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .fc .fc-header-toolbar .fc-toolbar-chunk:nth-child(2) {
+      order: -1;
+      flex-basis: 100%;
+      text-align: center;
+    }
+    .fc .fc-toolbar-title {
+      font-size: 15px;
+    }
+    .fc .fc-button {
+      padding: 0.3em 0.55em;
+      font-size: 12.5px;
+    }
+  }
 
   .temp-pass {
     font-family: var(--font-mono);
@@ -2703,12 +2780,39 @@
      matchMedia), por lo que aquí solo quedan los estilos de cada vista:
        - `.responsive-data-cards` → layout grid de tarjetas.
        - `.responsive-data-table` → wrapper con scroll horizontal. */
+  .rdv {
+    position: relative;
+    min-width: 0;
+  }
   .responsive-data-cards {
     display: grid;
     gap: 12px;
   }
   .responsive-data-table {
     min-width: 0;
+  }
+  /* Sonda: copia oculta de la tabla con ancho natural (`max-content`) para
+     medir cuánto necesita. No ocupa espacio ni recibe eventos. */
+  /* Tabla densa: la usa ResponsiveDataView cuando el contenedor es de
+     escritorio pero la tabla no cabe del todo (queda scroll horizontal). */
+  .tbl.tbl-dense {
+    font-size: 12.5px;
+  }
+  .tbl.tbl-dense thead th {
+    padding: 10px 11px;
+  }
+  .tbl.tbl-dense tbody td {
+    padding: 11px 11px;
+  }
+  .rdv-probe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   /* Tarjeta de la vista responsive. */
@@ -2788,6 +2892,42 @@
   }
   .matriz-tbl thead th:first-child {
     z-index: 2;
+  }
+  /* Modo compacto de la matriz (contenedor estrecho): un rol a la vez. */
+  .matriz-rol-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .matriz-rol-picker .select {
+    width: 100%;
+  }
+  .matriz-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .matriz-list li {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border-2);
+  }
+  .matriz-list li:last-child {
+    border-bottom: none;
+  }
+  .matriz-list li > label {
+    min-width: 0;
+    flex: 1;
+    cursor: pointer;
+  }
+  .matriz-list input[type='checkbox'] {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-top: 1px;
   }
 
   /* Stepper compacto en móvil. */

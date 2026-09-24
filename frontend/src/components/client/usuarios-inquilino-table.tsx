@@ -204,6 +204,12 @@ export function UsuariosInquilinoTable({ usuarios }: { usuarios: UsuarioRow[] })
         }
         return (
           <div className="flex flex-wrap gap-1">
+            <EditarUsuarioInquilinoDialog
+              usuarioId={u.id}
+              nombreInicial={u.nombre}
+              telefonoInicial={u.telefono}
+              email={u.email}
+            />
             <Button
               variant="outline"
               size="sm"

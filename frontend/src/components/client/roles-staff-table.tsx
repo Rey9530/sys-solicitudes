@@ -135,6 +135,18 @@ export function RolesStaffTable({
       ),
       actions: (r) => (
         <div className="flex flex-wrap gap-1">
+          <Can permiso="roles_staff.editar">
+            <RolStaffFormDialog
+              mode="edit"
+              rol={{
+                id: r.id,
+                codigo: r.codigo,
+                nombre: r.nombre,
+                descripcion: r.descripcion,
+                activo: r.activo,
+              }}
+            />
+          </Can>
           {r.activo && (
             <Can permiso="roles_staff.deshabilitar">
               <Button

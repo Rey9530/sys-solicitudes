@@ -221,6 +221,16 @@ export function UsuariosPlazaTable({
         }
         return (
           <div className="flex flex-wrap gap-1">
+            <Can permiso="usuarios_plaza.editar">
+              <EditarUsuarioPlazaDialog
+                usuarioId={u.id}
+                nombreInicial={u.nombre}
+                telefonoInicial={u.telefono}
+                email={u.email}
+                rolStaffIdInicial={u.rolStaffId}
+                rolesStaff={rolesStaff}
+              />
+            </Can>
             <Can permiso="usuarios_plaza.resetear_clave">
               <Button
                 variant="outline"

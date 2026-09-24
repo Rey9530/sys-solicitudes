@@ -23,11 +23,12 @@
 
   <h2>Datos del local</h2>
   <div class="ficha">
-    <div><strong>Código:</strong> {{local.codigo}}</div>
-    <div><strong>Nombre:</strong> {{local.nombre}}</div>
-    <div><strong>Piso:</strong> {{local.piso}}</div>
-    <div><strong>Sector:</strong> {{local.sector}}</div>
-    <div><strong>Metraje:</strong> {{local.metraje}} m²</div>
+    <div><strong>Local:</strong> {{local.codigo}}</div>
+    <div><strong>Módulo:</strong> {{local.modulo}}</div>
+    <div><strong>Nivel:</strong> {{local.nivel}}</div>
+    <div><strong>Área:</strong> {{#if local.area}}{{local.area}} m²{{/if}}</div>
+    <div><strong>Medidor energía:</strong> {{local.medidorEnergia}}</div>
+    <div><strong>Medidor agua:</strong> {{local.medidorAgua}}</div>
     <div><strong>Estado:</strong> {{local.estado}}</div>
   </div>
 

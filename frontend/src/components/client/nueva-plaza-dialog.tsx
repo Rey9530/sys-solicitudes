@@ -29,7 +29,7 @@ const FormSchema = z.object({
   adminEmail: z.string().trim().toLowerCase().email('Email inválido'),
   adminNombre: z.string().trim().min(1, 'Requerido').max(120),
   adminPassword: z.string().min(8, 'Mínimo 8 caracteres').max(128),
-  adminRolStaffCodigo: z.enum(['tecnico', 'ingeniero', 'supervisor']),
+  adminRolStaffCodigo: z.enum(['admin', 'supervisor', 'ingeniero', 'tecnico']),
 });
 type FormValues = z.infer<typeof FormSchema>;
 
@@ -55,7 +55,7 @@ export function NuevaPlazaDialog() {
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
-    defaultValues: { colorPrimario: '#2563eb', adminRolStaffCodigo: 'supervisor' },
+    defaultValues: { colorPrimario: '#2563eb', adminRolStaffCodigo: 'admin' },
   });
 
   const onSubmit = async (values: FormValues) => {
@@ -149,6 +149,7 @@ export function NuevaPlazaDialog() {
                 <div className="grid gap-1.5">
                   <Label htmlFor="adminRolStaffCodigo">Rol de staff</Label>
                   <select id="adminRolStaffCodigo" {...register('adminRolStaffCodigo')} className="select">
+                    <option value="admin">Administrador del sistema</option>
                     <option value="supervisor">Supervisor</option>
                     <option value="ingeniero">Ingeniero</option>
                     <option value="tecnico">Técnico</option>

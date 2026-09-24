@@ -1090,7 +1090,7 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
         <h3 id="adjuntos-titulo" className="text-base font-semibold" style={{ color: 'var(--text)' }}>
           Adjuntos
         </h3>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs wz-t3">
           {files.length} / {MAX_ADJUNTOS}
         </span>
       </header>
@@ -1104,7 +1104,7 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
               ? 'border-red-400 bg-red-50'
               : isDragActive
                 ? 'border-blue-500 bg-blue-50'
-                : 'border-gray-300 bg-gray-50 hover:bg-gray-100',
+                : 'wz-drop',
             lleno ? 'pointer-events-none opacity-50' : 'cursor-pointer',
           ]
             .filter(Boolean)
@@ -1119,12 +1119,12 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
               ? 'h-8 w-8 text-red-500'
               : isDragActive
                 ? 'h-8 w-8 text-blue-600'
-                : 'h-8 w-8 text-gray-400'
+                : 'h-8 w-8 wz-t3'
           }
           aria-hidden
         />
         {lleno ? (
-          <p className="text-sm font-medium text-gray-700">
+          <p className="text-sm font-medium wz-t2">
             Has alcanzado el máximo de {MAX_ADJUNTOS} adjuntos.
           </p>
         ) : isDragReject ? (
@@ -1135,11 +1135,11 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
           <p className="text-sm font-medium text-blue-700">Suelta para añadir</p>
         ) : (
           <>
-            <p className="text-sm font-medium text-gray-700">
+            <p className="text-sm font-medium wz-t2">
               Arrastra archivos aquí o{' '}
               <span className="text-blue-600 underline">haz clic para seleccionar</span>
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs wz-t3">
               PDF, PNG, JPG o WebP · máx. 25 MB por archivo · {restantes} restantes
             </p>
           </>
@@ -1152,23 +1152,23 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
           {files.map((f, i) => (
             <li
               key={`${f.name}-${i}`}
-              className="flex items-center gap-3 rounded-md border border-gray-200 bg-white px-3 py-2"
+              className="flex items-center gap-3 rounded-md wz-tile border px-3 py-2"
             >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded bg-gray-100 text-gray-600">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center wz-chip rounded">
                 {iconoPorMime(f.type)}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-800" title={f.name}>
+                <p className="truncate text-sm font-medium wz-t1" title={f.name}>
                   {f.name}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs wz-t3">
                   {f.type || 'tipo desconocido'} · {formateaBytes(f.size)}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => onRemove(i)}
-                className="shrink-0 rounded p-1 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                className="shrink-0 rounded p-1 wz-t3 hover:bg-red-50 hover:text-red-600"
                 aria-label={`Quitar ${f.name}`}
               >
                 <X className="h-4 w-4" />
@@ -1178,7 +1178,7 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
         </ul>
       )}
 
-      <p className="flex items-start gap-1.5 text-xs text-gray-500">
+      <p className="flex items-start gap-1.5 text-xs wz-t3">
         <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
         Los adjuntos son opcionales. Se subirán al bucket de la plaza al enviar
         la solicitud (modo borrador: solo al enviar).
@@ -1256,7 +1256,7 @@ function ResumenCard(props: ResumenCardProps) {
         >
           Revisión
         </h3>
-        <span className="text-xs text-gray-500">Verifica antes de enviar</span>
+        <span className="text-xs wz-t3">Verifica antes de enviar</span>
       </header>
 
       <Seccion titulo="Identificación">
@@ -1297,7 +1297,7 @@ function ResumenCard(props: ResumenCardProps) {
                 Sí · máx. 3/mes
               </span>
             ) : (
-              <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+              <span className="inline-flex items-center wz-chip rounded-full px-2 py-0.5 text-xs">
                 No
               </span>
             )
@@ -1326,7 +1326,7 @@ function ResumenCard(props: ResumenCardProps) {
         <Fila label="Cantidad" value={numAsistentes > 0 ? numAsistentes : null} />
         {numAsistentes > 0 && (
           <Fragment>
-            <dt className="text-gray-500">Detalle</dt>
+            <dt className="wz-t3">Detalle</dt>
             <dd>
               <ul className="grid gap-1">
                 {Array.from({ length: numAsistentes }, (_, i) => {
@@ -1334,16 +1334,16 @@ function ResumenCard(props: ResumenCardProps) {
                   return (
                     <li
                       key={i}
-                      className="flex items-center gap-2 rounded border border-gray-200 bg-white px-2 py-1 text-xs"
+                      className="flex items-center gap-2 rounded wz-tile border px-2 py-1 text-xs"
                     >
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200 text-[10px] font-semibold text-gray-700">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center wz-chip rounded-full text-[10px] font-semibold">
                         {i + 1}
                       </span>
-                      <span className="font-medium text-gray-800">
+                      <span className="font-medium wz-t1">
                         {a?.nombre || `Persona ${i + 1}`}
                       </span>
-                      <span className="text-gray-500">·</span>
-                      <span className="text-gray-600">
+                      <span className="wz-t3">·</span>
+                      <span className="wz-t2">
                         {a?.documento || 's/doc'}
                       </span>
                     </li>
@@ -1374,7 +1374,7 @@ function Seccion({
 }) {
   return (
     <div className="grid gap-2">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+      <h4 className="text-xs font-semibold uppercase tracking-wide wz-t3">
         {titulo}
       </h4>
       <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-[max-content_1fr]">
@@ -1387,8 +1387,8 @@ function Seccion({
 function Fila({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <Fragment>
-      <dt className="font-medium text-gray-600">{label}</dt>
-      <dd className="text-gray-900">{value || '—'}</dd>
+      <dt className="font-medium wz-t2">{label}</dt>
+      <dd className="wz-t1">{value || '—'}</dd>
     </Fragment>
   );
 }

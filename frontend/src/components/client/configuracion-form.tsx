@@ -212,7 +212,11 @@ export function ConfiguracionForm({
                   <label className={labelClass}>Logo (PNG/SVG, máx 2 MB)</label>
                   {plaza.logoUrl && (
                     // eslint-disable-next-line @next/next/no-img-element -- preview simple del logo subido (URL MinIO pre-firmada)
-                    <img src={plaza.logoUrl} alt="Logo" className="h-12 w-auto rounded border p-1" />
+                    <img
+                      src={plaza.logoUrl}
+                      alt="Logo"
+                      className="h-12 w-auto rounded border p-1"
+                    />
                   )}
                   <input
                     type="file"
@@ -248,18 +252,14 @@ export function ConfiguracionForm({
                           min={0}
                           className="w-24"
                           value={slaDias[t]}
-                          onChange={(e) =>
-                            setSlaDias({ ...slaDias, [t]: Number(e.target.value) })
-                          }
+                          onChange={(e) => setSlaDias({ ...slaDias, [t]: Number(e.target.value) })}
                         />
                         <span className="text-xs text-gray-400">días</span>
                       </div>
                     ))}
                   </div>
                   <div className="space-y-2">
-                    <p className="text-sm font-semibold">
-                      Multiplicador por prioridad
-                    </p>
+                    <p className="text-sm font-semibold">Multiplicador por prioridad</p>
                     {PRIORIDADES.map((p) => (
                       <div key={p} className="flex items-center gap-2">
                         <span className="w-32 text-sm">Prioridad {p}</span>
@@ -277,37 +277,37 @@ export function ConfiguracionForm({
                   </div>
                 </div>
                 <div>
-                  <p className="mb-1 text-sm font-semibold">
-                    Preview del semáforo (días totales)
-                  </p>
-                  <table className="sla-matrix">
-                    <thead>
-                      <tr>
-                        <th>Tipo</th>
-                        {PRIORIDADES.map((p) => (
-                          <th key={p}>{p}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {previewSla.map((fila) => (
-                        <tr key={fila.tipo}>
-                          <td className="capitalize">{fila.tipo}</td>
-                          {fila.valores.map((v) => (
-                            <td key={v.prioridad}>
-                              <span
-                                className={`sla-cell ${
-                                  v.dias <= 3 ? 'red' : v.dias <= 7 ? 'amber' : 'green'
-                                }`}
-                              >
-                                {v.dias}d
-                              </span>
-                            </td>
+                  <p className="mb-1 text-sm font-semibold">Preview del semáforo (días totales)</p>
+                  <div className="table-wrap">
+                    <table className="sla-matrix">
+                      <thead>
+                        <tr>
+                          <th>Tipo</th>
+                          {PRIORIDADES.map((p) => (
+                            <th key={p}>{p}</th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {previewSla.map((fila) => (
+                          <tr key={fila.tipo}>
+                            <td className="capitalize">{fila.tipo}</td>
+                            {fila.valores.map((v) => (
+                              <td key={v.prioridad}>
+                                <span
+                                  className={`sla-cell ${
+                                    v.dias <= 3 ? 'red' : v.dias <= 7 ? 'amber' : 'green'
+                                  }`}
+                                >
+                                  {v.dias}d
+                                </span>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
                 <Can permiso="configuracion.editar_sla">
                   <Button disabled={pending} onClick={guardarSla}>

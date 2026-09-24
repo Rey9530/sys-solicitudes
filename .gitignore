@@ -82,3 +82,7 @@ temp/
 # Artefactos de compilacion del seed (ts-node)
 backend/prisma/seed.js
 backend/prisma/seed.js.map
+
+# Playwright (frontend/e2e)
+test-results/
+playwright-report/

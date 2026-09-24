@@ -3,7 +3,7 @@
  * Detalles: PLANIFICACION/02-autenticacion-usuarios.md (T-035).
  */
 import { z } from 'zod';
-import { UuidSchema, PaginationSchema } from '../common/index.js';
+import { UuidSchema, PaginationSchema, QueryBooleanSchema } from '../common/index.js';
 
 export const CreateRolStaffSchema = z.object({
   codigo: z
@@ -26,7 +26,7 @@ export const UpdateRolStaffSchema = z.object({
 export type UpdateRolStaffInput = z.infer<typeof UpdateRolStaffSchema>;
 
 export const ListRolesStaffQuerySchema = PaginationSchema.extend({
-  activo: z.coerce.boolean().optional(),
+  activo: QueryBooleanSchema.optional(),
   search: z.string().trim().min(1).max(100).optional(),
 });
 export type ListRolesStaffQuery = z.infer<typeof ListRolesStaffQuerySchema>;

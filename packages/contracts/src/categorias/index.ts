@@ -3,7 +3,7 @@
  * Detalles: PLANIFICACION/05-categorias-subcategorias.md (T-067, T-068, T-069, T-070).
  */
 import { z } from 'zod';
-import { UuidSchema, PaginationSchema } from '../common/index.js';
+import { UuidSchema, PaginationSchema, QueryBooleanSchema } from '../common/index.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Categoría
@@ -66,13 +66,13 @@ export const AddSupervisorSubcategoriaSchema = z.object({
 export type AddSupervisorSubcategoriaInput = z.infer<typeof AddSupervisorSubcategoriaSchema>;
 
 export const ListSubcategoriasQuerySchema = PaginationSchema.extend({
-  activo: z.coerce.boolean().optional(),
+  activo: QueryBooleanSchema.optional(),
   search: z.string().trim().min(1).max(100).optional(),
 });
 export type ListSubcategoriasQuery = z.infer<typeof ListSubcategoriasQuerySchema>;
 
 export const ListCategoriasQuerySchema = PaginationSchema.extend({
-  activo: z.coerce.boolean().optional(),
+  activo: QueryBooleanSchema.optional(),
   search: z.string().trim().min(1).max(100).optional(),
 });
 export type ListCategoriasQuery = z.infer<typeof ListCategoriasQuerySchema>;

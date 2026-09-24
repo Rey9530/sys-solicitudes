@@ -38,6 +38,14 @@ const DEFAULT_ROLES_STAFF = [
   { codigo: 'supervisor', nombre: 'Supervisor' },
 ];
 
+/** Rol inamovible con todos los permisos; mismo código/nombre que el seed. */
+const ROL_STAFF_SISTEMA = {
+  codigo: 'admin',
+  nombre: 'Administrador del sistema',
+  descripcion:
+    'Rol inamovible con todos los permisos del sistema. Único capaz de gestionar roles y asignar permisos. Se siembra automáticamente; no se puede borrar ni renombrar.',
+} as const;
+
 @Injectable()
 export class PlazasService {
   constructor(
@@ -76,6 +84,29 @@ export class PlazasService {
       await tx.rol_staff.createMany({
         data: DEFAULT_ROLES_STAFF.map((r) => ({ ...r, plaza_id: plaza.id })),
       });
+      // Rol "admin" del sistema (es_sistema=true) con TODOS los permisos del
+      // catálogo, igual que `seedRolAdmin` del seed. Sin él, el admin inicial
+      // de una plaza nueva quedaba con un rol sin permisos y no podía operar.
+      const rolSistema = await tx.rol_staff.create({
+        data: {
+          plaza_id: plaza.id,
+          codigo: ROL_STAFF_SISTEMA.codigo,
+          nombre: ROL_STAFF_SISTEMA.nombre,
+          descripcion: ROL_STAFF_SISTEMA.descripcion,
+          es_sistema: true,
+        },
+      });
+      const permisos = await tx.permiso.findMany({ select: { id: true } });
+      if (permisos.length > 0) {
+        await tx.rol_staff_permiso.createMany({
+          data: permisos.map((p) => ({
+            rol_staff_id: rolSistema.id,
+            permiso_id: p.id,
+            plaza_id: plaza.id,
+          })),
+          skipDuplicates: true,
+        });
+      }
 
       let adminEmail: string | null = null;
       if (dto.adminPlazaInicial) {
@@ -87,7 +118,7 @@ export class PlazasService {
           throw new BadRequestException({
             code: 'ROL_STAFF_NO_EXISTE',
             title: 'Solicitud inválida',
-            message: `El rol de staff "${dto.adminPlazaInicial.rolStaffCodigo}" no existe en la plaza. Opciones: ${DEFAULT_ROLES_STAFF.map((r) => r.codigo).join(', ')}.`,
+            message: `El rol de staff "${dto.adminPlazaInicial.rolStaffCodigo}" no existe en la plaza. Opciones: ${[ROL_STAFF_SISTEMA, ...DEFAULT_ROLES_STAFF].map((r) => r.codigo).join(', ')}.`,
           });
         }
         const passwordHash = await this.passwords.hash(dto.adminPlazaInicial.password);

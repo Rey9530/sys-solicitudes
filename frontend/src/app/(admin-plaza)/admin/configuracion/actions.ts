@@ -7,8 +7,10 @@ import {
   type UpdateConfiguracionInput,
   type UpdatePlazaInput,
 } from '@app/contracts';
+import { auth } from '@/auth';
 import { ForbiddenError, assertAnyCan } from '@/lib/server/assert-can';
 import { apiFetch, errorFromResponse } from '@/lib/api';
+import { getSelectedPlazaId } from '@/lib/selected-plaza';
 
 /**
  * T-RBAC-1 · Server Actions de Configuración de plaza.
@@ -43,6 +45,19 @@ async function ensureCan(
     }
     throw err;
   }
+}
+
+/**
+ * Plaza objetivo de las acciones de branding/datos generales. Se resuelve en el
+ * servidor (nunca desde el cliente): admin_plaza → `plazaId` de su sesión;
+ * superadmin → la plaza que eligió en el selector. No existe `/plazas/me` en el
+ * backend, por lo que sin id la acción falla con un mensaje claro.
+ */
+async function resolvePlazaId(): Promise<string | null> {
+  const session = await auth();
+  if (!session?.user) return null;
+  if (session.user.rol === 'superadmin') return getSelectedPlazaId();
+  return session.user.plazaId ?? null;
 }
 
 async function errorFrom(res: Response, fallback: string): Promise<string> {
@@ -86,11 +101,9 @@ export async function updatePlazaAction(input: UpdatePlazaInput): Promise<Action
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues.map((i) => i.message).join('; ') };
   }
-  // El backend acepta el PATCH contra /plazas/:id donde :id = plazaId del
-  // JWT (resuelto por el guard). Enviamos `id` derivado del body si está
-  // presente (compat) o lo dejamos al BE si no.
-  const plazaId = (input as { id?: string }).id;
-  const path = plazaId ? `/plazas/${plazaId}` : '/plazas/me';
+  const plazaId = await resolvePlazaId();
+  if (!plazaId) return { ok: false, error: 'No hay una plaza seleccionada.' };
+  const path = `/plazas/${plazaId}`;
   const res = await apiFetch(path, {
     method: 'PATCH',
     body: JSON.stringify(parsed.data),
@@ -108,10 +121,9 @@ export async function uploadLogoAction(formData: FormData): Promise<ActionResult
   if (!(file instanceof File) || file.size === 0) {
     return { ok: false, error: 'Selecciona un archivo PNG o SVG.' };
   }
-  const plazaId = formData.get('plazaId');
-  const path = typeof plazaId === 'string' && plazaId
-    ? `/plazas/${plazaId}/logo`
-    : '/plazas/me/logo';
+  const plazaId = await resolvePlazaId();
+  if (!plazaId) return { ok: false, error: 'No hay una plaza seleccionada.' };
+  const path = `/plazas/${plazaId}/logo`;
   const res = await apiFetch(path, { method: 'POST', body: formData });
   if (!res.ok) return { ok: false, error: await errorFrom(res, 'No se pudo subir el logo.') };
   revalidatePath('/admin/configuracion');

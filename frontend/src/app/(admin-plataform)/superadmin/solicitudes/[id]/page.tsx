@@ -14,7 +14,7 @@ import {
   SOLICITUD_ESTADO_LABEL,
 } from '@/components/estado-badge';
 import { Card } from '@/components/ui/card';
-import { formatDateInPlazaTz } from '@/lib/datetime';
+import { formatDateInPlazaTz, formatFechaDMY, formatHora12 } from '@/lib/datetime';
 
 export const metadata: Metadata = { title: 'Detalle de solicitud (plataforma)' };
 
@@ -125,12 +125,22 @@ export default async function SuperadminSolicitudDetallePage({ params }: PagePro
             <div className="dt">Decisión</div>
             <div className="dd">{s.decisionAt ? formatDateInPlazaTz(s.decisionAt) : '—'}</div>
           </div>
-          <div className="full">
-            <div className="dt">Fechas del permiso</div>
-            <div className="dd">
-              {s.fechaEventoInicio} → {s.fechaEventoFin ?? '—'}
-              {s.horaInicio ? ` (${s.horaInicio}–${s.horaFin})` : ''}
-            </div>
+          {/* T-V22: fechas del permiso, formato DD-MM-YYYY y hora 12h. */}
+          <div>
+            <div className="dt">Fecha Inicio</div>
+            <div className="dd">{formatFechaDMY(s.fechaEventoInicio)}</div>
+          </div>
+          <div>
+            <div className="dt">Hora Inicio</div>
+            <div className="dd">{formatHora12(s.horaInicio)}</div>
+          </div>
+          <div>
+            <div className="dt">Fecha Fin</div>
+            <div className="dd">{formatFechaDMY(s.fechaEventoFin)}</div>
+          </div>
+          <div>
+            <div className="dt">Hora Fin</div>
+            <div className="dd">{formatHora12(s.horaFin)}</div>
           </div>
         </dl>
       </Card>

@@ -8,7 +8,7 @@
  * `activo`. El tipo `otro` es siempre activo (regla enforced en el service).
  */
 import { z } from 'zod';
-import { UuidSchema, PaginationSchema } from '../common/index.js';
+import { UuidSchema, PaginationSchema, QueryBooleanSchema } from '../common/index.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Codigo canónico (subset del enum solicitud_tipo)
@@ -58,6 +58,6 @@ export const UpdateSolicitudTipoConfigSchema = z.object({
 export type UpdateSolicitudTipoConfigInput = z.infer<typeof UpdateSolicitudTipoConfigSchema>;
 
 export const ListSolicitudTiposConfigQuerySchema = PaginationSchema.extend({
-  activo: z.coerce.boolean().optional(),
+  activo: QueryBooleanSchema.optional(),
 });
 export type ListSolicitudTiposConfigQuery = z.infer<typeof ListSolicitudTiposConfigQuerySchema>;

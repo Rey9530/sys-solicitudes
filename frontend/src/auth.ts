@@ -1,5 +1,6 @@
 import NextAuth, { CredentialsSignin, type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
+import { headers } from 'next/headers';
 import type { RolGlobal } from '@app/contracts';
 
 /**
@@ -61,6 +62,28 @@ async function refreshAccessToken(refreshToken: string): Promise<BackendLoginRes
   }
 }
 
+/**
+ * Reenvía al backend la IP y el user-agent del navegador. El login se ejecuta en
+ * el servidor Next (BFF); sin estos headers el backend veía siempre la IP del
+ * servidor Next y el lockout por IP (10 fallos/15 min) bloqueaba a todos los
+ * usuarios. El backend solo confía en `X-Forwarded-For` cuando la conexión viene
+ * de un proxy de red privada (`trust proxy` en main.ts).
+ */
+async function clientForwardHeaders(): Promise<Record<string, string>> {
+  try {
+    const h = await headers();
+    const out: Record<string, string> = {};
+    const xff = h.get('x-forwarded-for') ?? h.get('x-real-ip');
+    if (xff) out['X-Forwarded-For'] = xff;
+    const ua = h.get('user-agent');
+    if (ua) out['User-Agent'] = ua;
+    return out;
+  } catch {
+    // Fuera de un request (no debería ocurrir en authorize): sin headers extra.
+    return {};
+  }
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
   session: { strategy: 'jwt' },
@@ -78,7 +101,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
         const res = await fetch(`${API_URL}/api/v1/auth/login`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(await clientForwardHeaders()) },
           body: JSON.stringify({ email, password }),
           cache: 'no-store',
         });

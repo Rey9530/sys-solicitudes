@@ -255,6 +255,14 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de inst
 | `helmet` (ya estaba) | `8.x` | sin cambios; solo ajuste de CSP (unsafe-eval solo dev) |
 | `@nestjs/throttler` (ya estaba) | `6.5.x` | ⚠️ gotcha: throttler con nombre custom sufija los headers (`Retry-After-global`); usar `name: 'default'` para `Retry-After` limpio |
 
+### Hallazgos de versiones (suite e2e calendario — fix feed inquilino, 2026-09-24)
+
+Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de instalar:
+
+| Paquete | Versión instalada | Notas de compatibilidad |
+|---|---|---|
+| `@playwright/test` | `1.63.0` | devDependency en `frontend/`; `engines node >= 20` ✅. Suite en `frontend/e2e/` (`npm run test:e2e`), asume stack local levantado (`:3000` + `:4000`). Los binarios se instalan con `npx playwright install chromium` (headless shell 1243). ⚠️ El login está limitado a 5 req/min por IP: los helpers cachean tokens/sesión 10 min en `test-results/` y reintentan tras `Retry-After`. |
+
 ### Documentación de tareas
 
 > **Regla obligatoria:** Al finalizar una tarea técnica de `PLANIFICACION/*.md`, se debe:
@@ -285,3 +293,12 @@ Get-ChildItem -Path "frontend\src" -Recurse -Include "*.ts","*.tsx" | Select-Str
 ```
 
 Si aparece algún match en código que NO sea el wrapper `lib/sweetalert.ts` o un comentario JSDoc, es un **bug** que debe corregirse.
+
+### Tablas responsive (ResponsiveDataView, NO `<table>` a mano)
+
+> **Regla obligatoria (adoptada 2026-09-16, fix responsive móvil).** Todo listado tabular del frontend **debe** renderizarse con `ResponsiveDataView` (`frontend/src/components/client/responsive/responsive-data-view.tsx`). El componente mide el ancho real del contenedor y el ancho natural de la tabla: si cabe muestra la tabla; si no cabe y el contenedor es de escritorio (≥ 900 px) muestra tabla densa con scroll horizontal; si no cabe y es teléfono/tablet muestra tarjetas. **Prohibido** montar `<table>` / `<Table>` directamente en pantallas de listado y **prohibido** decidir la vista por un breakpoint fijo de viewport. Detalle en `docs/07-arquitectura.md` §7.4.6.
+
+**Procedimiento al añadir un listado:**
+1. Definir `columns: ResponsiveColumn<T>[]` con `key`, `header`, `cardLabel`, `cell`; marcar una columna `primary` (título de la tarjeta) y poner los botones en `actions`.
+2. Renderizar `<ResponsiveDataView rows columns rowKey />` dentro de `<Card>`.
+3. Verificar manualmente a 390, 768, 1024 y 1280 px que nada se sale del viewport (salvo dentro de `.table-wrap`).

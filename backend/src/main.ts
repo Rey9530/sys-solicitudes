@@ -12,6 +12,16 @@ import { buildHelmet } from './common/security/helmet.config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
 
+  // IP real del cliente detrás de proxies (nginx del host, frontend Next.js BFF).
+  // Express toma de `X-Forwarded-For` la dirección más a la derecha que NO sea
+  // de un proxy confiable, así que un cliente no puede falsearla anteponiendo
+  // valores. Sin esto, todo login que pasaba por el BFF llegaba con la IP del
+  // servidor Next y el lockout por IP bloqueaba a TODOS los usuarios a la vez.
+  (app.getHttpAdapter().getInstance() as { set: (k: string, v: unknown) => void }).set(
+    'trust proxy',
+    process.env.TRUST_PROXY ?? 'loopback, linklocal, uniquelocal',
+  );
+
   // Logger con pino (configurado en AppModule)
   app.useLogger(app.get(PinoLogger));
 

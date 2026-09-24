@@ -43,7 +43,7 @@ import {
   SOLICITUD_ESTADO_LABEL,
   ResultadoCierreBadge,
 } from '@/components/estado-badge';
-import { formatDateInPlazaTz } from '@/lib/datetime';
+import { formatDateInPlazaTz, formatFechaDMY, formatHora12 } from '@/lib/datetime';
 
 export interface AdminOption {
   id: string;
@@ -211,13 +211,22 @@ export function SolicitudDetailAdmin({
                           {solicitud.decisionAt ? formatDateInPlazaTz(solicitud.decisionAt) : '—'}
                         </div>
                       </div>
-                      {/* T-V22: fechas del permiso siempre visibles (no condicionales). */}
-                      <div className="full">
-                        <div className="dt">Fechas del permiso</div>
-                        <div className="dd">
-                          {solicitud.fechaEventoInicio} → {solicitud.fechaEventoFin ?? '—'}{' '}
-                          {solicitud.horaInicio ? `(${solicitud.horaInicio}–${solicitud.horaFin})` : ''}
-                        </div>
+                      {/* T-V22: fechas del permiso siempre visibles, formato DD-MM-YYYY y hora 12h. */}
+                      <div>
+                        <div className="dt">Fecha Inicio</div>
+                        <div className="dd">{formatFechaDMY(solicitud.fechaEventoInicio)}</div>
+                      </div>
+                      <div>
+                        <div className="dt">Hora Inicio</div>
+                        <div className="dd">{formatHora12(solicitud.horaInicio)}</div>
+                      </div>
+                      <div>
+                        <div className="dt">Fecha Fin</div>
+                        <div className="dd">{formatFechaDMY(solicitud.fechaEventoFin)}</div>
+                      </div>
+                      <div>
+                        <div className="dt">Hora Fin</div>
+                        <div className="dd">{formatHora12(solicitud.horaFin)}</div>
                       </div>
                     </dl>
 

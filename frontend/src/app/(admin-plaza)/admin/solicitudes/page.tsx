@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { RefreshCw } from 'lucide-react';
-import type { SolicitudListItem } from '@app/contracts';
+import type { BandejaOrden, SolicitudListItem } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
 import { SolicitudesTable } from '@/components/client/solicitudes-table';
 import { AutoRefresh } from '@/components/client/auto-refresh';
@@ -27,13 +27,14 @@ export default async function AdminSolicitudesPage({
     estado?: string;
     tipo?: string;
     prioridad?: string;
+    orden?: string;
     asignadasAMi?: string;
     page?: string;
   }>;
 }) {
   const sp = await searchParams;
   const qs = new URLSearchParams({ page: sp.page ?? '1', pageSize: '20' });
-  for (const k of ['estado', 'tipo', 'prioridad', 'asignadasAMi'] as const) {
+  for (const k of ['estado', 'tipo', 'prioridad', 'orden', 'asignadasAMi'] as const) {
     if (sp[k]) qs.set(k, sp[k] as string);
   }
 
@@ -43,6 +44,9 @@ export default async function AdminSolicitudesPage({
     : { items: [], total: 0, page: 1, totalPages: 0 };
 
   const asignadasAMi = sp.asignadasAMi !== 'false'; // default true; solo se desactiva con ?asignadasAMi=false
+  const orden: BandejaOrden = sp.orden === 'prioridad' ? 'prioridad' : 'fecha';
+  const ordenLabel =
+    orden === 'prioridad' ? 'ordenadas por prioridad (A→F)' : 'ordenadas por fecha, más reciente primero';
   const hrefFor = (page: number) =>
     `/admin/solicitudes?${new URLSearchParams({ ...sp, page: String(page) }).toString()}`;
 
@@ -53,7 +57,7 @@ export default async function AdminSolicitudesPage({
 
       <PageHeader
         title="Bandeja de solicitudes"
-        subtitle={`${data.total} resultados · ordenadas por prioridad y más reciente primero · semáforo SLA.`}
+        subtitle={`${data.total} resultados · ${ordenLabel} · semáforo SLA.`}
         actions={
           <>
             <span className="badge b-neutral">
@@ -110,6 +114,13 @@ export default async function AdminSolicitudesPage({
                   {p}
                 </option>
               ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="f-orden">Ordenar por</label>
+            <select id="f-orden" name="orden" defaultValue={orden} className="select">
+              <option value="fecha">Fecha (más reciente primero)</option>
+              <option value="prioridad">Prioridad (A→F)</option>
             </select>
           </div>
           {asignadasAMi && <input type="hidden" name="asignadasAMi" value="true" />}

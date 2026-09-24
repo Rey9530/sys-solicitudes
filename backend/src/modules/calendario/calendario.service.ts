@@ -111,16 +111,26 @@ export class CalendarioService {
       //  solicitudes con `fecha_evento_inicio` poblada y en el rango (no solo
       //  aprobadas). El admin nunca las ve (por su tipo de feed).
       //  `inquilinoScope` está garantizado no-nulo por `requireInquilino` arriba.
+      //
+      //  Dedup (fix 2026-09-24): una solicitud aprobada ya viene como item
+      //  `evento` (fila viva de `evento_calendario`); no se repite como item
+      //  `solicitud`. Se filtra en memoria contra los items `evento` que
+      //  realmente se incluyeron: si el inquilino desmarca "Eventos aprobados"
+      //  su solicitud sigue visible como item `solicitud`.
       if (actor.rol === 'inquilino' && tipos.includes('solicitud')) {
-        items.push(
-          ...(await this.solicitudesCalendario(
-            tx,
-            query,
-            from,
-            to,
-            inquilinoScope as string,
-          )),
+        const yaComoEvento = new Set(
+          items
+            .filter((i) => i.extendedProps.tipo === 'evento')
+            .map((i) => i.extendedProps.solicitudId),
         );
+        const solicitudes = await this.solicitudesCalendario(
+          tx,
+          query,
+          from,
+          to,
+          inquilinoScope as string,
+        );
+        items.push(...solicitudes.filter((s) => !yaComoEvento.has(s.extendedProps.solicitudId)));
       }
 
       this.marcarChoques(items);
@@ -296,11 +306,22 @@ export class CalendarioService {
     to: Date,
     inquilinoScope: string,
   ): Promise<CalendarioEventoOutput[]> {
+    // `fecha_evento_*` son DATE (medianoche UTC del día civil de la plaza);
+    // `from`/`to` llegan como instantes con offset (FullCalendar manda
+    // `2026-08-30T00:00:00-06:00` = `06:00Z`). Se comparan en días civiles de
+    // la plaza y con prueba de solapamiento [inicio, fin] ∩ [from, to] (fix
+    // 2026-09-24: antes `gte: from` perdía los eventos del primer día visible).
+    const fromDia = this.fechaCivilPlaza(from);
+    const toDia = this.fechaCivilPlaza(to);
     const rows = await tx.solicitud.findMany({
       where: {
         inquilino_id: inquilinoScope,
-        // Solo solicitudes con fecha de evento asignada y dentro del rango visible.
-        fecha_evento_inicio: { not: null, gte: from, lte: to },
+        // Solo solicitudes con fecha de evento asignada y que toquen el rango visible.
+        fecha_evento_inicio: { not: null, lte: toDia },
+        OR: [
+          { fecha_evento_fin: { gte: fromDia } },
+          { fecha_evento_fin: null, fecha_evento_inicio: { gte: fromDia } },
+        ],
         ...(query.localId?.length ? { local_id: { in: query.localId } } : {}),
       },
       select: {
@@ -564,12 +585,18 @@ export class CalendarioService {
    *  `solicitudesCalendario` para construir `start`/`end` de items
    *  `solicitud` a partir de `fecha_evento_*` + `hora_*` de la tabla
    *  `solicitud` (T-V22 + T-129). Es coherente con cómo `moverEvento`
-   *  interpreta el par fecha/hora de la plaza y con `fechaCivilPlaza`. */
+   *  interpreta el par fecha/hora de la plaza y con `fechaCivilPlaza`.
+   *
+   *  ⚠️ Fix 2026-09-24: antes devolvía la hora de la plaza etiquetada como
+   *  UTC (`15:42` → `15:42Z`, que FullCalendar pintaba a las 09:42 en
+   *  America/El_Salvador). Ahora aplica `PLAZA_UTC_OFFSET_MS`, igual que
+   *  `AprobacionesService.combinar` al crear el `evento_calendario`. */
   private combinarFechaHora(fecha: Date, hhmm?: string | null): string {
     const [hRaw = '0', mRaw = '0'] = (hhmm ?? '00:00').split(':');
-    const d = new Date(fecha);
+    const d = new Date(fecha); // DATE → medianoche UTC del día civil
     d.setUTCHours(Number.parseInt(hRaw, 10) || 0, Number.parseInt(mRaw, 10) || 0, 0, 0);
-    return d.toISOString();
+    // "HH:MM" es hora local de la plaza (UTC-6): el instante UTC va 6 h después.
+    return new Date(d.getTime() + PLAZA_UTC_OFFSET_MS).toISOString();
   }
 
   /** Fecha civil de la plaza (UTC-6 fija) como Date a medianoche UTC. */

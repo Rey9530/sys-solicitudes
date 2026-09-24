@@ -3,7 +3,7 @@
  * Detalles: PLANIFICACION/02-autenticacion-usuarios.md (T-022, T-034).
  */
 import { z } from 'zod';
-import { EmailSchema, UuidSchema, PaginationSchema } from '../common/index.js';
+import { EmailSchema, UuidSchema, PaginationSchema, QueryBooleanSchema } from '../common/index.js';
 import { PasswordSchema } from '../auth/index.js';
 
 export const RolGlobalSchema = z.enum(['superadmin', 'admin_plaza', 'inquilino']);
@@ -43,7 +43,7 @@ export type UpdateUsuarioInput = z.infer<typeof UpdateUsuarioSchema>;
 
 export const ListUsuariosQuerySchema = PaginationSchema.extend({
   rol: RolGlobalSchema.optional(),
-  activo: z.coerce.boolean().optional(),
+  activo: QueryBooleanSchema.optional(),
   search: z.string().trim().min(1).max(100).optional(),
 });
 export type ListUsuariosQuery = z.infer<typeof ListUsuariosQuerySchema>;

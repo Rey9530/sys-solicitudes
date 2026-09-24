@@ -48,9 +48,14 @@ export class MinioService implements OnModuleInit {
       region: this.region,
     });
     const publicEndpoint = this.config.get<string>('MINIO_PUBLIC_ENDPOINT', '').trim();
-    this.publicHost = publicEndpoint
-      ? `${this.config.get<string>('MINIO_PUBLIC_USE_SSL', 'true') === 'true' ? 'https' : 'http'}://${publicEndpoint}${this.config.get<string>('MINIO_PUBLIC_PORT', '443') && this.config.get<string>('MINIO_PUBLIC_PORT', '443') !== '443' && this.config.get<string>('MINIO_PUBLIC_PORT', '443') !== '80' ? ':' + this.config.get<string>('MINIO_PUBLIC_PORT', '443') : ''}`
-      : null;
+    if (publicEndpoint) {
+      const publicSsl = this.config.get<string>('MINIO_PUBLIC_USE_SSL', 'true') === 'true';
+      const publicPort = this.config.get<string>('MINIO_PUBLIC_PORT', '443').trim();
+      const isDefaultPort = publicPort === '' || publicPort === '443' || publicPort === '80';
+      this.publicHost = `${publicSsl ? 'https' : 'http'}://${publicEndpoint}${isDefaultPort ? '' : ':' + publicPort}`;
+    } else {
+      this.publicHost = null;
+    }
   }
 
   onModuleInit(): void {
@@ -201,15 +206,19 @@ export class MinioService implements OnModuleInit {
    * Si hay `MINIO_PUBLIC_ENDPOINT` configurado, reemplaza el `scheme://host:port`
    * interno por el público. La firma SigV4 queda intacta (la firma es sobre el
    * path + query, no sobre el host). Si no hay override, devuelve la URL tal cual.
+   *
+   * ⚠️ Se reconstruye la URL desde `pub.origin` en lugar de mutar `u.host`:
+   * el setter `host` de WHATWG URL NO limpia el puerto cuando el valor asignado
+   * no incluye uno, así que `u.host = 's3.dominio.com'` dejaba `:9000` del
+   * endpoint interno y el navegador terminaba en `https://s3.dominio.com:9000/...`.
+   * `pub.origin` ya trae scheme + host + puerto no default (o ninguno si es 443/80).
    */
   private rewritePresignedHost(internalUrl: string): string {
     if (!this.publicHost) return internalUrl;
     try {
       const u = new URL(internalUrl);
       const pub = new URL(this.publicHost);
-      u.protocol = pub.protocol;
-      u.host = pub.host;
-      return u.toString();
+      return `${pub.origin}${u.pathname}${u.search}`;
     } catch (err) {
       this.logger.warn(
         `No se pudo reescribir la URL pre-firmada (${String(err)}); devolviendo original. ` +

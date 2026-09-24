@@ -41,10 +41,14 @@ export class AuthService {
     const windowMs = durationToMs(this.config.get<string>('LOGIN_LOCKOUT_WINDOW', '900s'));
     const since = new Date(Date.now() - windowMs);
 
-    // Conteo de intentos fallidos recientes por email O por IP.
+    // Conteo de intentos fallidos recientes por email O por IP. Los intentos
+    // rechazados por el propio bloqueo (`cuenta_bloqueada`) se registran en la
+    // bitácora pero NO cuentan: si contaran, cada reintento durante el bloqueo
+    // lo extendería indefinidamente.
     const failFilter = {
       exitoso: false,
       created_at: { gte: since },
+      NOT: { motivo_fallo: 'cuenta_bloqueada' },
       OR: [{ email }, ...(meta.ip ? [{ ip: meta.ip }] : [])],
     };
     const recentFails = await this.prisma.auditoria_login.count({ where: failFilter });

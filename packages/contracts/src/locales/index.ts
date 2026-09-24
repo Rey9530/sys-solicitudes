@@ -45,26 +45,21 @@ export const CreateLocalSchema = z.object({
 });
 export type CreateLocalInput = z.infer<typeof CreateLocalSchema>;
 
+/**
+ * En edición, un input vacío significa "borrar el valor": `''` → `null`.
+ * Antes `''` fallaba `min(1)` / `positive()` (no se podía guardar un local con
+ * nivel o área vacíos) y en medidores se convertía en `undefined`, conservando
+ * silenciosamente el valor anterior.
+ */
+const vacioANull = <T extends z.ZodType>(schema: T) =>
+  z.union([z.literal('').transform(() => null), schema.nullable()]).optional();
+
 export const UpdateLocalSchema = z.object({
-  modulo: z.string().trim().toUpperCase().min(1).max(20).nullable().optional(),
-  nivel: z.string().trim().min(1).max(10).nullable().optional(),
-  areaM2: z.coerce.number().positive().max(1_000_000).nullable().optional(),
-  medidorEnergia: z
-    .string()
-    .trim()
-    .regex(/^\d+$/, 'Solo dígitos')
-    .max(20)
-    .nullable()
-    .optional()
-    .or(z.literal('').transform(() => undefined)),
-  medidorAgua: z
-    .string()
-    .trim()
-    .regex(/^\d+$/, 'Solo dígitos')
-    .max(20)
-    .nullable()
-    .optional()
-    .or(z.literal('').transform(() => undefined)),
+  modulo: vacioANull(z.string().trim().toUpperCase().min(1).max(20)),
+  nivel: vacioANull(z.string().trim().min(1).max(10)),
+  areaM2: vacioANull(z.coerce.number().positive().max(1_000_000)),
+  medidorEnergia: vacioANull(z.string().trim().regex(/^\d+$/, 'Solo dígitos').max(20)),
+  medidorAgua: vacioANull(z.string().trim().regex(/^\d+$/, 'Solo dígitos').max(20)),
   estado: LocalEstadoSchema.optional(),
 });
 export type UpdateLocalInput = z.infer<typeof UpdateLocalSchema>;

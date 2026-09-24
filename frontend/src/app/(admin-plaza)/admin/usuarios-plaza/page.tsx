@@ -66,7 +66,9 @@ export default async function UsuariosPlazaPage({
   const [usrRes, rsActivosRes, rsTodosRes, catalogoRes] = await Promise.all([
     apiFetch(`/usuarios?${usrQs.toString()}`),
     apiFetch('/roles-staff?activo=true&pageSize=100'),
-    apiFetch('/roles-staff?pageSize=100'),
+    // `/roles-staff` no incluye el conteo; `con-asignaciones` devuelve un array
+    // plano con `usuariosAsignados` por rol.
+    apiFetch('/roles-staff/con-asignaciones'),
     // T-RBAC-1: nº de permisos del catálogo (chip de la pestaña).
     apiFetch('/permisos'),
   ]);
@@ -80,7 +82,7 @@ export default async function UsuariosPlazaPage({
     : [];
 
   const rolesTodos: RolesStaffConAsignaciones[] = rsTodosRes.ok
-    ? ((await rsTodosRes.json()) as { items: RolesStaffConAsignaciones[] }).items ?? []
+    ? ((await rsTodosRes.json()) as RolesStaffConAsignaciones[])
     : [];
 
   const catalogo: ListarPermisosOutput | null = catalogoRes.ok

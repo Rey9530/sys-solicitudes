@@ -56,6 +56,15 @@ export const PaginationSchema = z.object({
 });
 export type Pagination = z.infer<typeof PaginationSchema>;
 
+/**
+ * Booleano de query string. NO usar `z.coerce.boolean()`: convierte la cadena
+ * `"false"` en `true` (cualquier string no vacío es truthy), lo que hacía que
+ * el filtro "Inactivos" devolviera registros activos.
+ */
+export const QueryBooleanSchema = z
+  .union([z.boolean(), z.enum(['true', 'false'])])
+  .transform((v) => v === true || v === 'true');
+
 export const PaginatedResponseSchema = <T extends z.ZodType>(item: T) =>
   z.object({
     items: z.array(item),

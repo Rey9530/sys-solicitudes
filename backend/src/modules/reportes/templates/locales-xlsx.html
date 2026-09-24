@@ -1,12 +1,12 @@
 <table>
   <tr>
-    <td>Código</td><td>Nombre</td><td>Piso</td><td>Sector</td><td>m²</td>
+    <td>Local</td><td>Módulo</td><td>Nivel</td><td>Área (m²)</td><td>Med. energía</td><td>Med. agua</td>
     <td>Estado</td><td>Inquilino actual</td><td>Contrato vence</td>
   </tr>
   {{#each items}}
   <tr>
-    <td>{{this.codigo}}</td><td>{{this.nombre}}</td><td>{{this.piso}}</td>
-    <td>{{this.sector}}</td><td>{{this.metraje}}</td><td>{{this.estado}}</td>
+    <td>{{this.codigo}}</td><td>{{this.modulo}}</td><td>{{this.nivel}}</td>
+    <td>{{this.area}}</td><td>{{this.medidorEnergia}}</td><td>{{this.medidorAgua}}</td><td>{{this.estado}}</td>
     <td>{{this.inquilino}}</td><td>{{this.contratoVence}}</td>
   </tr>
   {{/each}}

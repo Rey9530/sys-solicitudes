@@ -28,7 +28,7 @@ import {
   SOLICITUD_ESTADO_LABEL,
   ResultadoCierreBadge,
 } from '@/components/estado-badge';
-import { formatDateInPlazaTz } from '@/lib/datetime';
+import { formatDateInPlazaTz, formatFechaDMY, formatHora12 } from '@/lib/datetime';
 
 /** MIME permitidos por defecto para adjuntos de solicitud (T-V06). */
 const SOLICITUD_MIMES = [
@@ -187,14 +187,11 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
                       <Dato dt="Creada" dd={formatDateInPlazaTz(solicitud.createdAt)} />
                       <Dato dt="Enviada" dd={solicitud.enviadaAt ? formatDateInPlazaTz(solicitud.enviadaAt) : '—'} />
                       <Dato dt="Decisión" dd={solicitud.decisionAt ? formatDateInPlazaTz(solicitud.decisionAt) : '—'} />
-                      {/* T-V22: fechas del permiso siempre visibles (no condicionales). */}
-                      <div className="full">
-                        <div className="dt">Fechas del permiso</div>
-                        <div className="dd">
-                          {solicitud.fechaEventoInicio} → {solicitud.fechaEventoFin ?? '—'}{' '}
-                          {solicitud.horaInicio ? `(${solicitud.horaInicio}–${solicitud.horaFin})` : ''}
-                        </div>
-                      </div>
+                      {/* T-V22: fechas del permiso siempre visibles, formato DD-MM-YYYY y hora 12h. */}
+                      <Dato dt="Fecha Inicio" dd={formatFechaDMY(solicitud.fechaEventoInicio)} />
+                      <Dato dt="Hora Inicio" dd={formatHora12(solicitud.horaInicio)} />
+                      <Dato dt="Fecha Fin" dd={formatFechaDMY(solicitud.fechaEventoFin)} />
+                      <Dato dt="Hora Fin" dd={formatHora12(solicitud.horaFin)} />
                     </dl>
 
                     {/* T-V22: bloque transversal empresa ejecutante + emergencia. */}

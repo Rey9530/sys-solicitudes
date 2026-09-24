@@ -369,6 +369,10 @@ export type PausarSolicitudInput = z.infer<typeof PausarSolicitudSchema>;
  *  2026-06-23 — antes restringido a enviada/asignado/en_revision).
  *  T-091e-cerrar: usa `SolicitudEstadoSchema` en vez de un enum inline
  *  duplicado, para que un estado nuevo no haya que añadirlo en dos sitios. */
+export const BANDEJA_ORDEN = ['fecha', 'prioridad'] as const;
+export const BandejaOrdenSchema = z.enum(BANDEJA_ORDEN);
+export type BandejaOrden = z.infer<typeof BandejaOrdenSchema>;
+
 export const BandejaQuerySchema = PaginationSchema.extend({
   estado: SolicitudEstadoSchema.optional(),
   tipo: SolicitudTipoSchema.optional(),
@@ -376,6 +380,11 @@ export const BandejaQuerySchema = PaginationSchema.extend({
   subcategoriaId: UuidSchema.optional(),
   localId: UuidSchema.optional(),
   prioridad: SolicitudPrioridadSchema.optional(),
+  /** Criterio de orden de la bandeja (2026-09-24): `fecha` = más reciente
+   *  primero (por `enviada_at`, desempate por `created_at`); `prioridad` =
+   *  A→F y, dentro de cada prioridad, más reciente primero. Default `fecha`
+   *  (antes la bandeja ordenaba siempre por prioridad). */
+  orden: BandejaOrdenSchema.default('fecha'),
   /** Default `true` (decisión owner 2026-06-23): la bandeja muestra por defecto
    *  las solicitudes asignadas al admin actual. Pasar `false` (o `?asignadasAMi=false`)
    *  para ver todas las de la plaza. */
