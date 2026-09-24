@@ -114,7 +114,7 @@ model configuracion {
   plaza_id                           String   @unique @db.Uuid
   // T-V06: 50 MB por defecto (en lugar de 25 MB del plan original)
   tamanio_max_archivo_mb             Int      @default(50)
-  mime_types_permitidos              Json     @default("[\"application/pdf\",\"image/jpeg\",\"image/png\",\"image/webp\",\"application/vnd.ms-excel\",\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\",\"application/dwg\"]")
+  mime_types_permitidos              Json     @default("[\"application/pdf\",\"image/jpeg\",\"image/png\",\"image/webp\",\"application/vnd.ms-excel\",\"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet\",\"application/vnd.openxmlformats-officedocument.wordprocessingml.document\",\"application/dwg\",\"video/mp4\",\"video/quicktime\",\"video/webm\"]")
   sla_dias_por_tipo                  Json     @default("{\"mantenimiento\":5,\"evento\":3,\"remodelacion\":15,\"otro\":7}")
   sla_multiplicador_por_prioridad    Json     @default("{\"A\":0.5,\"B\":1.0,\"C\":1.5,\"D\":2.0,\"F\":3.0}")
   calendar_mostrar_hitos_contrato    Boolean  @default(true)

@@ -232,7 +232,7 @@ Según cotización, sección 3. Se usa como **object storage** para todos los ar
   - `locales-planos-{plaza_id}`.
 - Las URLs firmadas (pre-signed) se generan desde el backend con expiración de 15 min.
 - **Límite de tamaño por archivo:** 25 MB por defecto. (SUPUESTO S-TamañoMax.)
-- **Tipos MIME permitidos:** PDF, JPG, PNG, WEBP, XLSX, DOCX, DWG (SUPUESTO S-MimeTypes; DWG requiere visor externo).
+- **Tipos MIME permitidos:** PDF, JPG, PNG, WEBP, XLS, XLSX, DOCX, DWG, MP4, MOV, WebM (SUPUESTO S-MimeTypes; DWG requiere visor externo; videos añadidos el 2026-09-24, fuente única en `packages/contracts`).
 - **Antivirus / escaneo:** fuera de alcance de la v1. (SUPUESTO — debe confirmarse.)
 
 ---

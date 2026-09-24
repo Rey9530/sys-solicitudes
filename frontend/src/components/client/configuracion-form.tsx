@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { MIME_INFO, MIME_PERMITIDOS_DEFAULT } from '@app/contracts';
 import type { Configuracion, PlazaOutput } from '@app/contracts';
 import { Tabs } from '@/components/client/tabs';
 import { Can } from '@/components/client/can';
@@ -13,22 +14,10 @@ import {
   uploadLogoAction,
 } from '@/app/(admin-plaza)/admin/configuracion/actions';
 
-const MIME_CONOCIDOS: Array<{ mime: string; label: string }> = [
-  { mime: 'application/pdf', label: 'PDF' },
-  { mime: 'image/jpeg', label: 'JPG' },
-  { mime: 'image/png', label: 'PNG' },
-  { mime: 'image/webp', label: 'WebP' },
-  { mime: 'application/vnd.ms-excel', label: 'XLS' },
-  {
-    mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    label: 'XLSX',
-  },
-  {
-    mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    label: 'DOCX',
-  },
-  { mime: 'application/dwg', label: 'DWG' },
-];
+/** Tipos configurables por plaza (fuente única en @app/contracts; incluye video). */
+const MIME_CONOCIDOS: Array<{ mime: string; label: string }> = MIME_PERMITIDOS_DEFAULT.map(
+  (mime) => ({ mime, label: MIME_INFO[mime].label }),
+);
 
 const TIPOS = ['mantenimiento', 'evento', 'remodelacion', 'otro'] as const;
 const PRIORIDADES = ['A', 'B', 'C', 'D', 'F'] as const;

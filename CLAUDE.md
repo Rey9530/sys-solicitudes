@@ -139,7 +139,7 @@ Lista completa en `README.md` §6. Los de mayor impacto:
 - **S-MT-B** — `slug` inmutable en BD para emails/branding interno; ya no afecta URLs. ✅ Resuelto en T-V01.
 - **S-MT-C** — Un usuario pertenece a una sola plaza y un solo rol. ✅ **Resuelto en T-V01.**
 - **S-LockTimeout** — Lock de revisión expira a 30 min.
-- **S-TamañoMax / S-MimeTypes** — 25 MB/archivo y lista cerrada de MIME permitidos.
+- **S-TamañoMax / S-MimeTypes** — 50 MB/archivo (T-V06) y lista cerrada de MIME permitidos, **incluye video MP4/MOV/WebM desde 2026-09-24**. Fuente única: `MIME_PERMITIDOS_DEFAULT` en `packages/contracts` (nunca duplicar la lista en FE/BE). ⚠️ Las subidas pasan por Server Actions: `next.config.mjs` `bodySizeLimit` y nginx `client_max_body_size` deben ser ≥ tope duro del backend (100 MB).
 - **S-CI / S-Deploy / S-Obs** — Pipeline, hosting (NO incluido en cotización) y observabilidad (Pino + Prometheus + Sentry) — todos son supuestos.
 - **S-CamposTipo** — Campos extra por tipo de solicitud (`mantenimiento`, `evento`, `remodelacion`, `otro`) impactan formularios y esquema.
 - **S-JSReport** — jsreport 4.13 como contenedor Docker; backend no instala librerías de generación de PDFs/Excels (detalle en `docs/02-stack-tecnologico.md` §2.12).
@@ -254,6 +254,10 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de inst
 | `@types/sanitize-html` | `2.16.1` | dev dependency |
 | `helmet` (ya estaba) | `8.x` | sin cambios; solo ajuste de CSP (unsafe-eval solo dev) |
 | `@nestjs/throttler` (ya estaba) | `6.5.x` | ⚠️ gotcha: throttler con nombre custom sufija los headers (`Retry-After-global`); usar `name: 'default'` para `Retry-After` limpio |
+
+### Hallazgos de versiones (adjuntos de video MP4/MOV/WebM, 2026-09-24)
+
+**No se instalaron dependencias nuevas.** `react-dropzone@15` (accept por MIME+extensión), `lucide-react` (icono `FileVideo`) y `zod@4` ya cubrían todo. Las firmas de magic bytes se implementaron a mano (sin `file-type`).
 
 ### Hallazgos de versiones (suite e2e calendario — fix feed inquilino, 2026-09-24)
 

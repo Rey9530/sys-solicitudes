@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { adjunto as AdjuntoModel } from '@prisma/client';
+import { ADJUNTO_TAMANIO_MAX_MB_DEFAULT } from '@app/contracts';
 import type { AdjuntoOutput, UploadAdjuntoResponse } from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MinioService } from '../../common/storage/minio.service';
@@ -66,7 +67,7 @@ export class AdjuntosService {
     const { contrato, maxBytes } = await this.prisma.withTenant(plazaId, async (tx) => {
       const contrato = await tx.contrato.findFirst({ where: { id: contratoId } });
       const config = await tx.configuracion.findUnique({ where: { plaza_id: plazaId } });
-      return { contrato, maxBytes: (config?.tamanio_max_archivo_mb ?? 50) * 1024 * 1024 };
+      return { contrato, maxBytes: (config?.tamanio_max_archivo_mb ?? ADJUNTO_TAMANIO_MAX_MB_DEFAULT) * 1024 * 1024 };
     });
     if (!contrato) this.throwNotFound('CONTRATO_NOT_FOUND', 'El contrato no existe.');
     this.assertContratoScope(contrato.inquilino_id, actor);
@@ -161,7 +162,7 @@ export class AdjuntosService {
     const { local, maxBytes } = await this.prisma.withTenant(plazaId, async (tx) => {
       const local = await tx.local.findFirst({ where: { id: localId, deleted_at: null } });
       const config = await tx.configuracion.findUnique({ where: { plaza_id: plazaId } });
-      return { local, maxBytes: (config?.tamanio_max_archivo_mb ?? 50) * 1024 * 1024 };
+      return { local, maxBytes: (config?.tamanio_max_archivo_mb ?? ADJUNTO_TAMANIO_MAX_MB_DEFAULT) * 1024 * 1024 };
     });
     if (!local) this.throwNotFound('LOCAL_NOT_FOUND', 'El local no existe.');
 
@@ -301,7 +302,7 @@ export class AdjuntosService {
     const mimesPermitidos = Array.isArray(config?.mime_types_permitidos)
       ? (config.mime_types_permitidos as string[])
       : [];
-    const maxBytes = (config?.tamanio_max_archivo_mb ?? 50) * 1024 * 1024;
+    const maxBytes = (config?.tamanio_max_archivo_mb ?? ADJUNTO_TAMANIO_MAX_MB_DEFAULT) * 1024 * 1024;
     this.validator.validateAll(
       {
         buffer: file.buffer,
