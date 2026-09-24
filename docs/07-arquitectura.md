@@ -343,6 +343,20 @@ sys-solicitudes/
 - Tablas que no son listados (matrices) siguen su propio patrón: la **matriz de permisos** pasa a modo compacto "un rol a la vez" por debajo de 760 px de contenedor (`useContainerWidth`); la matriz de SLA va envuelta en `.table-wrap`.
 - Verificación manual mínima al tocar un listado: 390 px (iPhone), 768 px (iPad vertical), 1024 px (iPad horizontal / laptop con sidebar) y 1280 px. Ningún elemento debe salirse del viewport salvo dentro de un contenedor con `overflow-x: auto`.
 
+> **Actualización 2026-09-24 (auditoría responsive completa del frontend).** Se barrieron las 38 rutas de los tres roles (admin_plaza, inquilino, superadmin) y las públicas a 360, 390, 768, 1024, 1280 y 1440 px con Playwright, midiendo `scrollWidth` del documento, elementos con `getBoundingClientRect().right` fuera del viewport y texto que desborda su caja (`scrollWidth > clientWidth` con `overflow: visible`). Hallazgos corregidos y reglas que quedan vigentes:
+>
+> - **Topbar en teléfonos.** La pastilla de plaza (`.top-tenant`) ya puede encogerse (`flex: 0 1 auto; min-width: 0`) y el nombre va en `<span class="tt-name">` con elipsis; por debajo de 576 px se oculta `.top-avatar` (el usuario ya aparece en el pie del drawer). Antes, con superadmin a 360 px, el avatar salía 10 px fuera del viewport.
+> - **Popover de plazas (superadmin).** `.plaza-menu` mide `min(300px, 100vw - 24px)` y `PlazaSelector.place()` limita el `right` para que el menú nunca cruce el borde izquierdo (a 390 px se cortaba la mitad izquierda).
+> - **Palabras largas sin espacios** (códigos de permiso como `notificaciones.gestionar_desuscripciones`, emails, UUIDs): cualquier celda o etiqueta que las muestre necesita `overflow-wrap: anywhere` (ya aplicado en `.rdv-card`, `.matriz-list li > label`, `.auditoria-meta-v`). Es el único tipo de overflow que no se ve en un `getBoundingClientRect()`: el rect no crece, pero `scrollWidth` sí y empuja el ancho del documento.
+> - **Calendario.** El panel de filtros va plegado bajo un botón «Filtros» (con contador de filtros activos) por debajo de 992 px, para que el calendario quede a la vista en teléfonos y tablets. La barra de FullCalendar (prev/next · título · vistas) se reordena con una **container query** sobre `.cal-main` (`@container (max-width: 640px)`) y no con el ancho del viewport: a 1024 px con el sidebar abierto el calendario mide ~450 px.
+> - **Previsualización de reportes.** Las celdas llevan `white-space: nowrap` y la tabla hace scroll horizontal en su wrapper; antes los códigos se partían en tres líneas.
+> - **KPIs del dashboard.** Dos columnas desde 480 px (antes una sola hasta 768 px, cinco tarjetas apiladas en teléfono).
+> - **Wizard de solicitud.** El pie de botones (`Atrás` · `Guardar borrador` · `Enviar ahora`) envuelve (`flex-wrap`) en anchos estrechos.
+> - **Objetivos táctiles.** Bajo `@media (pointer: coarse)` los controles compactos crecen (`.btn-sm` 36 px, paginador 36 px, checkboxes 20 px, pestañas 12 px de padding vertical); en escritorio conservan su densidad.
+> - **Login.** Menos padding en `.auth-form-col` / `.auth-card` por debajo de 576 px.
+>
+> Procedimiento recomendado al tocar cualquier pantalla: además de los cuatro anchos de arriba, comprobar 360 px y, en la consola del navegador, que `document.documentElement.scrollWidth === document.documentElement.clientWidth`.
+
 ### 7.4.4. Estructura de un módulo NestJS
 
 ```

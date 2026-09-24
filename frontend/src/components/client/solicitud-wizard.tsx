@@ -885,7 +885,7 @@ export function SolicitudWizard({
         )}
       </div>
 
-      <div className="flex justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <Button
           type="button"
           variant="outline"
@@ -899,7 +899,7 @@ export function SolicitudWizard({
             Siguiente
           </Button>
         ) : (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
             <Button
               type="button"
               variant="outline"

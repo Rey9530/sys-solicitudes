@@ -48,9 +48,19 @@ export function PlazaSelector({
       )
     : plazas;
 
+  /** Ancho del popover (coincide con `.plaza-menu` en globals.css). */
+  const MENU_W = 300;
+  const MARGIN = 12;
+
   function place() {
     const r = triggerRef.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 8, right: Math.max(12, window.innerWidth - r.right) });
+    if (!r) return;
+    const vw = window.innerWidth;
+    const menuW = Math.min(MENU_W, vw - MARGIN * 2);
+    // Alineado al borde derecho del trigger, pero sin salirse del viewport
+    // por la izquierda (en teléfonos el trigger queda a mitad de pantalla).
+    const right = Math.min(Math.max(MARGIN, vw - r.right), Math.max(MARGIN, vw - menuW - MARGIN));
+    setPos({ top: r.bottom + 8, right });
   }
 
   function toggle() {
@@ -65,10 +75,7 @@ export function PlazaSelector({
 
   useEffect(() => {
     if (!open) return;
-    const reposition = () => {
-      const r = triggerRef.current?.getBoundingClientRect();
-      if (r) setPos({ top: r.bottom + 8, right: Math.max(12, window.innerWidth - r.right) });
-    };
+    const reposition = () => place();
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       if (!triggerRef.current?.contains(t) && !menuRef.current?.contains(t)) setOpen(false);

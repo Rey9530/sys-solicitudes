@@ -581,7 +581,6 @@
     min-width: 0;
   }
   .top-toggle,
-  .top-tenant,
   .top-avatar,
   .top-right > .icon-btn {
     flex-shrink: 0;
@@ -598,6 +597,17 @@
     font-size: 13px;
     font-weight: 500;
     color: var(--text-2);
+    /* Puede encogerse en pantallas estrechas: el nombre se corta con elipsis
+       (antes tenía flex-shrink: 0 y empujaba el avatar fuera del viewport). */
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 230px;
+  }
+  .top-tenant .tt-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
   .top-tenant .dot {
     width: 9px;
@@ -696,7 +706,7 @@
 
   /* Popover (portal a body): posición la fija el componente con inline style. */
   .plaza-menu {
-    width: 300px;
+    width: min(300px, calc(100vw - 24px));
     max-height: min(70vh, 460px);
     display: flex;
     flex-direction: column;
@@ -1010,6 +1020,22 @@
     }
     .main {
       padding: 18px;
+    }
+  }
+  @media (max-width: 575.98px) {
+    .topbar {
+      gap: 10px;
+    }
+    .top-right {
+      gap: 6px;
+    }
+    /* El avatar ya aparece en el pie del drawer; en teléfonos libera espacio
+       para la pastilla de plaza + tema + notificaciones. */
+    .top-avatar {
+      display: none;
+    }
+    .main {
+      padding: 16px 14px 28px;
     }
   }
 }
@@ -1726,7 +1752,8 @@
   .kpi-grid.c3 {
     grid-template-columns: 1fr;
   }
-  @media (min-width: 576px) {
+  @media (min-width: 480px) {
+    .kpi-grid,
     .kpi-grid.c3 {
       grid-template-columns: repeat(2, 1fr);
     }
@@ -2652,8 +2679,14 @@
     font-weight: 600;
     color: var(--text);
   }
-  /* Móvil: la barra (prev/next/hoy · título · 4 vistas) no cabe en una fila. */
-  @media (max-width: 640px) {
+  /* La barra (prev/next/hoy · título · 4 vistas) no cabe en una fila cuando
+     el CONTENEDOR es estrecho (teléfonos, o laptop con sidebar abierta): se
+     decide con container query, no con el ancho del viewport. */
+  .cal-main {
+    container-type: inline-size;
+    min-width: 0;
+  }
+  @container (max-width: 640px) {
     .fc .fc-header-toolbar {
       flex-wrap: wrap;
       gap: 8px;
@@ -2669,6 +2702,19 @@
     .fc .fc-button {
       padding: 0.3em 0.55em;
       font-size: 12.5px;
+    }
+  }
+  /* Panel de filtros del calendario: en contenedores estrechos va plegado
+     bajo un botón "Filtros" para que el calendario quede a la vista. */
+  .cal-filters-toggle {
+    display: none;
+  }
+  @media (max-width: 991.98px) {
+    .cal-filters-toggle {
+      display: inline-flex;
+    }
+    .cal-filters.collapsed {
+      display: none;
     }
   }
 
@@ -2691,6 +2737,7 @@
   .report-preview td,
   .report-preview th {
     padding: 7px 10px;
+    white-space: nowrap;
   }
 
   /* Modal section helpers (shadcn Dialog se re-estila aparte) */
@@ -2922,12 +2969,35 @@
     min-width: 0;
     flex: 1;
     cursor: pointer;
+    overflow-wrap: anywhere;
   }
   .matriz-list input[type='checkbox'] {
     flex: none;
     width: 20px;
     height: 20px;
     margin-top: 1px;
+  }
+
+  /* Objetivos táctiles (WCAG 2.5.8): en pantallas táctiles los controles
+     compactos crecen; en escritorio con ratón conservan su densidad. */
+  @media (pointer: coarse) {
+    .btn-sm {
+      height: 36px;
+      padding: 0 13px;
+    }
+    .pager button,
+    .pager a {
+      min-width: 36px;
+      height: 36px;
+    }
+    .check input,
+    .matriz-list input[type='checkbox'] {
+      width: 20px;
+      height: 20px;
+    }
+    .tab {
+      padding: 12px 14px;
+    }
   }
 
   /* Stepper compacto en móvil. */
@@ -3107,6 +3177,14 @@
   .auth-roles .muted {
     font-size: 12.5px;
     margin-right: 2px;
+  }
+  @media (max-width: 575.98px) {
+    .auth-form-col {
+      padding: 28px 16px;
+    }
+    .auth-card {
+      padding: 26px 20px;
+    }
   }
   @media (max-width: 860px) {
     /* Conservado por compatibilidad con overrides internos;

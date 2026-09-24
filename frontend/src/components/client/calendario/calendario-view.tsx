@@ -13,6 +13,7 @@ import type { DateClickArg } from '@fullcalendar/interaction';
 import type { EventClickArg, EventDropArg, EventInput } from '@fullcalendar/core';
 import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import Link from 'next/link';
+import { SlidersHorizontal } from 'lucide-react';
 import type { CalendarioEventoOutput } from '@app/contracts';
 import { Button } from '@/components/ui/button';
 import {
@@ -80,6 +81,8 @@ export function CalendarioView({
   const [seleccionado, setSeleccionado] = useState<EventoSeleccionado | null>(null);
   const [slotNuevo, setSlotNuevo] = useState<{ fecha: string; hora?: string } | null>(null);
   const [slotOcupado, setSlotOcupado] = useState(false);
+  /** Panel de filtros desplegado (solo aplica bajo 992 px; ver globals.css). */
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
   const eventosCache = useRef<CalendarioEventoOutput[]>([]);
   // Vista inicial según ancho (móvil → lista). Calculada solo en cliente para
   // evitar mismatch de hidratación.
@@ -216,13 +219,35 @@ export function CalendarioView({
   const detalleHref =
     rol === 'inquilino' ? '/inquilino/solicitudes' : '/admin/solicitudes';
   const icsQuery = filtroLocales.length ? `?localId=${filtroLocales.join(',')}` : '';
+  /** Nº de filtros activos (chip del botón "Filtros" en pantallas estrechas). */
+  const filtrosActivos =
+    (filtroTipos.length === visibles.length ? 0 : 1) +
+    (filtroLocales.length ? 1 : 0) +
+    (filtroInquilinos.length ? 1 : 0);
   const wizardHref = (fecha: string, hora?: string) =>
     `/inquilino/solicitudes/nueva?tipo=evento&fecha=${fecha}${hora ? `&hora=${hora}` : ''}`;
 
   return (
     <div className="grid gap-4 lg:grid-cols-[230px_1fr] cal-wrap">
+      {/* Teléfonos/tablets: los filtros van plegados para que el calendario
+          quede a la vista (en escritorio el botón se oculta por CSS). */}
+      <button
+        type="button"
+        className="btn btn-secondary cal-filters-toggle"
+        aria-expanded={filtrosAbiertos}
+        aria-controls="cal-filtros"
+        onClick={() => setFiltrosAbiertos((v) => !v)}
+      >
+        <SlidersHorizontal />
+        {filtrosAbiertos ? 'Ocultar filtros' : 'Filtros'}
+        {filtrosActivos > 0 && <span className="cnt">{filtrosActivos}</span>}
+      </button>
+
       {/* ── Panel lateral de filtros (T-134) ── */}
-      <aside className="card card-pad space-y-4 text-sm">
+      <aside
+        id="cal-filtros"
+        className={`card card-pad space-y-4 text-sm cal-filters${filtrosAbiertos ? '' : ' collapsed'}`}
+      >
         <div>
           <p className="mb-1 font-medium text-gray-700">Tipo</p>
           {TIPOS.filter((t) => t.value !== 'hito_contrato' || mostrarHitosConfig)
@@ -315,7 +340,7 @@ export function CalendarioView({
       </aside>
 
       {/* ── Calendario ── */}
-      <div className="card card-pad">
+      <div className="card card-pad cal-main">
         {error && (
           <p className="banner banner-danger mb-2">
             {error}

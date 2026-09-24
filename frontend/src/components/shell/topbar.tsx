@@ -57,12 +57,12 @@ export function Topbar({
               className="dot"
               style={{ background: plaza?.colorPrimario ?? 'var(--primary)' }}
             />
-            {plaza?.nombreComercial ?? 'Mi plaza'}
+            <span className="tt-name">{plaza?.nombreComercial ?? 'Mi plaza'}</span>
           </div>
         ) : (
           <div className="top-tenant">
             <Globe />
-            Plataforma
+            <span className="tt-name">Plataforma</span>
           </div>
         )}
 
