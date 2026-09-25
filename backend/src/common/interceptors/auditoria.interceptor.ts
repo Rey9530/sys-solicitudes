@@ -1,10 +1,4 @@
-import {
-  CallHandler,
-  ExecutionContext,
-  Injectable,
-  Logger,
-  NestInterceptor,
-} from '@nestjs/common';
+import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { Observable } from 'rxjs';
@@ -23,6 +17,9 @@ const LLAVES_SENSIBLES = new Set([
   'password',
   'passwordactual',
   'passwordnueva',
+  'currentpassword',
+  'newpassword',
+  'confirmpassword',
   'token',
   'refreshtoken',
   'accesstoken',
@@ -99,8 +96,7 @@ export class AuditoriaInterceptor implements NestInterceptor {
           despues,
           ip: request.ip ?? null,
           userAgent: request.headers['user-agent'] ?? null,
-          requestId:
-            request.id ?? (request.headers['x-request-id'] as string | undefined) ?? null,
+          requestId: request.id ?? (request.headers['x-request-id'] as string | undefined) ?? null,
         });
       }),
     );

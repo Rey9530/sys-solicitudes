@@ -485,6 +485,20 @@
   }
   .collapsed .side-user {
     padding: 4px;
+    flex-direction: column;
+    gap: 6px;
+  }
+  /* Acciones del pie: cambiar contraseña + cerrar sesión (apiladas si colapsado) */
+  .side-foot-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+  }
+  .collapsed .side-foot-actions {
+    margin-left: 0;
+    flex-direction: column;
   }
   /* iconos dentro de la sidebar navy usan la paleta del sidebar */
   .side .icon-btn {

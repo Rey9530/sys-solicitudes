@@ -84,7 +84,7 @@ Administrar las identidades digitales de los usuarios del sistema y controlar el
 - **CU-AU-2 · Registro por superadministrador:** el `superadmin` da de alta el primer `admin_plaza` de cada plaza nueva y, opcionalmente, usuarios `inquilino` durante el onboarding.
 - **CU-AU-3 · Login con email + contraseña:** desde `/login`. El frontend llama a `POST /api/v1/auth/login` (vía Credentials Provider de NextAuth) y recibe JWT.
 - **CU-AU-4 · Logout:** revoca el refresh token y limpia la cookie.
-- **CU-AU-5 · Cambio de contraseña con sesión activa:** desde perfil.
+- **CU-AU-5 · Cambio de contraseña con sesión activa:** botón de llave junto a "Cerrar sesión" en el pie de la sidebar (todos los roles) → diálogo con contraseña actual, nueva y confirmación → `PATCH /api/v1/auth/change-password`. Al confirmar se revocan todas las sesiones y el usuario vuelve a `/login` (detalle en `PLANIFICACION/17-cambiar-password.md`).
 - **CU-AU-6 · Recuperación de contraseña:** "olvidé mi contraseña" → email con enlace de un solo uso (token, 30 min de expiración) → formulario de nueva contraseña.
 - **CU-AU-7 · Edición de perfil:** nombre, teléfono, foto (opcional).
 - **CU-AU-8 · Desactivación de usuario:** soft delete (`deleted_at`); el usuario no puede entrar pero sus solicitudes/acciones se preservan para auditoría.

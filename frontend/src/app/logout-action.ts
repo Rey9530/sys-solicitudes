@@ -11,6 +11,16 @@ import { signOut } from '@/auth';
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
 export async function logoutAction(): Promise<void> {
+  await logoutAndRedirect('/login');
+}
+
+/**
+ * Igual que `logoutAction` pero con destino configurable (p. ej. tras cambiar
+ * la contraseña → `/login?password_changed=1`). Solo acepta rutas internas de
+ * `/login` para no abrir un open-redirect.
+ */
+export async function logoutAndRedirect(redirectTo: string): Promise<void> {
+  const destino = redirectTo.startsWith('/login') ? redirectTo : '/login';
   try {
     const secure = process.env.NODE_ENV === 'production';
     const cookieName = secure ? '__Secure-authjs.session-token' : 'authjs.session-token';
@@ -45,5 +55,5 @@ export async function logoutAction(): Promise<void> {
   }
   // Limpia la plaza seleccionada por un superadmin (no arrastrar entre sesiones).
   (await cookies()).delete('sa_plaza');
-  await signOut({ redirectTo: '/login' });
+  await signOut({ redirectTo: destino });
 }

@@ -26,6 +26,11 @@ export function LoginForm() {
   useEffect(() => {
     if (searchParams.get('expired') === '1') {
       toast.error('Tu sesión expiró. Vuelve a iniciar sesión.');
+    } else if (searchParams.get('password_changed') === '1') {
+      // `id` fijo: el efecto corre dos veces en dev (StrictMode) y no queremos duplicar el toast.
+      toast.success('Contraseña actualizada. Inicia sesión con tu nueva contraseña.', {
+        id: 'password-changed',
+      });
     }
   }, [searchParams]);
 
@@ -40,7 +45,9 @@ export function LoginForm() {
         return;
       }
       if (result.error === 'locked') {
-        toast.error('Cuenta bloqueada temporalmente por varios intentos fallidos. Intenta más tarde.');
+        toast.error(
+          'Cuenta bloqueada temporalmente por varios intentos fallidos. Intenta más tarde.',
+        );
       } else if (result.error === 'invalid') {
         toast.error('Email o contraseña incorrectos');
       } else {

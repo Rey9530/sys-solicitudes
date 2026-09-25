@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LogOut } from 'lucide-react';
 import { logoutAction } from '@/app/logout-action';
+import { CambiarPasswordDialog } from '@/components/client/cambiar-password-dialog';
 import { can } from '@/lib/can';
 import { type AppRole, initials, NAV, SHELL_META } from './nav-config';
 
@@ -89,18 +90,29 @@ export function Sidebar({ role, user, plazaName, permisos, onNavigate }: Sidebar
 
       <div className="side-foot">
         <div className="side-user">
-          <span className="avatar avatar-sm" style={{ background: 'linear-gradient(150deg, var(--primary-300), var(--primary))' }}>
+          <span
+            className="avatar avatar-sm"
+            style={{ background: 'linear-gradient(150deg, var(--primary-300), var(--primary))' }}
+          >
             {initials(user.name)}
           </span>
           <div className="side-foot-txt">
             <b>{user.name ?? 'Usuario'}</b>
             <span>{meta.roleLabel}</span>
           </div>
-          <form action={logoutAction} className="ml-auto">
-            <button type="submit" className="icon-btn" aria-label="Cerrar sesión" title="Cerrar sesión">
-              <LogOut />
-            </button>
-          </form>
+          <div className="side-foot-actions">
+            <CambiarPasswordDialog />
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                className="icon-btn"
+                aria-label="Cerrar sesión"
+                title="Cerrar sesión"
+              >
+                <LogOut />
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     </aside>

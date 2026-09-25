@@ -245,6 +245,14 @@ export class AuthService {
       });
     }
 
+    if (await this.passwords.compare(input.newPassword, usuario.password_hash)) {
+      throw new BadRequestException({
+        code: 'SAME_PASSWORD',
+        title: 'Solicitud inválida',
+        message: 'La nueva contraseña debe ser distinta de la actual.',
+      });
+    }
+
     const passwordHash = await this.passwords.hash(input.newPassword);
     await this.prisma.usuario.update({
       where: { id: usuario.id },

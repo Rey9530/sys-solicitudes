@@ -63,6 +63,24 @@ export const ChangePasswordSchema = z.object({
 });
 export type ChangePasswordInput = z.infer<typeof ChangePasswordSchema>;
 
+/**
+ * Variante de formulario (frontend): añade confirmación y exige que la nueva
+ * contraseña sea distinta de la actual. El backend valida `ChangePasswordSchema`
+ * y repite la regla de "distinta" como defensa en profundidad.
+ */
+export const ChangePasswordFormSchema = ChangePasswordSchema.extend({
+  confirmPassword: z.string().min(1, 'Confirma la nueva contraseña'),
+})
+  .refine((d) => d.newPassword === d.confirmPassword, {
+    message: 'Las contraseñas no coinciden',
+    path: ['confirmPassword'],
+  })
+  .refine((d) => d.newPassword !== d.currentPassword, {
+    message: 'La nueva contraseña debe ser distinta de la actual',
+    path: ['newPassword'],
+  });
+export type ChangePasswordFormInput = z.infer<typeof ChangePasswordFormSchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Respuestas
 
