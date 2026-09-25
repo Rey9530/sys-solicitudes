@@ -7,9 +7,10 @@ import { MantenimientoFinCron } from './cron/mantenimiento-fin.cron';
 import { SolicitudStateModule } from '../solicitudes/state/solicitud-state.module';
 import { CategoriasModule } from '../categorias/categorias.module';
 import { AuditoriaModule } from '../auditoria/auditoria.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 @Module({
-  imports: [SolicitudStateModule, CategoriasModule, AuditoriaModule],
+  imports: [SolicitudStateModule, CategoriasModule, AuditoriaModule, NotificacionesModule],
   controllers: [AprobacionesController],
   providers: [AprobacionesService, AutoAsignacionCron, SlaRefreshCron, MantenimientoFinCron],
   exports: [AprobacionesService],

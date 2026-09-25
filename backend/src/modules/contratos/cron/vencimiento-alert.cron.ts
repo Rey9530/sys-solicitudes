@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule';
 import { Prisma } from '@prisma/client';
 import { PrismaAdminService } from '../../../prisma/prisma-admin.service';
 import { EmailService } from '../../notificaciones/email.service';
+import { NotificacionesInAppService } from '../../notificaciones/notificaciones-inapp.service';
 import { toIsoDate } from '../contrato.mapper';
 
 // T-126: renombrada de 'contrato_vencimiento_alert' a 'contrato-por-vencer'
@@ -29,6 +30,9 @@ const VENTANAS = [
  * enviar directo; el worker (T-122) envía con reintentos. La deduplicación
  * diaria se mantiene aquí: una fila (plantilla + plaza + ventana + día de
  * El Salvador); si ya existe alguna hoy, no se re-encola.
+ *
+ * PLANIFICACION/16: además crea una notificación in-app POR CONTRATO para
+ * cada admin_plaza activo (aunque su email sea inválido), con link al contrato.
  */
 @Injectable()
 export class VencimientoAlertCron {
@@ -37,6 +41,7 @@ export class VencimientoAlertCron {
   constructor(
     private readonly prismaAdmin: PrismaAdminService,
     private readonly emails: EmailService,
+    private readonly inApp: NotificacionesInAppService,
   ) {}
 
   @Cron('0 9 * * *', { name: 'contrato-vencimiento-alert', timeZone: 'America/El_Salvador' })
@@ -88,20 +93,38 @@ export class VencimientoAlertCron {
           continue;
         }
 
-        const admins = await this.prismaAdmin.usuario.findMany({
+        const todosLosAdmins = await this.prismaAdmin.usuario.findMany({
           where: {
             plaza_id: plazaId,
             deleted_at: null,
-            email_invalido: false,
             rol: { codigo: 'admin_plaza' },
           },
-          select: { email: true },
+          select: { id: true, email: true, email_invalido: true },
         });
-        if (admins.length === 0) {
+        if (todosLosAdmins.length === 0) {
           this.logger.warn(`Plaza ${plazaId} sin admin_plaza activo; alerta ${ventana} omitida.`);
           continue;
         }
 
+        // In-app: una por contrato para cada admin (link directo al contrato).
+        for (const c of grupo) {
+          try {
+            await this.inApp.notificar(this.prismaAdmin, {
+              plazaId,
+              destinatarios: todosLosAdmins.map((a) => a.id),
+              tipo: 'contrato_por_vencer',
+              titulo: `Contrato por vencer en ${dias} días`,
+              mensaje:
+                `Local ${c.local.codigo} · ${c.inquilino.razon_social} — ` +
+                `vence el ${c.fecha_fin ? fechaDMY(toIsoDate(c.fecha_fin)) : 'sin fecha'}.`,
+              contratoId: c.id,
+            });
+          } catch (err) {
+            this.logger.error(`Notificación in-app de contrato ${c.id} falló: ${String(err)}`);
+          }
+        }
+
+        const admins = todosLosAdmins.filter((a) => !a.email_invalido);
         const resumen = grupo.map((c) => ({
           localCodigo: c.local.codigo,
           inquilinoRazonSocial: c.inquilino.razon_social,
@@ -146,4 +169,10 @@ export class VencimientoAlertCron {
   private inicioDelDiaSvEnUtc(): Date {
     return new Date(this.hoyEnElSalvador().getTime() + 6 * 3_600_000);
   }
+}
+
+/** `YYYY-MM-DD` → `DD-MM-YYYY` (formato de fechas visible en la UI). */
+function fechaDMY(ymd: string): string {
+  const [y, m, d] = ymd.split('-');
+  return `${d}-${m}-${y}`;
 }

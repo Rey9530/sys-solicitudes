@@ -35,6 +35,7 @@ import {
   type SolicitudConRelaciones,
 } from './solicitud.mapper';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
+import { NotificacionesInAppService } from '../notificaciones/notificaciones-inapp.service';
 
 export interface RequestMeta {
   ip?: string | null;
@@ -70,6 +71,7 @@ export class SolicitudesService {
     private readonly auditoria: AuditoriaService,
     private readonly state: SolicitudStateService,
     private readonly staffValidator: StaffForSubcategoriaValidator,
+    private readonly inApp: NotificacionesInAppService,
   ) {}
 
   // ── Crear (T-080) ─────────────────────────────────────────────────────────────
@@ -443,7 +445,17 @@ export class SolicitudesService {
       const solicitud = await tx.solicitud.findFirst({ where: { id } });
       if (!solicitud) this.throwNotFound();
       this.assertInquilinoScope(solicitud, actor);
-      return this.state.cancelar(tx, solicitud, actor, motivo);
+      const cancelada = await this.state.cancelar(tx, solicitud, actor, motivo);
+      // In-app (PLANIFICACION/16): creador y admin asignado (se excluye al actor).
+      await this.inApp.notificarSolicitud(
+        tx,
+        solicitud,
+        'solicitud_cancelada',
+        [solicitud.usuario_creador_id, solicitud.admin_asignado_id],
+        actor.sub,
+        { detalle: motivo ? `Motivo: ${motivo}` : null },
+      );
+      return cancelada;
     });
 
     await this.auditoria.record({
@@ -470,7 +482,16 @@ export class SolicitudesService {
       const solicitud = await tx.solicitud.findFirst({ where: { id } });
       if (!solicitud) this.throwNotFound();
       this.assertInquilinoScope(solicitud, actor);
-      return this.state.reenviar(tx, solicitud, actor);
+      const reenviada = await this.state.reenviar(tx, solicitud, actor);
+      // In-app: al admin que pidió la subsanación (el state limpia admin_asignado_id).
+      await this.inApp.notificarSolicitud(
+        tx,
+        solicitud,
+        'solicitud_reenviada',
+        [await this.adminAConsultar(tx, solicitud)],
+        actor.sub,
+      );
+      return reenviada;
     });
 
     await this.auditoria.record({
@@ -658,6 +679,18 @@ export class SolicitudesService {
         evento: 'comentario',
         comentario: dto.cuerpo.slice(0, 500),
       });
+      // In-app: solo comentarios `general` (decision/subsanacion ya notifican
+      // por su transición). Autor admin → creador; autor inquilino → admin asignado.
+      if (dto.tipo === 'general') {
+        await this.inApp.notificarSolicitud(
+          tx,
+          solicitud,
+          'comentario_nuevo',
+          [esAdmin ? solicitud.usuario_creador_id : await this.adminAConsultar(tx, solicitud)],
+          actor.sub,
+          { detalle: `${comentario.usuario.nombre}: ${dto.cuerpo}` },
+        );
+      }
       return comentario;
     });
 
@@ -864,6 +897,25 @@ export class SolicitudesService {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  /**
+   * Admin a notificar por acciones del inquilino (PLANIFICACION/16): el asignado
+   * o, en `requerida_subsanacion` (el state limpia `admin_asignado_id`), quien
+   * pidió la subsanación según el historial.
+   */
+  private async adminAConsultar(
+    tx: Prisma.TransactionClient,
+    solicitud: { id: string; estado: string; admin_asignado_id: string | null },
+  ): Promise<string | null> {
+    if (solicitud.admin_asignado_id) return solicitud.admin_asignado_id;
+    if (solicitud.estado !== 'requerida_subsanacion') return null;
+    const h = await tx.solicitud_historial.findFirst({
+      where: { solicitud_id: solicitud.id, evento: 'subsanada' },
+      orderBy: { created_at: 'desc' },
+      select: { usuario_id: true },
+    });
+    return h?.usuario_id ?? null;
+  }
 
   private requirePlaza(actor: AuthenticatedUser): string {
     if (!actor.plazaId) {

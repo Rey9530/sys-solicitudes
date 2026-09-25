@@ -5,6 +5,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { SolicitudStateService } from '../../solicitudes/state/solicitud-state.service';
 import { SOLICITUD_INCLUDE } from '../../solicitudes/solicitud.mapper';
 import { buildSolicitudEmailContext } from '../../notificaciones/solicitud-email.builder';
+import { NotificacionesInAppService } from '../../notificaciones/notificaciones-inapp.service';
 import type { SolicitudConRelaciones } from '../../solicitudes/solicitud.mapper';
 
 /** Espera antes de auto-asignar (T-V03: 15 minutos, NO lock de 30). */
@@ -16,7 +17,8 @@ const ESPERA_MINUTOS = 15;
  * Cada minuto busca solicitudes en `enviada` con `enviada_at` anterior a
  * 15 min y las transiciona a `asignado` con el responsable ACTUAL de su
  * subcategoría. Encola emails al responsable (`solicitud-asignada-responsable`)
- * y a cada supervisor (`solicitud-nueva-supervisor`), deduplicados.
+ * y a cada supervisor (`solicitud-nueva-supervisor`), deduplicados, más las
+ * notificaciones in-app equivalentes (PLANIFICACION/16).
  *
  * Usa el admin client SOLO para descubrir candidatas (cross-tenant); cada
  * escritura corre bajo `withTenant` (RLS) y re-verifica el estado dentro de
@@ -34,6 +36,7 @@ export class AutoAsignacionCron {
     private readonly prismaAdmin: PrismaAdminService,
     private readonly prisma: PrismaService,
     private readonly state: SolicitudStateService,
+    private readonly inApp: NotificacionesInAppService,
   ) {}
 
   @Cron('*/1 * * * *', { name: 'solicitud-auto-asignacion' })
@@ -83,7 +86,9 @@ export class AutoAsignacionCron {
               },
               supervisores: {
                 include: {
-                  usuario: { select: { id: true, email: true, email_invalido: true } },
+                  usuario: {
+                    select: { id: true, email: true, email_invalido: true, deleted_at: true },
+                  },
                 },
               },
             },
@@ -136,6 +141,18 @@ export class AutoAsignacionCron {
               variables: variablesEmail as Record<string, unknown>,
             });
           }
+
+          // In-app (PLANIFICACION/16): responsable + supervisores activos.
+          await this.inApp.notificarSolicitud(tx, solicitud, 'solicitud_asignada', [r.id]);
+          await this.inApp.notificarSolicitud(
+            tx,
+            solicitud,
+            'solicitud_nueva_supervisor',
+            sub.supervisores
+              .map((sup) => sup.usuario)
+              .filter((u) => u && !u.deleted_at && u.id !== r.id)
+              .map((u) => u!.id),
+          );
           return true;
         });
         if (ok) asignadas++;

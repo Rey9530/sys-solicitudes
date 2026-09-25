@@ -606,6 +606,10 @@ Tablas técnicas. `token_hash` es SHA-256 del token (no se guarda el token plano
 
 Ver §5 del stack. `variables` (JSONB) guarda el render final para depuración.
 
+### 4.3.14b. `notificacion` (in-app, 2026-09-25)
+
+Bandeja por usuario de la campana del topbar. Campos: `plaza_id` (RLS), `usuario_id` (destinatario, cascade), `tipo`, `titulo`, `mensaje`, `solicitud_id?` / `contrato_id?` (destino del clic, cascade), `leida_at?`, `created_at`. Índices `(usuario_id, leida_at)`, `(usuario_id, created_at DESC)`, `(created_at)`. Retención 90 días (cron diario). Detalle: `PLANIFICACION/16-notificaciones-in-app.md`.
+
 ### 4.3.15. `auditoria`
 
 Append-only. Captura cualquier cambio en entidades de negocio. Ver §1.7 (R10).
