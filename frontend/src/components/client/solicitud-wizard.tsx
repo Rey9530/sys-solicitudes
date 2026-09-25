@@ -855,7 +855,7 @@ export function SolicitudWizard({
         )}
 
         {step === 3 && (
-          <div className="mx-auto grid w-full max-w-3xl gap-4">
+          <div className="mx-auto grid w-full max-w-3xl grid-cols-1 gap-4">
             {/* ── Bloque 1: Adjuntos (T-V22) ─────────────────────────── */}
             {!editMode && (
               <AdjuntosCard
@@ -1099,7 +1099,7 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
   return (
     <section
       aria-labelledby="adjuntos-titulo"
-      className="wz-extra flex flex-col gap-3 rounded-lg border p-4"
+      className="wz-extra flex min-w-0 flex-col gap-3 rounded-lg border p-4"
     >
       <header className="flex items-baseline justify-between">
         <h3 id="adjuntos-titulo" className="text-base font-semibold" style={{ color: 'var(--text)' }}>
@@ -1163,11 +1163,11 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
 
       {/* Lista de archivos seleccionados */}
       {files.length > 0 && (
-        <ul className="grid gap-2" aria-label="Archivos seleccionados">
+        <ul className="grid grid-cols-1 gap-2" aria-label="Archivos seleccionados">
           {files.map((f, i) => (
             <li
               key={`${f.name}-${i}`}
-              className="flex items-center gap-3 rounded-md wz-tile border px-3 py-2"
+              className="flex min-w-0 items-center gap-3 rounded-md wz-tile border px-3 py-2"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center wz-chip rounded">
                 {iconoPorMime(f.type)}

@@ -564,6 +564,10 @@ Centralizar el envío de correos electrónicos transaccionales del sistema, mant
 
 ---
 
+### 5.x Notificaciones in-app (campana del topbar, 2026-09-25)
+
+Además del email, cada evento relevante crea una fila en `notificacion` para el usuario destinatario (`admin_plaza` o `inquilino`; superadmin no recibe). La campana del topbar muestra el conteo de no leídas (polling 45 s), las 20 más recientes y al hacer clic marca como leída y navega a la solicitud o contrato. Catálogo de eventos, destinatarios y decisiones en `PLANIFICACION/16-notificaciones-in-app.md`. Retención 90 días.
+
 ## 6. Módulo: Calendario
 
 > **Origen PDF:** "Visualización de eventos y mantenimientos programados en calendario interactivo."

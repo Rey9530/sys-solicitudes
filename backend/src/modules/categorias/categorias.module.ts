@@ -4,9 +4,10 @@ import { CategoriasService } from './categorias.service';
 import { StaffForSubcategoriaValidator } from './validators/staff-for-subcategoria.validator';
 import { AuditoriaModule } from '../auditoria/auditoria.module';
 import { SolicitudStateModule } from '../solicitudes/state/solicitud-state.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 @Module({
-  imports: [AuditoriaModule, SolicitudStateModule],
+  imports: [AuditoriaModule, SolicitudStateModule, NotificacionesModule],
   controllers: [CategoriasController],
   providers: [CategoriasService, StaffForSubcategoriaValidator],
   exports: [CategoriasService, StaffForSubcategoriaValidator],

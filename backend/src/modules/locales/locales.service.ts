@@ -20,6 +20,7 @@ import { AuditoriaService } from '../auditoria/auditoria.service';
 import { SolicitudStateService } from '../solicitudes/state/solicitud-state.service';
 import { SOLICITUD_INCLUDE } from '../solicitudes/solicitud.mapper';
 import { buildSolicitudEmailContext } from '../notificaciones/solicitud-email.builder';
+import { NotificacionesInAppService } from '../notificaciones/notificaciones-inapp.service';
 import { contratoToOutput, ordenarHistorial } from '../contratos/contrato.mapper';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
@@ -53,6 +54,7 @@ export class LocalesService {
     private readonly prisma: PrismaService,
     private readonly auditoria: AuditoriaService,
     private readonly solicitudState: SolicitudStateService,
+    private readonly inApp: NotificacionesInAppService,
   ) {}
 
   // ── T-108: fuera de servicio + rechazo masivo de solicitudes en curso ─────────
@@ -93,12 +95,14 @@ export class LocalesService {
         });
         for (const solicitud of pendientes) {
           const comentario = `Local fuera de servicio: ${motivo}`;
+          let rechazada = false;
           if (solicitud.estado === 'en_revision') {
             // Transición de rechazo formal. SC-4 no aplica (motivo operativo),
             // pero el state service la exige: si el actor creó la solicitud,
             // cae al camino de cancelación.
             if (solicitud.usuario_creador_id !== actor.sub) {
               await this.solicitudState.rechazar(tx, solicitud, actor, comentario);
+              rechazada = true;
             } else {
               await this.solicitudState.cancelar(tx, solicitud, actor, comentario);
             }
@@ -108,6 +112,17 @@ export class LocalesService {
             await this.solicitudState.cancelar(tx, solicitud, actor, comentario);
           }
           rechazadas.push(solicitud.codigo);
+          // In-app (PLANIFICACION/16) con el tipo REAL de la transición.
+          await this.inApp.notificarSolicitud(
+            tx,
+            solicitud,
+            rechazada ? 'solicitud_rechazada' : 'solicitud_cancelada',
+            rechazada
+              ? [solicitud.usuario_creador_id]
+              : [solicitud.usuario_creador_id, solicitud.admin_asignado_id],
+            actor.sub,
+            { detalle: `Motivo: ${comentario}` },
+          );
           // T-126: 'solicitud-rechazada' es CRÍTICA — EmailService la encola
           // aunque email_invalido sea true (antes se filtraba aquí).
           if (solicitud.usuario_creador) {

@@ -84,6 +84,7 @@ sys-solicitudes/
 | [`PLANIFICACION/11-reportes-panel.md`](PLANIFICACION/11-reportes-panel.md) | jsreport 4.13 (BFF), CSV/XLSX/PDF, KPIs, dashboard con recharts, pantalla de configuración (T-135…T-145). |
 | [`PLANIFICACION/12-seguridad-auditoria.md`](PLANIFICACION/12-seguridad-auditoria.md) | Helmet, CORS, throttler, auditoría append-only, sanitización HTML, RFC 7807 (T-146…T-152). |
 | [`PLANIFICACION/13-observabilidad-despliegue.md`](PLANIFICACION/13-observabilidad-despliegue.md) | `pino` + `requestId`, Prometheus, Sentry, health checks, docker-compose prod, GitHub Actions deploy (T-153…T-160). |
+| [`PLANIFICACION/16-notificaciones-in-app.md`](PLANIFICACION/16-notificaciones-in-app.md) | Campana del topbar: bandeja in-app por usuario (admin_plaza/inquilino), polling 45 s, retención 90 días, clic → solicitud/contrato. |
 
 **Total:** 175 tareas (15 de validación + 160 de implementación) con dependencias explícitas y trazables.
 

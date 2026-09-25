@@ -7,9 +7,11 @@ import { TemplateRendererService } from './template-renderer.service';
 import { EmailService } from './email.service';
 import { UnsubscribeService } from './unsubscribe.service';
 import { EmailWorker } from './cron/email-worker.cron';
+import { NotificacionesInAppService } from './notificaciones-inapp.service';
+import { NotificacionesLimpiezaCron } from './cron/notificaciones-limpieza.cron';
 
 /**
- * Módulo 09 — notificaciones por email. Es HOJA (no importa módulos de
+ * Módulo 09 — notificaciones por email + bandeja in-app (PLANIFICACION/16). Es HOJA (no importa módulos de
  * negocio): lo consumen SolicitudStateModule, auth y contratos sin ciclos.
  * JwtModule.register({}) sin secret global: UnsubscribeService firma/verifica
  * pasando el JWT_SECRET por llamada.
@@ -25,7 +27,15 @@ import { EmailWorker } from './cron/email-worker.cron';
     EmailService,
     UnsubscribeService,
     EmailWorker,
+    NotificacionesInAppService,
+    NotificacionesLimpiezaCron,
   ],
-  exports: [NotificacionesService, TemplateRendererService, EmailService, UnsubscribeService],
+  exports: [
+    NotificacionesService,
+    TemplateRendererService,
+    EmailService,
+    UnsubscribeService,
+    NotificacionesInAppService,
+  ],
 })
 export class NotificacionesModule {}

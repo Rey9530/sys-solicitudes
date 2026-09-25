@@ -4,9 +4,10 @@ import { LocalesService } from './locales.service';
 import { AuditoriaModule } from '../auditoria/auditoria.module';
 import { SolicitudStateModule } from '../solicitudes/state/solicitud-state.module';
 import { AdjuntosModule } from '../adjuntos/adjuntos.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 @Module({
-  imports: [AuditoriaModule, SolicitudStateModule, AdjuntosModule],
+  imports: [AuditoriaModule, SolicitudStateModule, AdjuntosModule, NotificacionesModule],
   controllers: [LocalesController],
   providers: [LocalesService],
   exports: [LocalesService],

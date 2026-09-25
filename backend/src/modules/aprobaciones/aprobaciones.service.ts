@@ -28,6 +28,7 @@ import {
   type SolicitudConRelaciones,
 } from '../solicitudes/solicitud.mapper';
 import { buildSolicitudEmailContext } from '../notificaciones/solicitud-email.builder';
+import { NotificacionesInAppService } from '../notificaciones/notificaciones-inapp.service';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
 export interface RequestMeta {
@@ -58,6 +59,7 @@ export class AprobacionesService {
     private readonly auditoria: AuditoriaService,
     private readonly state: SolicitudStateService,
     private readonly staffValidator: StaffForSubcategoriaValidator,
+    private readonly inApp: NotificacionesInAppService,
   ) {}
 
   // ── Tomar (T-091c) ────────────────────────────────────────────────────────────
@@ -71,6 +73,7 @@ export class AprobacionesService {
       // su solicitud está en revisión (el plan decía "admin que tomó", pero
       // auto-notificar la propia acción no aporta).
       await this.emailAlCreador(tx, solicitud, 'solicitud-recibida');
+      await this.inAppAlCreador(tx, solicitud, 'solicitud_en_revision', actor);
       return tomada;
     });
     await this.audit('solicitud.tomar', id, plazaId, actor, meta, { estado: updated.estado });
@@ -88,7 +91,9 @@ export class AprobacionesService {
     const plazaId = this.requirePlaza(actor);
     const updated = await this.prisma.withTenant(plazaId, async (tx) => {
       const solicitud = await this.assertSolicitud(tx, id);
-      return this.state.liberar(tx, solicitud, actor, dto.motivo);
+      const liberada = await this.state.liberar(tx, solicitud, actor, dto.motivo);
+      await this.inAppAlCreador(tx, solicitud, 'solicitud_liberada', actor);
+      return liberada;
     });
     await this.audit('solicitud.liberar', id, plazaId, actor, meta, { estado: updated.estado });
     return solicitudToOutput(updated);
@@ -105,7 +110,9 @@ export class AprobacionesService {
     const plazaId = this.requirePlaza(actor);
     const updated = await this.prisma.withTenant(plazaId, async (tx) => {
       const solicitud = await this.assertSolicitud(tx, id);
-      return this.state.pausar(tx, solicitud, actor, dto.motivo);
+      const pausada = await this.state.pausar(tx, solicitud, actor, dto.motivo);
+      await this.inAppAlCreador(tx, solicitud, 'solicitud_pausada', actor);
+      return pausada;
     });
     await this.audit('solicitud.pausar', id, plazaId, actor, meta, { estado: updated.estado });
     return solicitudToOutput(updated);
@@ -119,7 +126,9 @@ export class AprobacionesService {
     const plazaId = this.requirePlaza(actor);
     const updated = await this.prisma.withTenant(plazaId, async (tx) => {
       const solicitud = await this.assertSolicitud(tx, id);
-      return this.state.reanudar(tx, solicitud, actor);
+      const reanudada = await this.state.reanudar(tx, solicitud, actor);
+      await this.inAppAlCreador(tx, solicitud, 'solicitud_reanudada', actor);
+      return reanudada;
     });
     await this.audit('solicitud.reanudar', id, plazaId, actor, meta, { estado: updated.estado });
     return solicitudToOutput(updated);
@@ -149,6 +158,7 @@ export class AprobacionesService {
       }
 
       await this.emailAlCreador(tx, solicitud, 'solicitud-aprobada', dto.comentario);
+      await this.inAppAlCreador(tx, solicitud, 'solicitud_aprobada', actor);
       return aprobada;
     });
 
@@ -182,6 +192,9 @@ export class AprobacionesService {
         resultadoLabel: RESULTADO_CIERRE_LABEL[dto.resultado],
         exitoso: dto.resultado === 'exitoso',
       });
+      await this.inAppAlCreador(tx, solicitud, 'solicitud_cerrada', actor, {
+        detalle: `Resultado: ${RESULTADO_CIERRE_LABEL[dto.resultado]}.`,
+      });
       return cerrada;
     });
     await this.audit('solicitud.cerrar', id, plazaId, actor, meta, {
@@ -205,6 +218,9 @@ export class AprobacionesService {
       const solicitud = await this.assertSolicitud(tx, id);
       const rechazada = await this.state.rechazar(tx, solicitud, actor, dto.comentario);
       await this.emailAlCreador(tx, solicitud, 'solicitud-rechazada', dto.comentario);
+      await this.inAppAlCreador(tx, solicitud, 'solicitud_rechazada', actor, {
+        detalle: `Motivo: ${dto.comentario}`,
+      });
       return rechazada;
     });
     await this.audit('solicitud.rechazar', id, plazaId, actor, meta, {
@@ -227,6 +243,9 @@ export class AprobacionesService {
       const solicitud = await this.assertSolicitud(tx, id);
       const result = await this.state.pedirSubsanacion(tx, solicitud, actor, dto.comentario);
       await this.emailAlCreador(tx, solicitud, 'solicitud-subsanacion', dto.comentario);
+      await this.inAppAlCreador(tx, solicitud, 'solicitud_subsanacion', actor, {
+        detalle: `Indicación: ${dto.comentario}`,
+      });
       return result;
     });
     await this.audit('solicitud.pedir_subsanacion', id, plazaId, actor, meta, {
@@ -272,6 +291,22 @@ export class AprobacionesService {
             motivo: dto.comentario ?? null,
           },
         });
+      }
+      await this.inApp.notificarSolicitud(
+        tx,
+        solicitud,
+        'solicitud_reasignada',
+        [dto.nuevoResponsableId],
+        actor.sub,
+      );
+      if (solicitud.admin_asignado_id !== dto.nuevoResponsableId) {
+        await this.inApp.notificarSolicitud(
+          tx,
+          solicitud,
+          'solicitud_desasignada',
+          [solicitud.admin_asignado_id],
+          actor.sub,
+        );
       }
       return result;
     });
@@ -456,6 +491,24 @@ export class AprobacionesService {
         ...extraVars,
       },
     });
+  }
+
+  /** Notificación in-app al inquilino creador (PLANIFICACION/16). */
+  private async inAppAlCreador(
+    tx: Prisma.TransactionClient,
+    solicitud: SolicitudModel,
+    tipo: Parameters<NotificacionesInAppService['notificarSolicitud']>[2],
+    actor: AuthenticatedUser,
+    extra?: { detalle?: string | null },
+  ): Promise<void> {
+    await this.inApp.notificarSolicitud(
+      tx,
+      solicitud,
+      tipo,
+      [solicitud.usuario_creador_id],
+      actor.sub,
+      extra,
+    );
   }
 
   /**

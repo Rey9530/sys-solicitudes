@@ -22,6 +22,7 @@ import { AuditoriaService } from '../auditoria/auditoria.service';
 import { SolicitudStateService } from '../solicitudes/state/solicitud-state.service';
 import { SOLICITUD_INCLUDE } from '../solicitudes/solicitud.mapper';
 import { buildSolicitudEmailContext } from '../notificaciones/solicitud-email.builder';
+import { NotificacionesInAppService } from '../notificaciones/notificaciones-inapp.service';
 import { StaffForSubcategoriaValidator } from './validators/staff-for-subcategoria.validator';
 import {
   categoriaToOutput,
@@ -75,6 +76,7 @@ export class CategoriasService {
     private readonly auditoria: AuditoriaService,
     private readonly staffValidator: StaffForSubcategoriaValidator,
     private readonly solicitudState: SolicitudStateService,
+    private readonly inApp: NotificacionesInAppService,
   ) {}
 
   // ── Categorías ────────────────────────────────────────────────────────────────
@@ -505,6 +507,23 @@ export class CategoriasService {
             },
           });
         }
+        // In-app (PLANIFICACION/16): nuevo responsable + admin anterior.
+        await this.inApp.notificarSolicitud(
+          tx,
+          solicitud,
+          'solicitud_reasignada',
+          [responsableId],
+          actor.sub,
+          { detalle: 'Cambio de responsable de subcategoría.' },
+        );
+        await this.inApp.notificarSolicitud(
+          tx,
+          solicitud,
+          'solicitud_desasignada',
+          [solicitud.admin_asignado_id],
+          actor.sub,
+          { detalle: 'Cambio de responsable de subcategoría.' },
+        );
       }
       return { before, updated, reasignadas: activas.length };
     });

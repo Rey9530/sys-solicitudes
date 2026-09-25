@@ -41,6 +41,7 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 | `11-reportes-panel.md` | T-135 … T-145 | 11 | 0 | 0% |
 | `12-seguridad-auditoria.md` | T-146 … T-152 | 7 | 0 | 0% |
 | `13-observabilidad-despliegue.md` | T-153 … T-160 | 8 | 0 | 0% |
+| `16-notificaciones-in-app.md` (2026-09-25) | — | 1 | 1 | 100% |
 | `12-seguridad-auditoria.md` (T-161 agregado en sesión 2026-06-11) | T-146 … T-161 | 8 | 0 | 0% |
 | **Total** | | **176** | **14** | **8%** |
 

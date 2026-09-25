@@ -135,6 +135,7 @@ Leyenda: `✅` permitido · `❌` prohibido · `⚠️` permitido con restricci�
 | Reintentar email fallido | ✅ | ✅ | ❌ |
 | Ver plantillas activas | ✅ | ✅ (solo lectura) | ❌ |
 | Editar plantillas | ❌ | ❌ | ❌ |
+| Ver/marcar **sus** notificaciones in-app (campana) | ❌ (sin bandeja) | ✅ (propias, sin permiso granular) | ✅ (propias, sin permiso granular) |
 
 ### 6.2.8. Calendario
 

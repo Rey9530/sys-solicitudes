@@ -5,9 +5,16 @@ import { SolicitudStateModule } from './state/solicitud-state.module';
 import { AuditoriaModule } from '../auditoria/auditoria.module';
 import { CategoriasModule } from '../categorias/categorias.module';
 import { AdjuntosModule } from '../adjuntos/adjuntos.module';
+import { NotificacionesModule } from '../notificaciones/notificaciones.module';
 
 @Module({
-  imports: [SolicitudStateModule, AuditoriaModule, CategoriasModule, AdjuntosModule],
+  imports: [
+    SolicitudStateModule,
+    AuditoriaModule,
+    CategoriasModule,
+    AdjuntosModule,
+    NotificacionesModule,
+  ],
   controllers: [SolicitudesController],
   providers: [SolicitudesService],
   exports: [SolicitudesService],

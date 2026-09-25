@@ -16,8 +16,10 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   ListEmailLogQuerySchema,
   ListUnsubscribesQuerySchema,
+  NotificacionesInboxQuerySchema,
   type ListEmailLogQuery,
   type ListUnsubscribesQuery,
+  type NotificacionesInboxQuery,
 } from '@app/contracts';
 import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -26,11 +28,13 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { NotificacionesService, type RequestMeta } from './notificaciones.service';
 import { UnsubscribeService } from './unsubscribe.service';
+import { NotificacionesInAppService } from './notificaciones-inapp.service';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
 /**
- * Módulo 09: log de emails (T-127) + desuscripción pública (T-125).
- * Las rutas estáticas (`unsubscribe`, `unsubscribes`) van ANTES de `:id`.
+ * Módulo 09: log de emails (T-127) + desuscripción pública (T-125) + bandeja
+ * in-app (PLANIFICACION/16). Las rutas estáticas (`unsubscribe`,
+ * `unsubscribes`, `inbox`) van ANTES de `:id`.
  */
 @ApiTags('notificaciones')
 @Controller('notificaciones')
@@ -38,6 +42,7 @@ export class NotificacionesController {
   constructor(
     private readonly service: NotificacionesService,
     private readonly unsubscribeService: UnsubscribeService,
+    private readonly inApp: NotificacionesInAppService,
   ) {}
 
   /**
@@ -71,6 +76,47 @@ export class NotificacionesController {
     </div>
   </body>
 </html>`;
+  }
+
+  // ── Bandeja in-app del usuario (PLANIFICACION/16) ────────────────────────────
+  // Sin @RequirePermission: cada usuario solo ve/marca SUS notificaciones
+  // (RLS por plaza + usuario_id = JWT.sub). Superadmin no tiene bandeja.
+
+  @Get('inbox')
+  @ApiBearerAuth()
+  @Roles('admin_plaza', 'inquilino')
+  @ApiOperation({ summary: 'Notificaciones recientes del usuario + conteo de no leídas.' })
+  inbox(
+    @Query(new ZodValidationPipe(NotificacionesInboxQuerySchema)) query: NotificacionesInboxQuery,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.inApp.listarInbox(user, query.limit);
+  }
+
+  @Get('inbox/conteo')
+  @ApiBearerAuth()
+  @Roles('admin_plaza', 'inquilino')
+  @ApiOperation({ summary: 'Conteo de notificaciones no leídas (polling de la campana).' })
+  inboxConteo(@CurrentUser() user: AuthenticatedUser) {
+    return this.inApp.contarNoLeidas(user);
+  }
+
+  @Post('inbox/leer-todas')
+  @ApiBearerAuth()
+  @Roles('admin_plaza', 'inquilino')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Marcar todas las notificaciones del usuario como leídas.' })
+  inboxLeerTodas(@CurrentUser() user: AuthenticatedUser) {
+    return this.inApp.marcarTodasLeidas(user);
+  }
+
+  @Post('inbox/:id/leer')
+  @ApiBearerAuth()
+  @Roles('admin_plaza', 'inquilino')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Marcar una notificación propia como leída.' })
+  inboxLeer(@Param('id', new ParseUUIDPipe()) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.inApp.marcarLeida(user, id);
   }
 
   // ── T-125: gestión de desuscripciones (admin) ────────────────────────────────

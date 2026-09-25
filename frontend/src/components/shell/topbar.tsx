@@ -1,9 +1,10 @@
 'use client';
 
-import { Bell, Globe, PanelLeft, Search } from 'lucide-react';
+import { Globe, PanelLeft, Search } from 'lucide-react';
 import { ThemeToggle } from '@/components/client/theme-toggle';
 import { type AppRole, initials, SHELL_META } from './nav-config';
 import { PlazaSelector, type PlazaLite } from './plaza-selector';
+import { NotificationsBell } from './notifications-bell';
 import type { ShellPlaza, ShellUser } from './sidebar';
 
 interface TopbarProps {
@@ -38,7 +39,12 @@ export function Topbar({
 
   return (
     <header className="topbar">
-      <button type="button" className="top-toggle" onClick={handleToggle} aria-label="Alternar menú">
+      <button
+        type="button"
+        className="top-toggle"
+        onClick={handleToggle}
+        aria-label="Alternar menú"
+      >
         <PanelLeft />
       </button>
 
@@ -68,10 +74,9 @@ export function Topbar({
 
         <ThemeToggle />
 
-        <button type="button" className="icon-btn" aria-label="Notificaciones">
-          <Bell />
-          <span className="ping" />
-        </button>
+        {/* PLANIFICACION/16: bandeja in-app solo para admin_plaza e inquilino
+            (superadmin no recibe notificaciones, tampoco al impersonar). */}
+        {role !== 'superadmin' && <NotificationsBell role={role} />}
 
         <span className="top-avatar" title={user.name ?? undefined}>
           {initials(user.name)}
