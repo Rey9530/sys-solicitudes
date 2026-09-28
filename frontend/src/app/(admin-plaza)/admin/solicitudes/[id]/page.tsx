@@ -8,7 +8,18 @@ import {
   type AdminOption,
 } from '@/components/client/solicitud-detail-admin';
 
-export const metadata: Metadata = { title: 'Detalle de solicitud' };
+/** El número de solicitud también en el título de la pestaña (2026-09-28). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const res = await apiFetch(`/solicitudes/${id}`);
+  if (!res.ok) return { title: 'Detalle de solicitud' };
+  const { codigo } = (await res.json()) as { codigo: string };
+  return { title: `${codigo} · Detalle de solicitud` };
+}
 
 interface PaginatedUsuarios {
   items: Array<{

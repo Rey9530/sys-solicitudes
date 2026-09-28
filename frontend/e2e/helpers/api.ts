@@ -122,10 +122,32 @@ export async function crearYAprobarEvento(
   return sembrado;
 }
 
+/**
+ * Igual que `crearYAprobarEvento` pero además CIERRA la solicitud
+ * (aprobada → cerrada). Regresión 2026-09-28: el trigger de BD borraba su
+ * evento del calendario al cerrarla. Sin caché: cada corrida crea uno nuevo.
+ */
+export async function crearEventoCerrado(
+  fecha: string,
+  horaInicio: string,
+  horaFin: string,
+): Promise<EventoSembrado> {
+  const sembrado = await sembrarEvento(fecha, horaInicio, horaFin, 'E2E-CAL-CERRADA');
+  const adm = await apiLogin(CUENTAS.admin);
+  await json(
+    await adm.post(`${API_URL}/solicitudes/${sembrado.solicitudId}/cerrar`, {
+      data: { resultado: 'exitoso', comentario: 'Cerrada por la suite e2e.' },
+    }),
+  );
+  await adm.dispose();
+  return sembrado;
+}
+
 async function sembrarEvento(
   fecha: string,
   horaInicio: string,
   horaFin: string,
+  prefijo = 'E2E-CAL',
 ): Promise<EventoSembrado> {
   const inq = await apiLogin(CUENTAS.inquilino);
   const locales = await json<{ items: { id: string }[] }>(
@@ -143,7 +165,7 @@ async function sembrarEvento(
   const sub = subcats.items.find((s) => s.activo) ?? subcats.items[0];
   if (!sub) throw new Error('La categoría no tiene subcategorías');
 
-  const titulo = `E2E-CAL-${Date.now()}`;
+  const titulo = `${prefijo}-${Date.now()}`;
   const creada = await json<{ id: string }>(
     await inq.post(`${API_URL}/solicitudes`, {
       data: {
@@ -191,7 +213,7 @@ export interface FeedItem {
   title: string;
   start: string;
   end: string | null;
-  extendedProps: { tipo: string; solicitudId?: string };
+  extendedProps: { tipo: string; solicitudId?: string; solicitudCodigo?: string; estado?: string };
 }
 
 /** Feed del calendario vía API directa (mismo endpoint que usa el BFF). */

@@ -25,7 +25,7 @@ export default async function AdminCalendarioPage() {
     <div className="page wide">
       <PageHeader
         title="Calendario"
-        subtitle="Eventos aprobados, mantenimientos programados e hitos contractuales de la plaza."
+        subtitle="Solicitudes de la plaza en todos sus estados, eventos aprobados, mantenimientos programados e hitos contractuales."
       />
       <CalendarioView
         rol="admin"

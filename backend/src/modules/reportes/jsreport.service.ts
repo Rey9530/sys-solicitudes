@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { BadGatewayException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { fechaHora12 } from '../../common/utils/fecha-plaza';
 
 /**
  * Registro de plantillas jsreport. El `archivo` apunta al `.html` en disco
@@ -25,18 +26,25 @@ export const REPORT_TEMPLATES: Record<string, { archivo: string; recipe: string 
   'solicitud-permiso-pdf': { archivo: 'solicitud-permiso-pdf', recipe: 'chrome-pdf' },
 };
 
-const CHROME_PDF_OPTIONS = {
-  marginTop: '1.5cm',
-  marginBottom: '1.8cm',
-  marginLeft: '1.2cm',
-  marginRight: '1.2cm',
-  displayHeaderFooter: true,
-  headerTemplate: '<span></span>',
-  footerTemplate:
-    '<div style="width:100%;font-size:8px;color:#71717a;padding:0 1.2cm;display:flex;justify-content:space-between;">' +
-    '<span>Generado el <span class="date"></span> · Plazapp</span>' +
-    '<span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span></div>',
-};
+/**
+ * Opciones chrome-pdf. La fecha del pie se calcula en cada render en hora de
+ * la plaza y en 12h (2026-09-28): el `<span class="date">` nativo de Chrome
+ * usaba la TZ/locale del contenedor ("9/28/26, 5:46 PM", UTC).
+ */
+function chromePdfOptions() {
+  return {
+    marginTop: '1.5cm',
+    marginBottom: '1.8cm',
+    marginLeft: '1.2cm',
+    marginRight: '1.2cm',
+    displayHeaderFooter: true,
+    headerTemplate: '<span></span>',
+    footerTemplate:
+      '<div style="width:100%;font-size:8px;color:#71717a;padding:0 1.2cm;display:flex;justify-content:space-between;">' +
+      `<span>Generado el ${fechaHora12(new Date())} · Plazapp</span>` +
+      '<span>Página <span class="pageNumber"></span> de <span class="totalPages"></span></span></div>',
+  };
+}
 
 /**
  * Cliente BFF hacia jsreport 4.13 (T-136, S-JSReport). `fetch` nativo de
@@ -105,7 +113,7 @@ export class JsreportService {
       content: this.templateContent(templateKey),
       engine: 'handlebars',
       recipe: def.recipe,
-      ...(def.recipe === 'chrome-pdf' ? { chrome: CHROME_PDF_OPTIONS } : {}),
+      ...(def.recipe === 'chrome-pdf' ? { chrome: chromePdfOptions() } : {}),
     };
 
     const res = await this.doFetch('/api/report', {

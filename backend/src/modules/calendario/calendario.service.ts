@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -17,6 +18,7 @@ import type {
 } from '@app/contracts';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { PLAZA_UTC_OFFSET_MS } from '../../common/utils/fecha-plaza';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
 export interface RequestMeta {
@@ -53,8 +55,6 @@ const COLOR_POR_ESTADO_SOLICITUD: Record<SolicitudEstado, string> = {
   cancelada: '#6b7280', // gray-500
 };
 
-/** Offset fijo de la plaza (T-V08: America/El_Salvador, UTC-6 sin DST). */
-const PLAZA_UTC_OFFSET_MS = 6 * 3_600_000;
 
 /**
  * Módulo 10 — feed del calendario (T-129), export iCal (T-130), choques
@@ -85,11 +85,9 @@ export class CalendarioService {
         message: '`to` debe ser posterior a `from`.',
       });
     }
-    const tipos =
-      query.tipo ??
-      (actor.rol === 'inquilino'
-        ? ['evento', 'mantenimiento', 'hito_contrato', 'solicitud']
-        : ['evento', 'mantenimiento', 'hito_contrato']);
+    // Fix 2026-09-28: el admin también recibe items `solicitud` (todas las de la
+    // plaza con fecha, cualquier tipo y estado), no solo los eventos aprobados.
+    const tipos = query.tipo ?? ['evento', 'mantenimiento', 'hito_contrato', 'solicitud'];
     const inquilinoScope = actor.rol === 'inquilino' ? this.requireInquilino(actor) : null;
 
     return this.prisma.withTenant(plazaId, async (tx) => {
@@ -107,29 +105,23 @@ export class CalendarioService {
           items.push(...(await this.hitosContractuales(tx, query, from, to, inquilinoScope)));
         }
       }
-      // ⚠️ Solo el INQUILINO recibe items `solicitud`: muestra TODAS sus
-      //  solicitudes con `fecha_evento_inicio` poblada y en el rango (no solo
-      //  aprobadas). El admin nunca las ve (por su tipo de feed).
-      //  `inquilinoScope` está garantizado no-nulo por `requireInquilino` arriba.
+      // Items `solicitud`: TODAS las solicitudes con `fecha_evento_inicio`
+      //  poblada y en el rango (no solo aprobadas), para ambos roles (fix
+      //  2026-09-28: antes solo el inquilino). El inquilino ve solo las suyas
+      //  (`inquilinoScope`); el admin, toda la plaza (filtros opcionales).
       //
       //  Dedup (fix 2026-09-24): una solicitud aprobada ya viene como item
       //  `evento` (fila viva de `evento_calendario`); no se repite como item
       //  `solicitud`. Se filtra en memoria contra los items `evento` que
       //  realmente se incluyeron: si el inquilino desmarca "Eventos aprobados"
       //  su solicitud sigue visible como item `solicitud`.
-      if (actor.rol === 'inquilino' && tipos.includes('solicitud')) {
+      if (tipos.includes('solicitud')) {
         const yaComoEvento = new Set(
           items
             .filter((i) => i.extendedProps.tipo === 'evento')
             .map((i) => i.extendedProps.solicitudId),
         );
-        const solicitudes = await this.solicitudesCalendario(
-          tx,
-          query,
-          from,
-          to,
-          inquilinoScope as string,
-        );
+        const solicitudes = await this.solicitudesCalendario(tx, query, from, to, inquilinoScope);
         items.push(...solicitudes.filter((s) => !yaComoEvento.has(s.extendedProps.solicitudId)));
       }
 
@@ -162,6 +154,7 @@ export class CalendarioService {
           select: {
             id: true,
             codigo: true,
+            estado: true,
             local_id: true,
             inquilino_id: true,
             local: { select: { codigo: true } },
@@ -172,7 +165,8 @@ export class CalendarioService {
     });
     return eventos.map((e) => ({
       id: `evt-${e.id}`,
-      title: e.titulo,
+      // El número de solicitud siempre visible (2026-09-28); `titulo` guardado intacto.
+      title: this.tituloConCodigo(e.solicitud.codigo, e.titulo),
       start: e.inicio.toISOString(),
       end: e.fin.toISOString(),
       color: e.color,
@@ -180,6 +174,7 @@ export class CalendarioService {
         tipo: 'evento' as const,
         solicitudId: e.solicitud.id,
         solicitudCodigo: e.solicitud.codigo,
+        estado: e.solicitud.estado as SolicitudEstado,
         localId: e.solicitud.local_id,
         localCodigo: e.solicitud.local.codigo,
         inquilinoId: e.solicitud.inquilino_id,
@@ -213,15 +208,48 @@ export class CalendarioService {
         fecha_fin_mantenimiento: true,
       },
     });
-    return locales.map((l) => ({
-      id: `mnt-${l.id}`,
-      title: `Mantenimiento · ${l.codigo}`,
-      start: this.soloFecha(l.fecha_inicio_mantenimiento as Date),
-      end: this.soloFecha(l.fecha_fin_mantenimiento as Date),
-      color: COLOR_MANTENIMIENTO,
-      allDay: true,
-      extendedProps: { tipo: 'mantenimiento' as const, localId: l.id, localCodigo: l.codigo },
-    }));
+    // Número de solicitud visible (2026-09-28): la ventana de mantenimiento la
+    // origina la remodelación aprobada (T-103); se toma la más reciente del local.
+    const remodelaciones = locales.length
+      ? await tx.solicitud.findMany({
+          where: {
+            tipo: 'remodelacion',
+            estado: { in: ['aprobada', 'cerrada'] },
+            local_id: { in: locales.map((l) => l.id) },
+          },
+          orderBy: { decision_at: 'desc' },
+          select: { id: true, codigo: true, local_id: true, estado: true },
+        })
+      : [];
+    const remodelacionPorLocal = new Map<string, (typeof remodelaciones)[number]>();
+    for (const r of remodelaciones) {
+      if (!remodelacionPorLocal.has(r.local_id)) remodelacionPorLocal.set(r.local_id, r);
+    }
+    return locales.map((l) => {
+      const sol = remodelacionPorLocal.get(l.id);
+      return {
+        id: `mnt-${l.id}`,
+        title: sol
+          ? `${sol.codigo} · Mantenimiento · ${l.codigo}`
+          : `Mantenimiento · ${l.codigo}`,
+        start: this.soloFecha(l.fecha_inicio_mantenimiento as Date),
+        end: this.soloFecha(l.fecha_fin_mantenimiento as Date),
+        color: COLOR_MANTENIMIENTO,
+        allDay: true,
+        extendedProps: {
+          tipo: 'mantenimiento' as const,
+          localId: l.id,
+          localCodigo: l.codigo,
+          ...(sol
+            ? {
+                solicitudId: sol.id,
+                solicitudCodigo: sol.codigo,
+                estado: sol.estado as SolicitudEstado,
+              }
+            : {}),
+        },
+      };
+    });
   }
 
   /** Contratos por vencer en los próximos 30 días (RN del feed, T-129). */
@@ -285,13 +313,15 @@ export class CalendarioService {
   }
 
   /**
-   * Solicitudes del inquilino en el rango `[from, to]` (decisión owner 2026-08-13):
+   * Solicitudes con fecha en el rango `[from, to]` (decisión owner 2026-08-13;
+   * desde 2026-09-28 también para el admin, con scope de toda la plaza):
    * muestra TODAS sus solicitudes con `fecha_evento_inicio` poblada, sin importar
    * estado. Es el complemento del feed existente de `evento_calendario` (que
    * solo cubre aprobadas) para que el calendario del inquilino muestre la
    * "misma información que su bandeja de /solicitudes".
    *
-   *   - Scope por inquilino: ya viene garantizado por `requireInquilino` en `feed()`.
+   *   - Scope: inquilino → solo las suyas (`requireInquilino` en `feed()`);
+   *     admin → toda la plaza, con filtros opcionales `inquilinoId`/`localId`.
    *   - RLS: corre dentro de `withTenant(plazaId, ...)`.
    *   - Sin choques (T-131 aplica solo a `evento` aprobados): los items
    *     `solicitud` se filtran antes del cálculo en `marcarChoques`.
@@ -301,10 +331,10 @@ export class CalendarioService {
    */
   private async solicitudesCalendario(
     tx: Prisma.TransactionClient,
-    query: Pick<CalendarioQuery, 'localId'>,
+    query: Pick<CalendarioQuery, 'localId' | 'inquilinoId'>,
     from: Date,
     to: Date,
-    inquilinoScope: string,
+    inquilinoScope: string | null,
   ): Promise<CalendarioEventoOutput[]> {
     // `fecha_evento_*` son DATE (medianoche UTC del día civil de la plaza);
     // `from`/`to` llegan como instantes con offset (FullCalendar manda
@@ -315,7 +345,10 @@ export class CalendarioService {
     const toDia = this.fechaCivilPlaza(to);
     const rows = await tx.solicitud.findMany({
       where: {
-        inquilino_id: inquilinoScope,
+        ...(inquilinoScope ? { inquilino_id: inquilinoScope } : {}),
+        ...(!inquilinoScope && query.inquilinoId?.length
+          ? { inquilino_id: { in: query.inquilinoId } }
+          : {}),
         // Solo solicitudes con fecha de evento asignada y que toquen el rango visible.
         fecha_evento_inicio: { not: null, lte: toDia },
         OR: [
@@ -343,7 +376,7 @@ export class CalendarioService {
     return rows.map((s) => ({
       id: `sol-${s.id}`,
       // "<codigo> · <titulo>" truncado a 80 chars (T-133 longitudes razonables).
-      title: `${s.codigo} · ${s.titulo}`.slice(0, 80),
+      title: this.tituloConCodigo(s.codigo, s.titulo),
       start: this.combinarFechaHora(s.fecha_evento_inicio as Date, s.hora_inicio),
       end: this.combinarFechaHora(
         (s.fecha_evento_fin as Date | null) ?? (s.fecha_evento_inicio as Date),
@@ -451,7 +484,7 @@ export class CalendarioService {
         `DTSTAMP:${ahora}`,
         `DTSTART:${this.icsFecha(e.inicio)}`,
         `DTEND:${this.icsFecha(e.fin)}`,
-        `SUMMARY:${this.icsEscape(e.titulo)}`,
+        `SUMMARY:${this.icsEscape(this.tituloConCodigo(e.solicitud.codigo, e.titulo))}`,
         `DESCRIPTION:${this.icsEscape(`Solicitud ${e.solicitud.codigo}: ${frontendUrl}${rutaDetalle}/${e.solicitud.id}`)}`,
         `LOCATION:${this.icsEscape(e.solicitud.local.codigo)}`,
         `ORGANIZER;CN=${this.icsEscape(plaza.nombre_comercial)}:mailto:${plaza.email_contacto ?? 'noreply@plazapp.com'}`,
@@ -501,6 +534,15 @@ export class CalendarioService {
           message: 'El evento de calendario no existe en esta plaza.',
         });
       }
+      // 2026-09-28: los eventos de solicitudes cerradas siguen visibles, pero la
+      // actividad ya concluyó; no se reprograma.
+      if (evento.solicitud.estado === 'cerrada') {
+        throw new ConflictException({
+          code: 'EVENTO_CERRADO',
+          title: 'Conflicto',
+          message: 'La solicitud está cerrada; su evento no se puede mover.',
+        });
+      }
       const updated = await tx.evento_calendario.update({
         where: { id: eventoId },
         data: { inicio, fin },
@@ -509,6 +551,7 @@ export class CalendarioService {
             select: {
               id: true,
               codigo: true,
+              estado: true,
               local_id: true,
               inquilino_id: true,
               local: { select: { codigo: true } },
@@ -550,7 +593,7 @@ export class CalendarioService {
 
     return {
       id: `evt-${actualizado.id}`,
-      title: actualizado.titulo,
+      title: this.tituloConCodigo(actualizado.solicitud.codigo, actualizado.titulo),
       start: actualizado.inicio.toISOString(),
       end: actualizado.fin.toISOString(),
       color: actualizado.color,
@@ -558,6 +601,7 @@ export class CalendarioService {
         tipo: 'evento',
         solicitudId: actualizado.solicitud.id,
         solicitudCodigo: actualizado.solicitud.codigo,
+        estado: actualizado.solicitud.estado as SolicitudEstado,
         localId: actualizado.solicitud.local_id,
         localCodigo: actualizado.solicitud.local.codigo,
         inquilinoId: actualizado.solicitud.inquilino_id,
@@ -566,6 +610,11 @@ export class CalendarioService {
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  /** "<codigo> · <titulo>" truncado a 80 chars (T-133): el número siempre visible. */
+  private tituloConCodigo(codigo: string, titulo: string): string {
+    return `${codigo} · ${titulo}`.slice(0, 80);
+  }
 
   private seSolapan(a: CalendarioEventoOutput, b: CalendarioEventoOutput): boolean {
     const aStart = new Date(a.start).getTime();

@@ -282,8 +282,9 @@ export class SolicitudStateService {
    *  - Si el resultado NO es `exitoso`, el comentario es obligatorio (el Zod
    *    `CerrarSolicitudSchema` ya lo exige; esto es defensa en profundidad
    *    para los callers internos que no pasan por el pipe).
-   *  - NO se toca `evento_calendario` ni el estado del local: la reversión de
-   *    `en_mantenimiento` la sigue haciendo el cron `mantenimiento-fin`.
+   *  - NO se toca `evento_calendario` ni el estado del local: el evento sigue
+   *    visible (el trigger trata `cerrada` como vigente desde 2026-09-28) y la
+   *    reversión de `en_mantenimiento` la sigue haciendo el cron `mantenimiento-fin`.
    */
   async cerrar(
     tx: Prisma.TransactionClient,

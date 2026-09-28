@@ -2872,6 +2872,54 @@
     font-weight: 600;
     color: var(--text);
   }
+  /* Contenido de evento (renderEvento): el número de solicitud SIEMPRE visible
+     (no se trunca); el título es lo que cede espacio. */
+  .cal-evt {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 4px;
+    min-width: 0;
+    overflow: hidden;
+    padding: 0 2px;
+    line-height: 1.3;
+  }
+  .cal-evt-time {
+    flex: none;
+    opacity: 0.9;
+  }
+  .cal-evt-codigo {
+    flex: none;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .cal-evt-title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .fc-list .cal-evt-time {
+    display: none; /* la vista lista ya muestra la hora en su propia columna */
+  }
+  /* En la lista (agenda) el título sí parte línea: si no, la tabla se ensancha
+     y desborda el contenedor en teléfonos. */
+  .fc-list .cal-evt-title {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .fc-list .fc-list-event-title {
+    min-width: 0;
+  }
+  /* Semana/día: columnas estrechas; el número parte línea (nunca se recorta). */
+  .fc-timegrid .cal-evt-codigo {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    font-size: 11px;
+  }
   /* La barra (prev/next/hoy · título · 4 vistas) no cabe en una fila cuando
      el CONTENEDOR es estrecho (teléfonos, o laptop con sidebar abierta): se
      decide con container query, no con el ancho del viewport. */

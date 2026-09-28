@@ -10,7 +10,8 @@ import interactionPlugin from '@fullcalendar/interaction';
 import luxon3Plugin from '@fullcalendar/luxon3';
 import esLocale from '@fullcalendar/core/locales/es';
 import type { DateClickArg } from '@fullcalendar/interaction';
-import type { EventClickArg, EventDropArg, EventInput } from '@fullcalendar/core';
+import type { EventClickArg, EventContentArg, EventDropArg, EventInput } from '@fullcalendar/core';
+import type { VerboseFormattingArg } from '@fullcalendar/core/internal';
 import type { EventResizeDoneArg } from '@fullcalendar/interaction';
 import Link from 'next/link';
 import { SlidersHorizontal } from 'lucide-react';
@@ -24,26 +25,55 @@ import {
 } from '@/components/ui/dialog';
 import { SolicitudEstadoBadge } from '@/components/estado-badge';
 import { fetchCalendarioFeedAction, moverEventoAction } from '@/app/calendario-actions';
+import { formatFechaHora12, formatHora12, hhmm12 } from '@/lib/datetime';
 
 const TZ_PLAZA = 'America/El_Salvador';
 /**
- * Tipos visualizados en el panel de filtros. `solicitud` es exclusivo del
- * inquilino (el admin no recibe items `solicitud` del backend, y aunque los
- * recibiera `TIPOS_VISIBLES_POR_ROL` lo oculta en el checkbox).
+ * Tipos visualizados en el panel de filtros. Desde 2026-09-28 ambos roles
+ * reciben items `solicitud` (el admin: todas las de la plaza con fecha).
  */
 const TIPOS = [
   { value: 'evento', label: 'Eventos aprobados', color: '#10b981' },
   { value: 'mantenimiento', label: 'Mantenimientos', color: '#f59e0b' },
   { value: 'hito_contrato', label: 'Hitos contractuales', color: '#8b5cf6' },
-  { value: 'solicitud', label: 'Mis solicitudes', color: '#a78bfa' },
+  { value: 'solicitud', label: 'Solicitudes', color: '#a78bfa' },
 ] as const;
 type TipoValor = (typeof TIPOS)[number]['value'];
+const TIPOS_VALORES: readonly TipoValor[] = TIPOS.map((t) => t.value);
 
-/** Tipos que se muestran en el panel según el rol actual. */
-function tiposVisibles(rol: 'admin' | 'inquilino'): readonly TipoValor[] {
-  return rol === 'inquilino'
-    ? TIPOS.map((t) => t.value)
-    : TIPOS.filter((t) => t.value !== 'solicitud').map((t) => t.value);
+function tipoLabel(tipo: TipoValor, rol: 'admin' | 'inquilino'): string {
+  if (tipo === 'solicitud' && rol === 'inquilino') return 'Mis solicitudes';
+  return TIPOS.find((t) => t.value === tipo)?.label ?? tipo;
+}
+
+/** FullCalendar: horas SIEMPRE en 12h ("2:00 pm"), en la TZ activa del calendario. */
+function formatoHoraFc(arg: VerboseFormattingArg): string {
+  const ini = hhmm12(arg.start.hour, arg.start.minute);
+  if (!arg.end || arg.end.marker.valueOf() === arg.start.marker.valueOf()) return ini;
+  return `${ini} – ${hhmm12(arg.end.hour, arg.end.minute)}`;
+}
+function formatoSlotFc(arg: VerboseFormattingArg): string {
+  return hhmm12(arg.date.hour, arg.date.minute);
+}
+
+/**
+ * Contenido de cada evento: el número de solicitud va SIEMPRE visible y en
+ * negrita, antes del título (pedido del cliente 2026-09-28), en todas las vistas.
+ */
+function renderEvento(arg: EventContentArg) {
+  const props = arg.event.extendedProps as CalendarioEventoOutput['extendedProps'];
+  const codigo = props.solicitudCodigo;
+  const titulo =
+    codigo && arg.event.title.startsWith(codigo)
+      ? arg.event.title.slice(codigo.length).replace(/^\s*·\s*/, '')
+      : arg.event.title;
+  return (
+    <div className="cal-evt" title={arg.event.title}>
+      {arg.timeText && <span className="cal-evt-time">{arg.timeText}</span>}
+      {codigo && <strong className="cal-evt-codigo">{codigo}</strong>}
+      <span className="cal-evt-title">{titulo}</span>
+    </div>
+  );
 }
 
 export interface OpcionFiltro {
@@ -55,6 +85,7 @@ interface EventoSeleccionado {
   title: string;
   start: string;
   end: string | null;
+  allDay: boolean;
   props: CalendarioEventoOutput['extendedProps'];
 }
 
@@ -100,7 +131,7 @@ export function CalendarioView({
     () => (searchParams.get('inquilinoId')?.split(',') ?? []).filter(Boolean),
     [searchParams],
   );
-  const visibles = useMemo(() => tiposVisibles(rol), [rol]);
+  const visibles = TIPOS_VALORES;
   const filtroTipos = useMemo(() => {
     const t = (searchParams.get('tipo')?.split(',') ?? []).filter(Boolean);
     // Si el link compartido trae tipos no visibles para el rol actual, los
@@ -156,7 +187,11 @@ export function CalendarioView({
           // T-131: choque → borde rojo visible
           borderColor: e.extendedProps.choque ? '#dc2626' : e.color,
           classNames: e.extendedProps.choque ? ['evento-choque'] : [],
-          editable: rol === 'admin' && e.extendedProps.tipo === 'evento',
+          // Solo eventos aprobados; los de solicitudes cerradas se ven pero no se mueven.
+          editable:
+            rol === 'admin' &&
+            e.extendedProps.tipo === 'evento' &&
+            e.extendedProps.estado !== 'cerrada',
           extendedProps: e.extendedProps,
         })),
       );
@@ -179,6 +214,7 @@ export function CalendarioView({
       title: arg.event.title,
       start: arg.event.start?.toISOString() ?? '',
       end: arg.event.end?.toISOString() ?? null,
+      allDay: arg.event.allDay,
       props: arg.event.extendedProps as CalendarioEventoOutput['extendedProps'],
     });
   };
@@ -269,7 +305,7 @@ export function CalendarioView({
                   className="inline-block h-2.5 w-2.5 rounded-full"
                   style={{ background: t.color }}
                 />
-                {t.label}
+                {tipoLabel(t.value, rol)}
               </label>
             ))}
         </div>
@@ -357,6 +393,14 @@ export function CalendarioView({
           }}
           locale={esLocale}
           timeZone={tzPlaza ? TZ_PLAZA : 'local'}
+          eventTimeFormat={formatoHoraFc}
+          slotLabelFormat={formatoSlotFc}
+          eventContent={renderEvento}
+          // Bloques de color en la vista mes. En semana/día se limita cuántos
+          // eventos solapados se apilan (el resto va a "+N", cuyo popover los
+          // lista completos) para que el número de solicitud se lea entero.
+          eventDisplay="block"
+          views={{ timeGridWeek: { eventMaxStack: 1 }, timeGridDay: { eventMaxStack: 4 } }}
           events={cargarEventos}
           eventClick={onEventClick}
           dateClick={onDateClick}
@@ -381,22 +425,22 @@ export function CalendarioView({
                   ⚠️ Este evento se solapa con otro en el mismo local.
                 </p>
               )}
-              <p className="text-gray-600">
-                {new Date(seleccionado.start).toLocaleString('es-SV')}
-                {seleccionado.end ? ` — ${new Date(seleccionado.end).toLocaleString('es-SV')}` : ''}
-              </p>
+              {seleccionado.props.solicitudCodigo && (
+                <p className="text-gray-700">
+                  N.º solicitud:{' '}
+                  <strong className="mono">{seleccionado.props.solicitudCodigo}</strong>
+                </p>
+              )}
+              <p className="text-gray-600">{rangoSeleccionado(seleccionado, tzPlaza)}</p>
               {seleccionado.props.localCodigo && (
                 <p className="text-gray-600">Local: {seleccionado.props.localCodigo}</p>
               )}
               <p className="text-gray-500">
-                Tipo: {TIPOS.find((t) => t.value === seleccionado.props.tipo)?.label}
+                Tipo: {tipoLabel(seleccionado.props.tipo, rol)}
               </p>
-              {/* Items `solicitud` exponen el estado de la solicitud del inquilino
-                  (decisión owner 2026-08-13: el calendario del inquilino muestra
-                  todas sus solicitudes, no solo aprobadas). El admin nunca recibe
-                  items de este tipo, así que el badge solo aparece del lado
-                  inquilino. */}
-              {seleccionado.props.tipo === 'solicitud' && seleccionado.props.estado && (
+              {/* Estado de la solicitud (items `solicitud`, eventos aprobados/cerrados
+                  y mantenimientos originados por una remodelación). */}
+              {seleccionado.props.estado && (
                 <div className="flex items-center gap-2 text-gray-600">
                   <span>Estado:</span>
                   <SolicitudEstadoBadge estado={seleccionado.props.estado} />
@@ -424,7 +468,7 @@ export function CalendarioView({
             <div className="space-y-3 text-sm">
               <p className="text-gray-600">
                 {slotNuevo.fecha}
-                {slotNuevo.hora ? ` a las ${slotNuevo.hora}` : ''}
+                {slotNuevo.hora ? ` a las ${formatHora12(slotNuevo.hora)}` : ''}
               </p>
               {slotOcupado ? (
                 <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
@@ -443,4 +487,18 @@ export function CalendarioView({
       </Dialog>
     </div>
   );
+}
+
+/** Rango legible del evento seleccionado en la TZ activa, con horas en 12h. */
+function rangoSeleccionado(ev: EventoSeleccionado, tzPlaza: boolean): string {
+  const tz = tzPlaza ? TZ_PLAZA : undefined;
+  if (ev.allDay) {
+    const ini = formatFechaHora12(ev.start, tz, false);
+    // FullCalendar: el `end` de un evento de día completo es exclusivo.
+    const finIncl = ev.end ? new Date(new Date(ev.end).getTime() - 86_400_000) : null;
+    const fin = finIncl ? formatFechaHora12(finIncl, tz, false) : ini;
+    return fin === ini ? `${ini} (todo el día)` : `${ini} — ${fin} (todo el día)`;
+  }
+  const ini = formatFechaHora12(ev.start, tz);
+  return ev.end ? `${ini} — ${formatFechaHora12(ev.end, tz)}` : ini;
 }

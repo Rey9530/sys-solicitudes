@@ -300,27 +300,7 @@
     </tr>
   </table>
 
-  <!-- 4. Contrato vigente -->
-  <h2>Contrato vigente</h2>
-  {{#if contrato}}
-    <table class="ficha">
-      <tr>
-        <td class="k">ID</td><td class="v">{{contrato.id}}</td>
-        <td class="k">Monto</td><td class="v">{{contrato.monto}}</td>
-      </tr>
-      <tr>
-        <td class="k">Fecha inicio</td><td class="v">{{contrato.fechaInicio}}</td>
-        <td class="k">Fecha fin</td><td class="v">{{contrato.fechaFin}}</td>
-      </tr>
-      {{#if contrato.condiciones}}
-        <tr><td class="k">Condiciones</td><td colspan="3" class="v">{{contrato.condiciones}}</td></tr>
-      {{/if}}
-    </table>
-  {{else}}
-    <p class="empty">Sin contrato vigente asociado al local e inquilino de esta solicitud.</p>
-  {{/if}}
-
-  <!-- 5. Datos de la solicitud -->
+  <!-- 4. Datos de la solicitud -->
   <h2>Datos de la solicitud</h2>
   <table class="ficha">
     <tr>
@@ -343,7 +323,7 @@
       <tr>
         <td class="k">Válida hasta</td>
         <td colspan="3" class="v">
-          {{fechaExpiracion}} <span class="muted">({{plazoPermisoDias}} días desde la aprobación)</span>
+          {{fechaExpiracion}}{{#if plazoPermisoDias}} <span class="muted">({{plazoPermisoDias}} días desde la aprobación)</span>{{/if}}
         </td>
       </tr>
     {{/if}}
@@ -374,7 +354,7 @@
   <h2>Descripción</h2>
   <div class="descripcion">{{descripcion}}</div>
 
-  <!-- 6. Asistentes (T-V21) -->
+  <!-- 5. Asistentes (T-V21) -->
   {{#if asistentes}}
     <h2>Asistentes <small>total: {{asistentesEstimados}}</small></h2>
     <table class="t">
@@ -398,7 +378,7 @@
     {{/if}}
   {{/if}}
 
-  <!-- 7. Adjuntos -->
+  <!-- 6. Adjuntos -->
   <h2>Adjuntos <small>archivos adjuntos a la solicitud</small></h2>
   {{#if adjuntos}}
     <table class="t">
@@ -421,7 +401,7 @@
     <p class="empty">Sin adjuntos.</p>
   {{/if}}
 
-  <!-- 8. Campos extra relevantes -->
+  <!-- 7. Campos extra relevantes -->
   {{#if camposExtra}}
     <h2>Información adicional</h2>
     <table class="ficha">
@@ -431,7 +411,7 @@
     </table>
   {{/if}}
 
-  <!-- 9. Personal involucrado (placeholders para firma manual) -->
+  <!-- 8. Personal involucrado (placeholders para firma manual) -->
   <h2>Personal involucrado <small>completar a mano al imprimir</small></h2>
   <table class="ficha">
     <tr><td class="k">Nombre 1</td><td class="v na">{{personal.nombre1}}</td>
@@ -440,7 +420,7 @@
         <td class="k">Documento 2</td><td class="v na">{{personal.documento2}}</td></tr>
   </table>
 
-  <!-- 10. Datos del subcontratista (placeholders) -->
+  <!-- 9. Datos del subcontratista (placeholders) -->
   <h2>Datos del subcontratista <small>completar a mano al imprimir</small></h2>
   <table class="ficha">
     <tr><td class="k">Empresa autorizada</td><td colspan="3" class="v">{{autorizamosA}}</td></tr>
@@ -451,7 +431,7 @@
     <tr><td class="k">Otro</td><td colspan="3" class="v na">{{subcontratista.otro}}</td></tr>
   </table>
 
-  <!-- 11. Historial del flujo -->
+  <!-- 10. Historial del flujo -->
   <h2>Historial del flujo</h2>
   {{#if historial}}
     <table class="t">
@@ -477,7 +457,7 @@
     <p class="empty">Sin eventos registrados.</p>
   {{/if}}
 
-  <!-- 12. Comentarios -->
+  <!-- 11. Comentarios -->
   {{#if comentarios}}
     <h2>Comentarios <small>comentarios del flujo</small></h2>
     <table class="t">
@@ -497,7 +477,7 @@
     </table>
   {{/if}}
 
-  <!-- 13. Cláusula de compromiso (formato del cliente) -->
+  <!-- 12. Cláusula de compromiso (formato del cliente) -->
   <h2>Cláusula de compromiso</h2>
   <div class="clausula">
     <p>Me comprometo a la supervisión y cumplimiento por parte del subcontratista a lo
@@ -527,14 +507,14 @@
     </ol>
   </div>
 
-  <!-- 14. Locales en remodelación (placeholders de firma) -->
+  <!-- 13. Locales en remodelación (placeholders de firma) -->
   <h2>Responsable del proyecto <small>completar a mano al imprimir</small></h2>
   <table class="ficha">
     <tr><td class="k">Nombre del responsable</td><td class="v na">{{remodelacion.responsable}}</td>
         <td class="k">Sello</td><td class="v na">{{remodelacion.sello}}</td></tr>
   </table>
 
-  <!-- 15. Firmas -->
+  <!-- 14. Firmas -->
   <h2>Firmas</h2>
   <div class="firma-grid">
     <div>
@@ -547,7 +527,7 @@
     </div>
   </div>
 
-  <!-- 16. Autorizado por -->
+  <!-- 15. Autorizado por -->
   <h2>Autorizado por {{plaza.nombreComercial}}</h2>
   <table class="ficha">
     <tr><td class="k">Autorizante</td><td class="v">{{autorizante.nombre}}</td>

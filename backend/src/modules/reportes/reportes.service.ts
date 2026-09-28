@@ -17,6 +17,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { PrismaAdminService } from '../../prisma/prisma-admin.service';
 import { JsreportService } from './jsreport.service';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
+import { PLAZA_UTC_OFFSET_MS, fechaHora12, hora12 } from '../../common/utils/fecha-plaza';
 
 type Db = Prisma.TransactionClient | PrismaAdminService;
 
@@ -24,8 +25,6 @@ type Db = Prisma.TransactionClient | PrismaAdminService;
 const MAX_FILAS_REPORTE = 10_000;
 /** Rango máximo de la vista rápida (S-Exportación). */
 const MAX_RANGO_MESES = 12;
-/** Offset fijo de la plaza (T-V08). */
-const PLAZA_UTC_OFFSET_MS = 6 * 3_600_000;
 /** Plazo de validez del "Permiso de Trabajos" (T-V21+). Hardcoded 30 días;
  *  futuro: mover a `configuracion.plazo_permisos_dias` por plaza. */
 const PLAZO_PERMISO_DIAS = 30;
@@ -168,8 +167,8 @@ export class ReportesService {
         local: s.local.codigo,
         estado: s.estado,
         prioridad: s.prioridad,
-        enviadaAt: s.enviada_at?.toISOString().slice(0, 16).replace('T', ' ') ?? '',
-        decisionAt: s.decision_at?.toISOString().slice(0, 16).replace('T', ' ') ?? '',
+        enviadaAt: fechaHora12(s.enviada_at),
+        decisionAt: fechaHora12(s.decision_at),
         asignadoA: s.admin_asignado?.nombre ?? '',
       }),
     );
@@ -478,7 +477,6 @@ export class ReportesService {
    *  - Solicitante: nombre, email, teléfono.
    *  - Cliente (inquilino): razón social, NIT, contacto, dirección.
    *  - Local: código, nombre, piso, sector, m², estado.
-   *  - Contrato vigente: ID, fechas, monto, moneda.
    *  - Asistentes (T-V21): tabla nombre+documento.
    *  - Adjuntos vivos: nombre, MIME, tamaño.
    *  - Historial del flujo + comentarios (trazabilidad).
@@ -491,9 +489,9 @@ export class ReportesService {
    *  Plazo de validez del permiso: `decision_at + PLAZO_PERMISO_DIAS` si la
    *  solicitud está aprobada; en otro caso `n/a` (placeholder).
    *
-   *  NOTA: `adjuntos` (polimórfico) y `contrato` (relación local↔inquilino,
-   *  no solicitud) se consultan por separado porque Prisma no tiene esas
-   *  relaciones desde `solicitud`.
+   *  NOTA: `adjuntos` (polimórfico) se consulta por separado porque Prisma no
+   *  tiene esa relación desde `solicitud`. El contrato vigente NO se imprime
+   *  (pedido del cliente 2026-09-28).
    */
   async exportSolicitudPermisoPdf(
     id: string,
@@ -572,23 +570,6 @@ export class ReportesService {
         },
       });
 
-      // Contrato vigente del (local, inquilino) de la solicitud.
-      const contrato = await tx.contrato.findFirst({
-        where: {
-          local_id: solicitud.local_id,
-          inquilino_id: solicitud.inquilino_id,
-          estado: 'vigente',
-        },
-        orderBy: { fecha_inicio: 'desc' },
-        select: {
-          id: true,
-          fecha_inicio: true,
-          fecha_fin: true,
-          monto_mensual: true,
-          moneda: true,
-          condiciones: true,
-        },
-      });
 
       const camposExtra = (solicitud.campos_extra ?? {}) as Record<string, unknown>;
       const empresa =
@@ -642,8 +623,8 @@ export class ReportesService {
         fechaEventoFin: solicitud.fecha_evento_fin
           ? this.fechaIso(solicitud.fecha_evento_fin)
           : null,
-        horaInicio: solicitud.hora_inicio ?? null,
-        horaFin: solicitud.hora_fin ?? null,
+        horaInicio: hora12(solicitud.hora_inicio),
+        horaFin: hora12(solicitud.hora_fin),
         requiereAprobacionEspecial: Boolean(camposExtra.requiere_aprobacion_especial),
 
         // Solicitante (usuario que creó la solicitud).
@@ -673,18 +654,6 @@ export class ReportesService {
           medidorAgua: solicitud.local?.medidor_agua ?? 'n/a',
           estado: solicitud.local?.estado ?? 'n/a',
         },
-        // Contrato vigente.
-        contrato: contrato
-          ? {
-              id: contrato.id,
-              fechaInicio: this.fechaIso(contrato.fecha_inicio),
-              fechaFin: contrato.fecha_fin ? this.fechaIso(contrato.fecha_fin) : 'Indefinido',
-              monto: contrato.monto_mensual
-                ? `${contrato.monto_mensual.toString()} ${contrato.moneda}`
-                : 'n/a',
-              condiciones: contrato.condiciones ?? 'n/a',
-            }
-          : null,
         // Categoría + subcategoría.
         categoria: solicitud.categoria?.nombre ?? 'n/a',
         subcategoria: solicitud.subcategoria?.nombre ?? 'n/a',
@@ -776,17 +745,17 @@ export class ReportesService {
     }
   }
 
-    /** Fecha estilo formato del cliente: "28/Dec/2024 10:00:00" en TZ de la plaza. */
+    /** Fecha estilo formato del cliente: "28/Dec/2024 10:00 am" en TZ de la plaza (12h). */
     private fechaPermiso(date: Date | null): string {
       if (!date) return 'n/a';
       const d = new Date(date.getTime() - PLAZA_UTC_OFFSET_MS);
       const dia = String(d.getUTCDate()).padStart(2, '0');
       const mes = MESES_ABREV[d.getUTCMonth()];
       const anio = d.getUTCFullYear();
-      const hh = String(d.getUTCHours()).padStart(2, '0');
-      const mm = String(d.getUTCMinutes()).padStart(2, '0');
-      const ss = String(d.getUTCSeconds()).padStart(2, '0');
-      return `${dia}/${mes}/${anio} ${hh}:${mm}:${ss}`;
+      // Espacios no separables: la hora y el "am/pm" no se parten de línea en
+      // las columnas estrechas del PDF.
+      const hora = fechaHora12(date).slice(11).replace(' ', '\u00a0');
+      return `${dia}/${mes}/${anio}\u00a0${hora}`;
     }
 
     /** Fecha ISO corta para tablas y secciones: "2026-12-15". */
@@ -979,7 +948,7 @@ export class ReportesService {
   }
 
   private fechaLegibleSv(): string {
-    return new Date(Date.now() - PLAZA_UTC_OFFSET_MS).toISOString().slice(0, 16).replace('T', ' ');
+    return fechaHora12(new Date());
   }
 
   /** Instante UTC en que empieza el día actual de El Salvador. */

@@ -83,7 +83,7 @@ function tiempoRelativo(iso: string, now: number): string {
   if (abs < 86_400) return rtf.format(Math.round(diffS / 3600), 'hour');
   if (abs < 7 * 86_400) return rtf.format(Math.round(diffS / 86_400), 'day');
   // Fecha absoluta SIEMPRE en la TZ de la plaza (T-V08), nunca la del navegador/UTC.
-  return formatInPlazaTz(iso, 'dd/MM/yyyy hh:mmaaa');
+  return formatInPlazaTz(iso);
 }
 
 interface Pos {
@@ -328,7 +328,7 @@ export function NotificationsBell({ role }: { role: AppRole }) {
                         <time
                           className="notif-time"
                           dateTime={n.createdAt}
-                          title={formatInPlazaTz(n.createdAt, 'dd/MM/yyyy hh:mmaaa')}
+                          title={formatInPlazaTz(n.createdAt)}
                         >
                           {tiempoRelativo(n.createdAt, now)}
                         </time>

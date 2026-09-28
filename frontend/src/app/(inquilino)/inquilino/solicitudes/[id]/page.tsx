@@ -4,7 +4,18 @@ import type { SolicitudDetailOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
 import { SolicitudDetailInquilino } from '@/components/client/solicitud-detail-inquilino';
 
-export const metadata: Metadata = { title: 'Detalle de solicitud' };
+/** El número de solicitud también en el título de la pestaña (2026-09-28). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const res = await apiFetch(`/solicitudes/${id}`);
+  if (!res.ok) return { title: 'Detalle de solicitud' };
+  const { codigo } = (await res.json()) as { codigo: string };
+  return { title: `${codigo} · Detalle de solicitud` };
+}
 
 /** Detalle de solicitud del inquilino (T-089). */
 export default async function SolicitudDetailPage({

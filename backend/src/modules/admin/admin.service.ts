@@ -17,6 +17,7 @@ import {
   solicitudToListItem,
   type SolicitudConRelaciones,
 } from '../solicitudes/solicitud.mapper';
+import { fechaHora12 } from '../../common/utils/fecha-plaza';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
 interface Paginated<T> {
@@ -229,7 +230,7 @@ export class AdminService {
           r.estado,
           r.prioridad,
           r.titulo,
-          r.created_at.toISOString(),
+          fechaHora12(r.created_at),
         ];
         yield `${fila.map((v) => escaparCsv(String(v))).join(',')}\r\n`;
       }

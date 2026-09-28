@@ -16,6 +16,7 @@ import { EditarUsuarioPlazaDialog } from '@/components/client/editar-usuario-pla
 import { DeshabilitarUsuarioPlazaDialog } from '@/components/client/deshabilitar-usuario-plaza-dialog';
 import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
+import { formatInPlazaTz } from '@/lib/datetime';
 import {
   ResponsiveDataView,
   type ResponsiveColumn,
@@ -141,7 +142,7 @@ export function UsuariosPlazaTable({
       header: 'Último acceso',
       cardLabel: 'Último acceso',
       className: 'muted',
-      cell: (u) => (u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Nunca'),
+      cell: (u) => (u.lastLoginAt ? formatInPlazaTz(u.lastLoginAt) : 'Nunca'),
     },
     {
       key: 'estado',

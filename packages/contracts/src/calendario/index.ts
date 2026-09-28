@@ -9,10 +9,9 @@ import { SolicitudPrioridadSchema } from '../categorias/index.js';
 /** Tipos de entrada del feed. ⚠️ `remodelacion` no es distinguible en v1:
  *  los locales en mantenimiento no guardan qué tipo de solicitud los originó,
  *  por lo que todo aparece como `mantenimiento` (ver bitácora T-129).
- *  ⚠️ `solicitud` se incluye solo para el feed del INQUILINO: el backend emite
- *  items `solicitud` únicamente cuando `actor.rol === 'inquilino'` y
- *  automáticamente los excluye para el admin. La UI del calendario del admin
- *  no muestra el checkbox 'solicitud' (no viene en su `TIPOS`). */
+ *  `solicitud`: todas las solicitudes con fecha de evento, cualquier tipo y
+ *  estado. Desde 2026-09-28 se emite para ambos roles (inquilino: solo las
+ *  suyas; admin: toda la plaza). */
 export const CalendarioTipoSchema = z.enum([
   'evento',
   'mantenimiento',
@@ -61,9 +60,8 @@ export interface CalendarioEventoOutput {
     contratoId?: string;
     /** T-131: marcado cuando el evento se solapa con otro del mismo local. */
     choque?: boolean;
-    /** Solo en items `tipo === 'solicitud'`: estado y prioridad de la solicitud
-     *  reflejados en el calendario del inquilino (causa raíz del bug original:
-     *  el feed solo exponía aprobadas, ahora expone todas las del inquilino). */
+    /** Estado de la solicitud asociada (items `solicitud`, `evento` y
+     *  `mantenimiento` originado por remodelación). `prioridad`: solo `solicitud`. */
     estado?: z.infer<typeof SolicitudEstadoSchema>;
     prioridad?: z.infer<typeof SolicitudPrioridadSchema>;
   };

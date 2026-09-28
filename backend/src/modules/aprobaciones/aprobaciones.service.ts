@@ -174,7 +174,9 @@ export class AprobacionesService {
   /**
    * `aprobada → cerrada`: da por finalizada la actividad autorizada y registra
    * el resultado. Solo el admin asignado (guard en `state.cerrar`).
-   * NO toca `evento_calendario` ni el estado del local: la salida de
+   * NO toca `evento_calendario` ni el estado del local: el evento sigue
+   * visible en el calendario (el trigger `fn_evento_calendario_soft_delete`
+   * trata `cerrada` como vigente desde 2026-09-28) y la salida de
    * `en_mantenimiento` la sigue gestionando el cron `mantenimiento-fin`.
    */
   async cerrar(
