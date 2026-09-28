@@ -18,6 +18,7 @@ import {
   ResponsiveDataView,
   type ResponsiveColumn,
 } from '@/components/client/responsive/responsive-data-view';
+import { formatInPlazaTz } from '@/lib/datetime';
 
 const ESTADO_BADGE: Record<EmailLogOutput['estado'], string> = {
   pendiente: 'b-warn',
@@ -27,7 +28,7 @@ const ESTADO_BADGE: Record<EmailLogOutput['estado'], string> = {
 
 function fmt(iso: string | null): string {
   if (!iso) return '—';
-  return iso.slice(0, 16).replace('T', ' ');
+  return formatInPlazaTz(iso);
 }
 
 export function NotificacionesTable({ emails }: { emails: EmailLogOutput[] }) {
@@ -70,6 +71,12 @@ export function NotificacionesTable({ emails }: { emails: EmailLogOutput[] }) {
       primary: true,
       className: 'lead',
       cell: (e) => e.destinatario,
+    },
+    {
+      key: 'solicitud',
+      header: 'Solicitud',
+      cardLabel: 'Solicitud',
+      cell: (e) => <span className="mono">{e.solicitudCodigo ?? '—'}</span>,
     },
     {
       key: 'plantilla',

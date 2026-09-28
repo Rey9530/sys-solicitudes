@@ -142,7 +142,7 @@ function DetalleDialog({
             {item.entidadId ? `: ${item.entidadId.slice(0, 8)}` : ''}
           </DialogTitle>
           <DialogDescription>
-            {formatInPlazaTz(item.createdAt, 'dd/MM/yyyy HH:mm:ss')}
+            {formatInPlazaTz(item.createdAt, 'dd/MM/yyyy h:mm:ss aaa')}
             {' · '}
             {item.usuario ? (
               <>
@@ -232,7 +232,7 @@ export function AuditoriaTabla({ items }: { items: AuditoriaOutput[] }) {
       cardLabel: 'Fecha',
       primary: true,
       className: 'muted',
-      cell: (a) => formatInPlazaTz(a.createdAt, 'dd/MM/yyyy HH:mm'),
+      cell: (a) => formatInPlazaTz(a.createdAt),
     },
     {
       key: 'usuario',

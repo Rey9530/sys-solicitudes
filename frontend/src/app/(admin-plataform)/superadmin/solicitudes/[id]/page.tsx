@@ -16,7 +16,18 @@ import {
 import { Card } from '@/components/ui/card';
 import { formatDateInPlazaTz, formatFechaDMY, formatHora12 } from '@/lib/datetime';
 
-export const metadata: Metadata = { title: 'Detalle de solicitud (plataforma)' };
+/** El número de solicitud también en el título de la pestaña (2026-09-28). */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+  const res = await apiFetch(`/admin/solicitudes/${id}`);
+  if (!res.ok) return { title: 'Detalle de solicitud (plataforma)' };
+  const { codigo } = (await res.json()) as { codigo: string };
+  return { title: `${codigo} · Detalle de solicitud (plataforma)` };
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;

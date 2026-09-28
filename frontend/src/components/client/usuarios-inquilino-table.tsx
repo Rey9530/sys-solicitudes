@@ -15,6 +15,7 @@ import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/ui/empty-state';
 import { EditarUsuarioInquilinoDialog } from '@/components/client/editar-usuario-inquilino-dialog';
 import { confirmAction } from '@/lib/sweetalert';
+import { formatInPlazaTz } from '@/lib/datetime';
 import {
   ResponsiveDataView,
   type ResponsiveColumn,
@@ -133,7 +134,7 @@ export function UsuariosInquilinoTable({ usuarios }: { usuarios: UsuarioRow[] })
       header: 'Último acceso',
       cardLabel: 'Último acceso',
       className: 'muted',
-      cell: (u) => (u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Nunca'),
+      cell: (u) => (u.lastLoginAt ? formatInPlazaTz(u.lastLoginAt) : 'Nunca'),
     },
     {
       key: 'estado',

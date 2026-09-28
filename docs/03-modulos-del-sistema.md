@@ -587,6 +587,13 @@ Proveer una vista unificada de todas las actividades programadas en la plaza: ev
 - **CU-CA-7 · Detección visual de choques:** dos eventos que usan el mismo espacio se marcan en rojo. (SUPUESTO S-Choques.)
 - **CU-CA-8 · Crear evento desde el calendario:** crea una solicitud tipo `evento` en estado `borrador`. (SUPUESTO S-CrearDesdeCalendario.)
 
+> **Actualización 2026-09-28 (pedido del cliente, rama `fix/calendario-codigo-hora12`):**
+> - **Todas las solicitudes con fecha** aparecen en el calendario, de cualquier tipo y estado, **para ambos roles**. Antes el admin solo veía eventos aprobados. El admin ve toda la plaza y el inquilino solo las suyas. Una solicitud que ya tiene `evento_calendario` no se duplica como item `solicitud`.
+> - Las solicitudes **cerradas siguen visibles**. ⚠️ El trigger `fn_evento_calendario_soft_delete` borraba el evento al pasar `aprobada → cerrada`. Se corrigió en la migración `20260928000001_evento_calendario_cerrada_visible`, que además hace backfill. Los eventos cerrados no se pueden mover (`409 EVENTO_CERRADO`).
+> - **Número de solicitud siempre visible:** el título de cada item es `SOL-… · título`, incluidos los mantenimientos originados por una remodelación. En el evento se muestra en negrita, en el modal como "N.º solicitud" y en el `SUMMARY` del iCal.
+> - **Horas en 12 h** ("2:00 pm") en el calendario, la UI, los emails, los PDF, XLSX y CSV. El almacenamiento sigue en 24 h `HH:mm`. Los helpers son `frontend/src/lib/datetime.ts` y `backend/src/common/utils/fecha-plaza.ts`.
+> - El PDF "Permiso de Trabajos" **ya no incluye el contrato vigente**.
+
 ### 6.3 Entidades
 
 - `evento_calendario` (vista materializada o query que une solicitudes aprobadas + contratos).

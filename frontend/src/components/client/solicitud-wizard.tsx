@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { confirmAction } from '@/lib/sweetalert';
+import { formatFechaDMY, formatHora12 } from '@/lib/datetime';
 import {
   MAX_PERSONAL,
   MIN_PERSONAL,
@@ -448,6 +449,8 @@ export function SolicitudWizard({
     };
 
     let id = solicitud?.id;
+    // Número de solicitud visible en todo el proceso (2026-09-28).
+    let codigo = solicitud?.codigo;
     if (editMode && id) {
       const r = await updateSolicitudAction(
         id,
@@ -466,6 +469,7 @@ export function SolicitudWizard({
         return;
       }
       id = r.data.id;
+      codigo = r.data.codigo;
       // Adjuntos del paso 3 (máx 10).
       for (const file of files) {
         const fd = new FormData();
@@ -485,8 +489,11 @@ export function SolicitudWizard({
       }
     }
     setSubmitting(false);
+    const ref = codigo ? ` ${codigo}` : '';
     toast.success(
-      enviarAhora ? 'Solicitud enviada: quedó en cola de asignación' : 'Borrador guardado',
+      enviarAhora
+        ? `Solicitud${ref} enviada: quedó en cola de asignación`
+        : `Borrador${ref} guardado`,
     );
     router.push(`/inquilino/solicitudes/${id}`);
     router.refresh();
@@ -1325,14 +1332,16 @@ function ResumenCard(props: ResumenCardProps) {
           label="Inicio"
           value={
             fechaInicio
-              ? `${fechaInicio} ${horaInicio || ''}`.trim()
+              ? `${formatFechaDMY(fechaInicio)} ${horaInicio ? formatHora12(horaInicio) : ''}`.trim()
               : null
           }
         />
         <Fila
           label="Fin"
           value={
-            fechaFin ? `${fechaFin} ${horaFin || ''}`.trim() : null
+            fechaFin
+              ? `${formatFechaDMY(fechaFin)} ${horaFin ? formatHora12(horaFin) : ''}`.trim()
+              : null
           }
         />
       </Seccion>

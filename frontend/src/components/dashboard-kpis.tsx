@@ -4,6 +4,7 @@ import type { DashboardChartsOutput, KpisOutput } from '@app/contracts';
 import { DashboardCharts } from '@/components/client/dashboard-charts';
 import { Card, CardBody, CardHead } from '@/components/ui/card';
 import { KpiCard } from '@/components/ui/kpi-card';
+import { formatInPlazaTz } from '@/lib/datetime';
 
 /**
  * T-143: contenido compartido del dashboard (Server Component) — lo usan
@@ -130,7 +131,7 @@ export function DashboardContenido({
                     <span style={{ color: 'var(--text-2)' }}>{a.evento.replace(/_/g, ' ')}</span>
                     {a.usuario && <span className="muted"> · {a.usuario}</span>}
                   </div>
-                  <span className="tl-time">{a.createdAt.slice(0, 16).replace('T', ' ')}</span>
+                  <span className="tl-time">{formatInPlazaTz(a.createdAt)}</span>
                 </div>
               ))
             )}

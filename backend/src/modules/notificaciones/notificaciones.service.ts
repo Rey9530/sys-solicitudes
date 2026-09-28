@@ -35,6 +35,9 @@ interface Paginated<T> {
  * Scope: `admin_plaza` ve SOLO su plaza (withTenant + RLS); `superadmin` ve
  * todas (admin client, bypass RLS documentado en T-038).
  */
+/** Fila del log con el número de solicitud (opcional: `findScoped` no lo trae). */
+type EmailLogConSolicitud = email_log & { solicitud?: { codigo: string } | null };
+
 @Injectable()
 export class NotificacionesService {
   constructor(
@@ -232,13 +235,14 @@ export class NotificacionesService {
     where: Prisma.email_logWhereInput,
     page: number,
     pageSize: number,
-  ): Promise<{ items: email_log[]; total: number }> {
+  ): Promise<{ items: EmailLogConSolicitud[]; total: number }> {
     const [items, total] = await Promise.all([
       db.email_log.findMany({
         where,
         skip: (page - 1) * pageSize,
         take: pageSize,
         orderBy: { created_at: 'desc' },
+        include: { solicitud: { select: { codigo: true } } },
       }),
       db.email_log.count({ where }),
     ]);
@@ -287,11 +291,12 @@ export class NotificacionesService {
     return actor.plazaId;
   }
 
-  private toOutput(e: email_log): EmailLogOutput {
+  private toOutput(e: EmailLogConSolicitud): EmailLogOutput {
     return {
       id: e.id,
       plazaId: e.plaza_id,
       solicitudId: e.solicitud_id,
+      solicitudCodigo: e.solicitud?.codigo ?? null,
       destinatario: e.destinatario,
       plantilla: e.plantilla,
       estado: e.estado,

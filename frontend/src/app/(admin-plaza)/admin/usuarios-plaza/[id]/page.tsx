@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { UsuarioOutput, RolStaffOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
+import { formatInPlazaTz } from '@/lib/datetime';
 import { PageHeader } from '@/components/ui/page-header';
 import { EditarUsuarioPlazaDialog } from '@/components/client/editar-usuario-plaza-dialog';
 
@@ -83,13 +84,13 @@ export default async function UsuarioPlazaDetallePage({
           />
           <Row
             label="Último acceso"
-            value={usuario.lastLoginAt ? new Date(usuario.lastLoginAt).toLocaleString() : 'Nunca'}
+            value={usuario.lastLoginAt ? formatInPlazaTz(usuario.lastLoginAt) : 'Nunca'}
           />
           <Row
             label="Estado"
             value={
               usuario.deletedAt
-                ? `Inactivo desde ${new Date(usuario.deletedAt).toLocaleString()}`
+                ? `Inactivo desde ${formatInPlazaTz(usuario.deletedAt)}`
                 : usuario.emailInvalido
                   ? 'Email inválido (hard bounce)'
                   : 'Activo'

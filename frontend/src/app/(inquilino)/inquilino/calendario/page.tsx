@@ -17,7 +17,7 @@ export default async function InquilinoCalendarioPage() {
     <div className="page wide">
       <PageHeader
         title="Calendario"
-        subtitle="Tus eventos aprobados, mantenimientos e hitos de contrato. Haz click en un slot vacío para solicitar un evento."
+        subtitle="Tus solicitudes en todos sus estados, eventos aprobados, mantenimientos e hitos de contrato. Haz click en un slot vacío para solicitar un evento."
       />
       <CalendarioView
         rol="inquilino"

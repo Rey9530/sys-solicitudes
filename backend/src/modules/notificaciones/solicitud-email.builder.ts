@@ -26,6 +26,7 @@ import {
   SOLICITUD_PRIORIDAD_LABEL,
   SOLICITUD_PRIORIDAD_COLOR,
 } from '../solicitudes/labels';
+import { hora12 } from '../../common/utils/fecha-plaza';
 import type { SolicitudConRelaciones } from '../solicitudes/solicitud.mapper';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -87,9 +88,9 @@ export interface SolicitudEmailContext {
   // Rango del evento
   fechaEventoInicio: string | null; // YYYY-MM-DD
   fechaEventoFin: string | null;
-  horaInicio: string | null; // HH:MM
+  horaInicio: string | null; // "2:00 pm" (12h, formato visible)
   horaFin: string | null;
-  rangoEvento: string | null; // "2026-08-15 14:00 → 2026-08-15 18:00 (UTC-6)"
+  rangoEvento: string | null; // "2026-08-15 2:00 pm → 2026-08-15 6:00 pm (UTC-6)"
 
   // Empresa ejecutante
   empresaNombre: string | null;
@@ -237,7 +238,8 @@ export function formatCamposExtraPorTipo(
 }
 
 /**
- * "2026-08-15 14:00 → 2026-08-15 18:00 (UTC-6)" o variantes según lo que esté.
+ * "2026-08-15 2:00 pm → 2026-08-15 6:00 pm (UTC-6)" o variantes según lo que esté.
+ * Las horas llegan en 24h ("HH:mm", almacenamiento) y se muestran en 12h.
  */
 function formatearRangoEvento(
   fechaInicio: string | null,
@@ -246,6 +248,8 @@ function formatearRangoEvento(
   horaFin: string | null,
 ): string | null {
   if (!fechaInicio && !fechaFin) return null;
+  horaInicio = hora12(horaInicio);
+  horaFin = hora12(horaFin);
   const ini = fechaInicio ?? '?';
   const fin = fechaFin ?? ini;
   const partes: string[] = [ini];
@@ -334,8 +338,8 @@ export function buildSolicitudEmailContext(solicitud: SolicitudConRelaciones): S
 
     fechaEventoInicio: fechaIni,
     fechaEventoFin: fechaFin,
-    horaInicio: solicitud.hora_inicio ?? null,
-    horaFin: solicitud.hora_fin ?? null,
+    horaInicio: hora12(solicitud.hora_inicio),
+    horaFin: hora12(solicitud.hora_fin),
     rangoEvento: formatearRangoEvento(fechaIni, fechaFin, solicitud.hora_inicio, solicitud.hora_fin),
 
     empresaNombre: solicitud.empresa_nombre?.trim() || null,

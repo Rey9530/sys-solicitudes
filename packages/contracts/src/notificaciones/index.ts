@@ -37,6 +37,8 @@ export interface EmailLogOutput {
   id: string;
   plazaId: string;
   solicitudId: string | null;
+  /** Número de la solicitud (`SOL-…`) visible en el log (2026-09-28). */
+  solicitudCodigo: string | null;
   destinatario: string;
   plantilla: string;
   estado: EmailLogEstado;
