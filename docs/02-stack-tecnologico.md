@@ -460,6 +460,8 @@ Documentar explícitamente para que nadie agregue dependencias por su cuenta:
 
 Si alguien necesita un formato nuevo, el camino es: **agregar una receta de jsreport + una plantilla**, no instalar una librería de Node.
 
+> **Excepción de LECTURA (2026-10-22, `PLANIFICACION/18-carga-inicial-excel.md`):** el backend usa `read-excel-file` (solo lectura de `.xlsx`, sin capacidad de generar archivos) para la carga inicial de locales, inquilinos y contratos. La regla de esta sección sigue intacta para la **generación**: PDFs y Excels de salida siempre por jsreport.
+
 ### 2.12.8. Healthcheck de jsreport
 
 - **Endpoint:** `GET /api/ping` (no requiere autenticación, según la documentación oficial de jsreport).

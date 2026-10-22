@@ -212,7 +212,7 @@ Administrar el inventario de locales de una plaza: alta, baja, edición, consult
 - **CU-LO-6 · Detalle de local:** incluye contrato vigente, histórico de contratos, solicitudes recientes, adjuntos.
 - **CU-LO-7 · Asignación múltiple de locales a un mismo inquilino:** un inquilino puede administrar varios locales.
 - **CU-LO-8 · Subir plano / fotos del local:** adjuntos a nivel de local (no de solicitud).
-- **CU-LO-9 · Carga masiva de locales:** importador CSV (SUPUESTO S-CSV) para el onboarding inicial.
+- **CU-LO-9 · Carga masiva (carga inicial):** ⚠️ revisado 2026-10-22 — en lugar del importador CSV de locales, un importador **Excel** (`/admin/contratos/importar`) crea locales, inquilinos y contratos desde una sola plantilla. Ver `PLANIFICACION/18-carga-inicial-excel.md`.
 
 #### Inquilinos (arrendatarios)
 
@@ -280,7 +280,7 @@ Administrar el inventario de locales de una plaza: alta, baja, edición, consult
 
 - **S-LO-A:** el sistema no gestiona pagos ni facturación; el `monto_mensual` es solo referencial.
 - **S-LO-B:** los estados de local pueden ser editables manualmente por el admin para reflejar mantenimiento.
-- **S-LO-C:** la importación CSV es para el onboarding; no se mantiene una UI de mapeo de columnas.
+- **S-LO-C:** la importación es para el onboarding; no se mantiene una UI de mapeo de columnas (las columnas se reconocen por encabezado; ver `PLANIFICACION/18`).
 - **S-CO-A:** los contratos no se firman digitalmente dentro del sistema; el PDF firmado se sube como adjunto.
 - **S-CO-B:** las alertas de vencimiento (T-30/T-7) son SUPUESTO; si el cliente quiere, se implementa con `@nestjs/schedule`.
 
@@ -883,7 +883,7 @@ Concentrar la vista de operación del `admin_plaza` con los indicadores clave (K
 | S-Lockout | Autenticación | Bloqueo tras 5 intentos fallidos / 15 min |
 | S-Reset | Autenticación | Token de reset de 30 min, un solo uso |
 | S-EstadosLocal | Locales | Estados: disponible, alquilado, en_mantenimiento, fuera_de_servicio |
-| S-CSV | Locales | Importador CSV para onboarding |
+| S-CSV | Locales | ⚠️ Revisado 2026-10-22: carga inicial vía **Excel** (locales + inquilinos + contratos), `PLANIFICACION/18` |
 | S-ContratoIndefinido | Contratos | Contratos sin fecha_fin (indefinidos) permitidos |
 | S-AlertaVencimiento | Contratos | Alertas T-30 y T-7 antes del fin |
 | S-CamposTipo | Solicitudes | Campos extra por tipo (RN-SO-5) |

@@ -13,6 +13,7 @@ import { ConfiguracionModule } from './modules/configuracion/configuracion.modul
 import { LocalesModule } from './modules/locales/locales.module';
 import { InquilinosModule } from './modules/inquilinos/inquilinos.module';
 import { ContratosModule } from './modules/contratos/contratos.module';
+import { ImportacionModule } from './modules/importacion/importacion.module';
 import { CategoriasModule } from './modules/categorias/categorias.module';
 import { TiposSolicitudModule } from './modules/tipos-solicitud/tipos-solicitud.module';
 import { SolicitudesModule } from './modules/solicitudes/solicitudes.module';
@@ -90,6 +91,7 @@ import { PermissionsGuard } from './common/guards/permissions.guard';
     LocalesModule,
     InquilinosModule,
     ContratosModule,
+    ImportacionModule,
     CategoriasModule,
     TiposSolicitudModule,
     // AprobacionesModule ANTES de SolicitudesModule: sus rutas estaticas

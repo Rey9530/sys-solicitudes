@@ -19,12 +19,19 @@ export const LocalEstadoSchema = z.enum([
 ]);
 export type LocalEstado = z.infer<typeof LocalEstadoSchema>;
 
-/** Normaliza un medidor (string de dígitos): trim + filtra `null`/`''` → `undefined`. */
+/**
+ * Medidores: dígitos y guiones (p. ej. `18-622259-1`, formato real de los
+ * medidores de agua; PLANIFICACION/18 D8).
+ */
+export const MEDIDOR_REGEX = /^[0-9]+(-[0-9]+)*$/;
+const MEDIDOR_MENSAJE = 'Solo dígitos y guiones';
+
+/** Normaliza un medidor: trim + filtra `null`/`''` → `undefined`. */
 const medidorSchema = (max: number) =>
   z
     .string()
     .trim()
-    .regex(/^\d+$/, 'Solo dígitos')
+    .regex(MEDIDOR_REGEX, MEDIDOR_MENSAJE)
     .max(max)
     .optional()
     .or(z.literal('').transform(() => undefined));
@@ -58,8 +65,8 @@ export const UpdateLocalSchema = z.object({
   modulo: vacioANull(z.string().trim().toUpperCase().min(1).max(20)),
   nivel: vacioANull(z.string().trim().min(1).max(10)),
   areaM2: vacioANull(z.coerce.number().positive().max(1_000_000)),
-  medidorEnergia: vacioANull(z.string().trim().regex(/^\d+$/, 'Solo dígitos').max(20)),
-  medidorAgua: vacioANull(z.string().trim().regex(/^\d+$/, 'Solo dígitos').max(20)),
+  medidorEnergia: vacioANull(z.string().trim().regex(MEDIDOR_REGEX, MEDIDOR_MENSAJE).max(20)),
+  medidorAgua: vacioANull(z.string().trim().regex(MEDIDOR_REGEX, MEDIDOR_MENSAJE).max(20)),
   estado: LocalEstadoSchema.optional(),
 });
 export type UpdateLocalInput = z.infer<typeof UpdateLocalSchema>;

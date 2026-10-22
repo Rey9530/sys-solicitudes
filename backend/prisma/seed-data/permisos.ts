@@ -97,6 +97,7 @@ export const PERMISOS_CATALOG: readonly PermisoCatalogo[] = [
   { codigo: 'contratos.editar', modulo: 'contratos', accion: 'editar', descripcion: 'Editar un contrato vigente.' },
   { codigo: 'contratos.cerrar', modulo: 'contratos', accion: 'cerrar', descripcion: 'Cerrar un contrato (finalizar el alquiler).' },
   { codigo: 'contratos.renovar', modulo: 'contratos', accion: 'renovar', descripcion: 'Renovar un contrato creando uno nuevo con continuidad.' },
+  { codigo: 'contratos.importar', modulo: 'contratos', accion: 'importar', descripcion: 'Carga inicial desde Excel: crea locales, inquilinos y contratos en un solo paso.' },
   { codigo: 'contratos.adjuntos.subir', modulo: 'contratos', accion: 'adjuntos_subir', descripcion: 'Subir adjuntos a un contrato.' },
   { codigo: 'contratos.adjuntos.descargar', modulo: 'contratos', accion: 'adjuntos_descargar', descripcion: 'Descargar adjuntos de un contrato.' },
   { codigo: 'contratos.adjuntos.eliminar', modulo: 'contratos', accion: 'adjuntos_eliminar', descripcion: 'Eliminar adjuntos de un contrato (cuarentena + soft delete).' },
