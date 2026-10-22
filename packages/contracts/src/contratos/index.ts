@@ -54,14 +54,10 @@ export const CreateContratoSchema = z
     (v) => v.fechaFin == null || v.fechaFin >= v.fechaInicio,
     { message: 'fechaFin debe ser >= fechaInicio', path: ['fechaFin'] },
   )
-  .refine(
-    (v) => v.fechaEntregaLocal == null || v.fechaEntregaLocal >= v.fechaInicio,
-    { message: 'fechaEntregaLocal debe ser >= fechaInicio', path: ['fechaEntregaLocal'] },
-  )
-  .refine(
-    (v) => v.fechaPagoDeposito == null || v.fechaPagoDeposito >= v.fechaInicio,
-    { message: 'fechaPagoDeposito debe ser >= fechaInicio', path: ['fechaPagoDeposito'] },
-  )
+  // `fechaEntregaLocal` y `fechaPagoDeposito` pueden ser ANTERIORES a
+  // `fechaInicio` (depósito pagado y local entregado para acondicionamiento
+  // antes de arrancar el contrato). Se quitó esa validación (carga inicial
+  // desde Excel, PLANIFICACION/18 D3).
   .refine(
     (v) =>
       v.avisoTerminacion == null || v.fechaFin == null || v.avisoTerminacion <= v.fechaFin,

@@ -3,6 +3,15 @@ import { Prisma, PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 
 /**
+ * Opciones de la transacción de `withTenant`. Por defecto Prisma corta a los
+ * 5 s; las operaciones masivas (carga inicial, PLANIFICACION/18) lo amplían.
+ */
+export interface TenantTxOptions {
+  timeout?: number;
+  maxWait?: number;
+}
+
+/**
  * Cliente Prisma de la APLICACIÓN.
  *
  * Conecta con el rol `syssol_app` (DATABASE_URL), que NO tiene BYPASSRLS: las
@@ -58,10 +67,11 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async withTenant<T>(
     plazaId: string,
     fn: (tx: Prisma.TransactionClient) => Promise<T>,
+    options?: TenantTxOptions,
   ): Promise<T> {
     return this.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.plaza_id', ${plazaId}, true)`;
       return fn(tx);
-    });
+    }, options);
   }
 }

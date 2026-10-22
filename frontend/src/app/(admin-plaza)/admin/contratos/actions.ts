@@ -6,6 +6,7 @@ import {
   CreateContratoSchema,
   CerrarContratoSchema,
   RenovarContratoSchema,
+  type CargaInicialResultado,
 } from '@app/contracts';
 
 // Tipos de ENTRADA (pre-defaults/coerción de Zod): lo que envían los formularios.
@@ -106,6 +107,50 @@ export async function renovarContratoAction(
   }
   revalidateContratos(id);
   return { ok: true };
+}
+
+export type CargaInicialActionResult =
+  | { ok: true; resultado: CargaInicialResultado }
+  | { ok: false; error: string };
+
+/**
+ * Carga inicial desde Excel (PLANIFICACION/18): analiza la plantilla sin
+ * escribir nada. El FormData (campo `file`) viaja tal cual al backend.
+ */
+export async function analizarCargaInicialAction(
+  formData: FormData,
+): Promise<CargaInicialActionResult> {
+  return enviarCargaInicial('analizar', formData, 'No se pudo analizar el archivo.');
+}
+
+/**
+ * Crea locales, inquilinos y contratos de la plantilla. El navegador reenvía
+ * el mismo archivo del análisis: el backend recalcula el plan (stateless).
+ */
+export async function ejecutarCargaInicialAction(
+  formData: FormData,
+): Promise<CargaInicialActionResult> {
+  const r = await enviarCargaInicial('ejecutar', formData, 'No se pudo importar el archivo.');
+  if (r.ok) {
+    revalidateContratos();
+    revalidatePath('/admin/inquilinos');
+  }
+  return r;
+}
+
+async function enviarCargaInicial(
+  paso: 'analizar' | 'ejecutar',
+  formData: FormData,
+  fallback: string,
+): Promise<CargaInicialActionResult> {
+  const denied = await ensureCan(['contratos.importar']);
+  if (denied) return denied;
+  const res = await apiFetch(`/importacion/carga-inicial/${paso}`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) return { ok: false, error: await errorFrom(res, fallback) };
+  return { ok: true, resultado: (await res.json()) as CargaInicialResultado };
 }
 
 /** Subida del PDF firmado (T-062). El FormData viaja tal cual al backend. */

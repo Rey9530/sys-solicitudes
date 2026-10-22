@@ -43,6 +43,7 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
 | `13-observabilidad-despliegue.md` | T-153 … T-160 | 8 | 0 | 0% |
 | `16-notificaciones-in-app.md` (2026-09-25) | — | 1 | 1 | 100% |
 | `17-cambiar-password.md` (2026-09-25) | — | 1 | 1 | 100% |
+| `18-carga-inicial-excel.md` (2026-10-22) | — | 1 | 1 | 100% |
 | `12-seguridad-auditoria.md` (T-161 agregado en sesión 2026-06-11) | T-146 … T-161 | 8 | 0 | 0% |
 | **Total** | | **176** | **14** | **8%** |
 
@@ -264,6 +265,7 @@ La planificación se divide **por módulo funcional** (alineado 1:1 con los mód
     - **T-051 (en `04-locales-inquilinos-contratos.md`):** Quitar la mención de "Importar CSV" del botón. Solo "Nuevo local".
   - **Criterios de aceptación modificados:**
     - [x] Originales sobre formato CSV y estrategia de validación — **MODIFICADOS a N/A, sin CSV en v1**.
+  - **actualización: 2026-10-22** — ⚠️ El owner **reabre S-CSV** para la carga inicial de Paseo Venecia: se implementa un importador **Excel** (no CSV) que crea locales, inquilinos y contratos desde una sola plantilla, con vista previa y transacción única. T-052/T-058 siguen descartadas (alcance distinto: aquellas eran solo locales vía CSV). Detalle, decisiones D1–D11 y verificación en `18-carga-inicial-excel.md`.
 
 ### T-V08 — Validar branding y presentación
 - **Descripción:** Confirmar la personalización visual por plaza (color primario en variable CSS, logo en header, nombre comercial), la zona horaria IANA (default `America/Costa_Rica`), y los colores por tipo de solicitud en el calendario.

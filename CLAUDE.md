@@ -267,6 +267,14 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de inst
 |---|---|---|
 | `@playwright/test` | `1.63.0` | devDependency en `frontend/`; `engines node >= 20` ✅. Suite en `frontend/e2e/` (`npm run test:e2e`), asume stack local levantado (`:3000` + `:4000`). Los binarios se instalan con `npx playwright install chromium` (headless shell 1243). ⚠️ El login está limitado a 5 req/min por IP: los helpers cachean tokens/sesión 10 min en `test-results/` y reintentan tras `Retry-After`. |
 
+### Hallazgos de versiones (carga inicial desde Excel, 2026-10-22)
+
+Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de instalar:
+
+| Paquete | Versión instalada | Notas de compatibilidad |
+|---|---|---|
+| `read-excel-file` | `9.3.12` | dependency en `backend/`; **solo lectura** de `.xlsx` (excepción documentada en `docs/02` §2.12.7, la generación sigue en jsreport). `read-excel-file/node` trae salida CJS (compatible con el backend CommonJS); `engines node >= 18` ✅. Desde v8 la API es `readSheet` / default export (`[{ sheet, data }]`). Descartados: `exceljs` (vetado) y `xlsx@0.18.5` (abandonado en npm, CVEs). Ver `PLANIFICACION/18-carga-inicial-excel.md`. |
+
 ### Documentación de tareas
 
 > **Regla obligatoria:** Al finalizar una tarea técnica de `PLANIFICACION/*.md`, se debe:

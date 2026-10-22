@@ -16,6 +16,7 @@ import type {
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { contratoToOutput, ordenarHistorial } from '../contratos/contrato.mapper';
+import { inquilinoToOutput } from './inquilino.mapper';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
 export interface RequestMeta {
@@ -110,10 +111,10 @@ export class InquilinosService {
       entidadId: inquilino.id,
       plazaId,
       usuarioId: actor.sub,
-      despues: this.toOutput(inquilino),
+      despues: inquilinoToOutput(inquilino),
       ...meta,
     });
-    return this.toOutput(inquilino);
+    return inquilinoToOutput(inquilino);
   }
 
   // ── Listar (inquilino: solo el suyo) ──────────────────────────────────────────
@@ -149,7 +150,7 @@ export class InquilinosService {
     });
 
     return {
-      items: items.map((i) => this.toOutput(i)),
+      items: items.map((i) => inquilinoToOutput(i)),
       total,
       page,
       pageSize,
@@ -177,7 +178,7 @@ export class InquilinosService {
 
     const historico = ordenarHistorial(result?.contratos ?? []);
     return {
-      ...this.toOutput(found),
+      ...inquilinoToOutput(found),
       contratosVigentes: historico.filter((c) => c.estado === 'vigente').map(contratoToOutput),
       historicoContratos: historico.map(contratoToOutput),
     };
@@ -295,11 +296,11 @@ export class InquilinosService {
       entidadId: id,
       plazaId,
       usuarioId: actor.sub,
-      antes: this.toOutput(before),
-      despues: this.toOutput(updated),
+      antes: inquilinoToOutput(before),
+      despues: inquilinoToOutput(updated),
       ...meta,
     });
-    return this.toOutput(updated);
+    return inquilinoToOutput(updated);
   }
 
   // ── Soft delete (sin contratos vigentes) ──────────────────────────────────────
@@ -330,7 +331,7 @@ export class InquilinosService {
       entidadId: id,
       plazaId,
       usuarioId: actor.sub,
-      antes: this.toOutput(before),
+      antes: inquilinoToOutput(before),
       ...meta,
     });
   }
@@ -383,43 +384,5 @@ export class InquilinosService {
         message: `Ya existe un inquilino con la identificación "${identificacion ?? ''}" en la plaza.`,
       });
     }
-  }
-
-  private toOutput(i: InquilinoModel): InquilinoOutput {
-    return {
-      id: i.id,
-      plazaId: i.plaza_id,
-      // Identidad
-      razonSocial: i.razon_social,
-      identificacion: i.identificacion,
-      nombreComercial: i.nombre_comercial,
-      representanteLegal: i.representante_legal,
-      numeroNrc: i.numero_nrc,
-      // Canales
-      correoRecepcionDte: i.correo_recepcion_dte,
-      numeroTelefono: i.numero_telefono,
-      direccion: i.direccion,
-      // Contacto 1
-      contacto1Nombre: i.contacto1_nombre,
-      contacto1Cargo: i.contacto1_cargo,
-      contacto1Email: i.contacto1_email,
-      contacto1Telefono: i.contacto1_telefono,
-      // Contacto 2
-      contacto2Nombre: i.contacto2_nombre,
-      contacto2Cargo: i.contacto2_cargo,
-      contacto2Email: i.contacto2_email,
-      contacto2Telefono: i.contacto2_telefono,
-      // Clasificación
-      tipoCliente: i.tipo_cliente,
-      giroAutorizado: i.giro_autorizado,
-      categoria: i.categoria,
-      subcategoria: i.subcategoria,
-      // Otros
-      comentarios: i.comentarios,
-      // Auditoría
-      createdAt: i.created_at.toISOString(),
-      updatedAt: i.updated_at.toISOString(),
-      deletedAt: i.deleted_at?.toISOString() ?? null,
-    };
   }
 }

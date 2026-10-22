@@ -22,6 +22,7 @@ import { SOLICITUD_INCLUDE } from '../solicitudes/solicitud.mapper';
 import { buildSolicitudEmailContext } from '../notificaciones/solicitud-email.builder';
 import { NotificacionesInAppService } from '../notificaciones/notificaciones-inapp.service';
 import { contratoToOutput, ordenarHistorial } from '../contratos/contrato.mapper';
+import { localToOutput } from './local.mapper';
 import type { AuthenticatedUser } from '../auth/types/jwt-payload';
 
 export interface RequestMeta {
@@ -154,14 +155,14 @@ export class LocalesService {
         entidadId: id,
         plazaId,
         usuarioId: actor.sub,
-        antes: this.toOutput(before),
+        antes: localToOutput(before),
         despues: { estado: 'fuera_de_servicio', motivo, solicitudesRechazadas: rechazadas },
         ...meta,
       });
       return { local, rechazadas };
     });
 
-    return { local: this.toOutput(local), solicitudesRechazadas: rechazadas };
+    return { local: localToOutput(local), solicitudesRechazadas: rechazadas };
   }
 
   // ── Crear (admin_plaza / superadmin con plaza) ────────────────────────────────
@@ -192,10 +193,10 @@ export class LocalesService {
       entidadId: local.id,
       plazaId,
       usuarioId: actor.sub,
-      despues: this.toOutput(local),
+      despues: localToOutput(local),
       ...meta,
     });
-    return this.toOutput(local);
+    return localToOutput(local);
   }
 
   // ── Listar (admin: todos; inquilino: solo con contrato vigente suyo) ──────────
@@ -239,7 +240,7 @@ export class LocalesService {
     });
 
     return {
-      items: items.map((l) => this.toOutput(l)),
+      items: items.map((l) => localToOutput(l)),
       total,
       page,
       pageSize,
@@ -273,7 +274,7 @@ export class LocalesService {
     const historico = ordenarHistorial(result?.contratos ?? []);
     const vigente = historico.find((c) => c.estado === 'vigente') ?? null;
     return {
-      ...this.toOutput(found),
+      ...localToOutput(found),
       contratoVigente: vigente ? contratoToOutput(vigente) : null,
       historicoContratos: historico.map(contratoToOutput),
     };
@@ -368,11 +369,11 @@ export class LocalesService {
       entidadId: id,
       plazaId,
       usuarioId: actor.sub,
-      antes: this.toOutput(before),
-      despues: this.toOutput(updated),
+      antes: localToOutput(before),
+      despues: localToOutput(updated),
       ...meta,
     });
-    return this.toOutput(updated);
+    return localToOutput(updated);
   }
 
   // ── Soft delete (sin contrato vigente) ────────────────────────────────────────
@@ -401,7 +402,7 @@ export class LocalesService {
       entidadId: id,
       plazaId,
       usuarioId: actor.sub,
-      antes: this.toOutput(before),
+      antes: localToOutput(before),
       ...meta,
     });
   }
@@ -462,23 +463,6 @@ export class LocalesService {
         message: `Ya existe un local con el código "${codigo}" en la plaza.`,
       });
     }
-  }
-
-  private toOutput(l: LocalModel): LocalOutput {
-    return {
-      id: l.id,
-      plazaId: l.plaza_id,
-      codigo: l.codigo,
-      modulo: l.modulo,
-      nivel: l.nivel,
-      areaM2: l.area_m2 === null ? null : Number(l.area_m2),
-      medidorEnergia: l.medidor_energia,
-      medidorAgua: l.medidor_agua,
-      estado: l.estado,
-      createdAt: l.created_at.toISOString(),
-      updatedAt: l.updated_at.toISOString(),
-      deletedAt: l.deleted_at?.toISOString() ?? null,
-    };
   }
 
   /** Normaliza un medidor: trim + descarta string vacío → null. */

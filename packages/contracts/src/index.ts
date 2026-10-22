@@ -21,6 +21,7 @@ export * from './calendario/index.js';
 export * from './categorias/index.js';
 export * from './common/index.js';
 export * from './contratos/index.js';
+export * from './importacion/index.js';
 export * from './locales/index.js';
 export * from './notificaciones/index.js';
 export * from './permisos/index.js';

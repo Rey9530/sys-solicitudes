@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { FileSpreadsheet } from 'lucide-react';
 import type { ContratoListItem, LocalOutput, InquilinoOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
+import { Can } from '@/components/client/can';
 import { ContratosTable } from '@/components/client/contratos-table';
 import { ContratosFiltros } from '@/components/client/contratos-filtros';
 import { PageHeader } from '@/components/ui/page-header';
@@ -51,9 +53,16 @@ export default async function AdminContratosPage({
         title="Contratos"
         subtitle={`${data.total} contratos.`}
         actions={
-          <Link href="/admin/contratos/nuevo" className="btn btn-primary">
-            Nuevo contrato
-          </Link>
+          <>
+            <Can permiso="contratos.importar">
+              <Link href="/admin/contratos/importar" className="btn btn-secondary">
+                <FileSpreadsheet /> Importar Excel
+              </Link>
+            </Can>
+            <Link href="/admin/contratos/nuevo" className="btn btn-primary">
+              Nuevo contrato
+            </Link>
+          </>
         }
       />
       <div className="mb-4">
