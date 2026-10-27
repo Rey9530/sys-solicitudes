@@ -42,8 +42,13 @@ class ApiClient {
 
   // ── Métodos públicos ──────────────────────────────────────────────────────
 
-  Future<dynamic> get(String path, {Map<String, Object?>? query}) =>
-      _json('GET', path, query: query);
+  /// [sinPlaza]: no envía `x-plaza-id` aunque el superadmin tenga una plaza
+  /// elegida (vistas globales de la plataforma, p. ej. el dashboard global).
+  Future<dynamic> get(
+    String path, {
+    Map<String, Object?>? query,
+    bool sinPlaza = false,
+  }) => _json('GET', path, query: query, sinPlaza: sinPlaza);
 
   Future<dynamic> post(String path, {Object? body}) =>
       _json('POST', path, body: body);
@@ -58,10 +63,15 @@ class ApiClient {
       _json('DELETE', path, body: body);
 
   /// Descarga binaria (PDF, CSV, XLSX, ICS).
-  Future<Uint8List> bytes(String path, {Map<String, Object?>? query}) async {
+  Future<Uint8List> bytes(
+    String path, {
+    Map<String, Object?>? query,
+    bool sinPlaza = false,
+  }) async {
     final r = await _enviar(
       () => http.Request('GET', _url(path, query)),
       autenticado: true,
+      sinPlaza: sinPlaza,
     );
     return r.bodyBytes;
   }
@@ -140,10 +150,12 @@ class ApiClient {
     String path, {
     Map<String, Object?>? query,
     Object? body,
+    bool sinPlaza = false,
   }) async {
     final r = await _enviar(
       () => _requestJson(method, _url(path, query), body),
       autenticado: true,
+      sinPlaza: sinPlaza,
     );
     return _decodificar(r);
   }
@@ -179,6 +191,7 @@ class ApiClient {
     http.BaseRequest Function() construir, {
     required bool autenticado,
     bool reintentar = true,
+    bool sinPlaza = false,
   }) async {
     Tokens? tokens;
     if (autenticado) {
@@ -195,7 +208,7 @@ class ApiClient {
       }
     }
 
-    var respuesta = await _ejecutar(construir(), tokens);
+    var respuesta = await _ejecutar(construir(), tokens, sinPlaza: sinPlaza);
     if (autenticado && reintentar && respuesta.statusCode == 401) {
       // Si otra petición ya refrescó mientras esta viajaba con el token viejo,
       // basta con reintentar con el nuevo (no se rota otra vez).
@@ -203,7 +216,7 @@ class ApiClient {
       tokens = guardados != null && guardados.accessToken != tokens!.accessToken
           ? guardados
           : await _refrescar();
-      respuesta = await _ejecutar(construir(), tokens);
+      respuesta = await _ejecutar(construir(), tokens, sinPlaza: sinPlaza);
     }
     if (respuesta.statusCode >= 400) {
       throw ApiError.desdeRespuesta(
@@ -215,12 +228,16 @@ class ApiClient {
     return respuesta;
   }
 
-  Future<http.Response> _ejecutar(http.BaseRequest req, Tokens? tokens) async {
+  Future<http.Response> _ejecutar(
+    http.BaseRequest req,
+    Tokens? tokens, {
+    bool sinPlaza = false,
+  }) async {
     req.headers['Accept'] = 'application/json';
     req.headers['User-Agent'] = _userAgent;
     if (tokens != null) {
       req.headers['Authorization'] = 'Bearer ${tokens.accessToken}';
-      final plaza = _plazaSeleccionada?.call();
+      final plaza = sinPlaza ? null : _plazaSeleccionada?.call();
       if (plaza != null && plaza.isNotEmpty) req.headers['x-plaza-id'] = plaza;
     }
     try {
