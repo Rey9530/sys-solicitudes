@@ -120,6 +120,12 @@ Future<String> _elegirDia(WidgetTester tester, Finder campo, int dia) async {
   return ymd(DateTime.utc(hoy.year, hoy.month, dia));
 }
 
+/// Año de la última fecha que permite el selector de fecha abierto.
+int _ultimoAnioDelSelector(WidgetTester tester) => tester
+    .widget<DatePickerDialog>(find.byType(DatePickerDialog))
+    .lastDate
+    .year;
+
 Future<void> _elegirOpcion(
   WidgetTester tester,
   Finder campo,
@@ -291,6 +297,22 @@ void main() {
         'cuotaCam': 4.5,
       });
       expect(find.text('Ruta: /admin/contratos'), findsOneWidget);
+    });
+
+    testWidgets('las fechas admiten años lejanos (sin el tope de +5 años)', (
+      tester,
+    ) async {
+      await _montar(tester, const ContratoFormPage());
+      for (final campo in [
+        'contrato-fechaInicio',
+        'contrato-fechaFin',
+        'contrato-avisoTerminacion',
+      ]) {
+        await _tocar(tester, find.byKey(Key(campo)));
+        expect(_ultimoAnioDelSelector(tester), 2100, reason: campo);
+        await tester.tap(find.text('Cancelar').last);
+        await tester.pumpAndSettle();
+      }
     });
 
     testWidgets('CONTRATO_OVERLAP se muestra en un aviso', (tester) async {
@@ -477,6 +499,17 @@ void main() {
         findsOneWidget,
       );
     });
+  });
+
+  testWidgets('renovar admite fechas en años lejanos', (tester) async {
+    await _montar(tester, const ContratoDetallePage(id: 'con-1'));
+    await _tocar(tester, find.byKey(const Key('contrato-renovar')));
+    for (final campo in ['renovar-inicio', 'renovar-fin']) {
+      await _tocar(tester, find.byKey(Key(campo)));
+      expect(_ultimoAnioDelSelector(tester), 2100, reason: campo);
+      await tester.tap(find.text('Cancelar').last);
+      await tester.pumpAndSettle();
+    }
   });
 
   group('Carga inicial', () {

@@ -125,6 +125,7 @@ class _CerrarContratoSheetState extends ConsumerState<_CerrarContratoSheet> {
               label: 'Fecha de fin efectiva (default: hoy)',
               valorYmd: _fechaFinEfectiva,
               primera: primeraFechaContrato,
+              ultima: ultimaFechaContrato,
               permitirVacio: true,
               errorText: _errorFecha,
               onChanged: (v) => setState(() => _fechaFinEfectiva = v),

@@ -21,6 +21,10 @@ import 'contratos_providers.dart';
 /// Primera fecha seleccionable en los contratos (hay contratos antiguos).
 final primeraFechaContrato = DateTime.utc(2000);
 
+/// Última fecha seleccionable: el backend no pone tope (contratos largos o
+/// con avisos lejanos), así que no se usa el tope de `CampoFecha` (+5 años).
+final ultimaFechaContrato = DateTime.utc(2100, 12, 31);
+
 /// `/admin/contratos/nuevo` — crear contrato (espejo de
 /// `nuevo-contrato-form.tsx`). El monto mensual no se edita: se calcula como
 /// `área × canon + área × CAM`.
@@ -173,6 +177,7 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
     label: etiqueta,
     valorYmd: _fechas[clave],
     primera: primeraFechaContrato,
+    ultima: ultimaFechaContrato,
     permitirVacio: true,
     errorText: error,
     onChanged: (v) => setState(() => _fechas[clave] = v),
@@ -261,6 +266,7 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
                           label: 'Fecha de inicio *',
                           valorYmd: _fechaInicio,
                           primera: primeraFechaContrato,
+                          ultima: ultimaFechaContrato,
                           errorText: _errorInicio,
                           onChanged: (v) => setState(() => _fechaInicio = v),
                         ),
@@ -269,6 +275,7 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
                           label: 'Fecha de fin (vacío = indefinido)',
                           valorYmd: _fechaFin,
                           primera: primeraFechaContrato,
+                          ultima: ultimaFechaContrato,
                           permitirVacio: true,
                           errorText: _errorFin,
                           onChanged: (v) => setState(() => _fechaFin = v),
