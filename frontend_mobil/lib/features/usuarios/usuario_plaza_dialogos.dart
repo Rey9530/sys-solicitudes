@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/auth/sesion_controller.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
@@ -331,7 +332,8 @@ class _AltaUsuarioPlazaDialogState
 // ── Edición ─────────────────────────────────────────────────────────────────
 
 /// Edita nombre, teléfono y rol de staff. Muestra "Usuario actualizado" e
-/// invalida las listas si se guardó.
+/// invalida las listas si se guardó. Si el editado es el usuario de la
+/// sesión, también relee su sesión (nombre, rol de staff y permisos).
 Future<void> editarUsuarioPlaza(
   BuildContext context,
   WidgetRef ref,
@@ -345,6 +347,9 @@ Future<void> editarUsuarioPlaza(
   if (guardado != true || !context.mounted) return;
   mostrarExito(context, 'Usuario actualizado');
   invalidarUsuarios(ref);
+  if (ref.read(sesionProvider).value?.usuario.id == usuario.id) {
+    await ref.read(sesionProvider.notifier).recargar();
+  }
 }
 
 /// Espejo de `editar-usuario-plaza-dialog.tsx`. El cambio de rol lo aplica el

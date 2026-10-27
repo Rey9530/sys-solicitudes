@@ -256,14 +256,11 @@ class _MatrizState extends ConsumerState<_Matriz> {
       if (!mounted) return;
       setState(() => _inicial[rol.id] = ids);
       mostrarExito(context, 'Permisos del rol "${rol.nombre}" actualizados');
-      // Si es el rol del propio usuario, sus permisos cambian al instante.
+      // Si es el rol del propio usuario, sus permisos cambian al instante (si
+      // falla, se vuelven a leer al regresar la app a primer plano).
       final sesion = ref.read(sesionProvider).value;
       if (sesion?.usuario.rolStaffId == rol.id) {
-        try {
-          await ref.read(sesionProvider.notifier).refrescarPermisos();
-        } on ApiError {
-          // Se vuelven a leer al regresar la app a primer plano.
-        }
+        await ref.read(sesionProvider.notifier).refrescarPermisos();
       }
     } on ApiError catch (e) {
       if (mounted) mostrarError(context, _mensajeError(e));

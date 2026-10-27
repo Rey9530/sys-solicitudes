@@ -69,19 +69,46 @@ class SesionController extends AsyncNotifier<Sesion?> {
     state = const AsyncData(null);
   }
 
-  /// Relee los permisos (p. ej. al volver la app a primer plano).
+  /// Relee los permisos (p. ej. al volver la app a primer plano). Si falla,
+  /// la sesión queda como estaba (se vuelve a intentar en la próxima vuelta).
   Future<void> refrescarPermisos() async {
     final actual = state.value;
     if (actual == null) return;
-    final r =
-        await ref.read(apiClientProvider).get('/auth/me/permisos')
-            as Map<String, dynamic>;
-    state = AsyncData(
-      Sesion(
-        usuario: actual.usuario,
-        permisos: (r['permisos'] as List<dynamic>).cast<String>(),
-      ),
-    );
+    try {
+      final r =
+          await ref.read(apiClientProvider).get('/auth/me/permisos')
+              as Map<String, dynamic>;
+      _actualizarSiSigue(
+        actual.usuario.id,
+        Sesion(
+          usuario: actual.usuario,
+          permisos: (r['permisos'] as List<dynamic>).cast<String>(),
+        ),
+      );
+    } on Object {
+      // Sin red u otro fallo: se conservan los permisos actuales.
+    }
+  }
+
+  /// Relee usuario y permisos (`/auth/me` + `/auth/me/permisos`), p. ej. tras
+  /// editar el propio usuario (nombre o rol de staff). Si falla, la sesión
+  /// queda como estaba.
+  Future<void> recargar() async {
+    final actual = state.value;
+    if (actual == null) return;
+    try {
+      _actualizarSiSigue(actual.usuario.id, await _cargar());
+    } on Object {
+      // Sin red u otro fallo: se conserva la sesión actual.
+    }
+  }
+
+  /// Escribe [nueva] solo si la sesión sigue siendo la de [usuarioId]:
+  /// mientras viajaba la petición pudo cerrarse (logout o refresh rechazado)
+  /// y no debe revivir.
+  void _actualizarSiSigue(String usuarioId, Sesion nueva) {
+    if (!ref.mounted || state.value?.usuario.id != usuarioId) return;
+    state = AsyncData(nueva);
   }
 }
 
