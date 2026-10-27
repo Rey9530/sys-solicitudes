@@ -6,5 +6,5 @@ import 'plazas_modelos.dart';
 
 /// Lista de `/superadmin/plazas`.
 final listaPlazasProvider = FutureProvider.autoDispose<List<Plaza>>(
-  (ref) => listarPlazas(ref.read(apiClientProvider)),
+  (ref) => listarPlazas(ref.watch(apiClientProvider)),
 );

@@ -8,5 +8,5 @@ import 'auditoria_modelos.dart';
 /// Página del log de auditoría con sus filtros.
 final auditoriaProvider = FutureProvider.autoDispose
     .family<Paginado<RegistroAuditoria>, FiltrosAuditoria>(
-      (ref, filtros) => listarAuditoria(ref.read(apiClientProvider), filtros),
+      (ref, filtros) => listarAuditoria(ref.watch(apiClientProvider), filtros),
     );

@@ -70,7 +70,7 @@ final plazasProvider = FutureProvider.autoDispose<List<PlazaResumen>>((
 ) async {
   final r =
       await ref
-              .read(apiClientProvider)
+              .watch(apiClientProvider)
               .get('/plazas', query: {'page': 1, 'pageSize': 100})
           as Map<String, dynamic>;
   return (r['items'] as List<dynamic>)
@@ -93,6 +93,6 @@ final plazaActualProvider = FutureProvider.autoDispose<PlazaResumen?>((
     Rol.inquilino => null,
   };
   if (id == null) return null;
-  final j = await ref.read(apiClientProvider).get('/plazas/$id');
+  final j = await ref.watch(apiClientProvider).get('/plazas/$id');
   return PlazaResumen.fromJson(j as Map<String, dynamic>);
 });
