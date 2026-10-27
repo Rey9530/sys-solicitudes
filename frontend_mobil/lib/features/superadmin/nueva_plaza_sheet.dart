@@ -6,9 +6,9 @@ import '../../core/format/validaciones.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/campo_select.dart';
+import '../../core/widgets/filtros.dart';
 import '../auth/auth_api.dart';
 import '../configuracion/widgets/selector_color.dart';
-import '../reportes/widgets/rejilla_campos.dart';
 import 'plazas_api.dart';
 import 'plazas_modelos.dart';
 

@@ -10,6 +10,7 @@ import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
@@ -110,9 +111,11 @@ class _LocalesPageState extends ConsumerState<LocalesPage> {
             ),
           ],
         ),
-        PanelFiltros(
-          children: [
+        TarjetaFiltros(
+          enLinea: true,
+          campos: [
             CampoFiltro(
+              ancho: 220,
               child: CampoSelect<String>(
                 key: const Key('locales-filtro-estado'),
                 label: 'Estado',
@@ -161,6 +164,8 @@ class _LocalesPageState extends ConsumerState<LocalesPage> {
                 ),
               ),
             ),
+          ],
+          acciones: [
             if (hayFiltros)
               TextButton(
                 onPressed: _limpiar,

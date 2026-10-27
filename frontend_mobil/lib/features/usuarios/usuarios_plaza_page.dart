@@ -14,6 +14,7 @@ import '../../core/widgets/badges.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
@@ -159,7 +160,8 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
   List<Widget> _pestanaUsuarios(AsyncValue<Paginado<UsuarioPlaza>> datos) {
     final rolesActivos = ref.watch(rolesStaffActivosProvider).value;
     return [
-      BarraFiltros(
+      TarjetaFiltros(
+        enLinea: true,
         campos: [
           TextField(
             key: const Key('usuarios-buscar'),
@@ -186,7 +188,7 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
             ),
           ),
         ],
-        botones: [
+        acciones: [
           OutlinedButton(
             onPressed: () => _filtrar(buscar: textoOpcional(_buscar.text)),
             child: const Text('Buscar'),

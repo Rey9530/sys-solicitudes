@@ -8,6 +8,7 @@ import '../../core/widgets/avisos.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
@@ -122,8 +123,9 @@ class _InquilinosPageState extends ConsumerState<InquilinosPage> {
             ),
           ],
         ),
-        PanelFiltros(
-          children: [
+        TarjetaFiltros(
+          enLinea: true,
+          campos: [
             CampoFiltro(
               ancho: 240,
               child: _campoTexto(
@@ -140,7 +142,9 @@ class _InquilinosPageState extends ConsumerState<InquilinosPage> {
                 'Identificación',
               ),
             ),
-            OutlinedButton(onPressed: _aplicar, child: const Text('Filtrar')),
+          ],
+          onFiltrar: _aplicar,
+          acciones: [
             if (hayFiltros)
               TextButton(
                 onPressed: _limpiar,

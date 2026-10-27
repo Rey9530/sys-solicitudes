@@ -11,6 +11,7 @@ import '../../../core/plaza/plaza_seleccionada.dart';
 import '../../../core/widgets/campo_select.dart';
 import '../../../core/widgets/campos.dart';
 import '../../../core/widgets/estados.dart';
+import '../../../core/widgets/filtros.dart';
 import '../../../core/widgets/pagina.dart';
 import '../../../core/widgets/paginador.dart';
 import '../comun/filtros.dart';
@@ -118,6 +119,7 @@ class _SolicitudesGlobalesState extends ConsumerState<SolicitudesGlobalesPage> {
             ],
           ),
           TarjetaFiltros(
+            plegable: true,
             onFiltrar: _filtrar,
             campos: [
               TextField(

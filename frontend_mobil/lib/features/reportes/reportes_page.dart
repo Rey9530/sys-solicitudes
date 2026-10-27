@@ -11,10 +11,10 @@ import '../../core/widgets/badges.dart';
 import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/campos.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
 import 'reportes_api.dart';
 import 'reportes_providers.dart';
-import 'widgets/rejilla_campos.dart';
 
 /// `/admin/reportes`: generador de reportes con filtros por entidad,
 /// previsualización (primeras 10 filas) y exportación CSV/XLSX/PDF

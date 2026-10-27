@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
@@ -40,7 +41,8 @@ class _TiposSolicitudPageState extends ConsumerState<TiposSolicitudPage> {
               '${datos.value?.total ?? '…'} tipos · controla la etiqueta visible '
               'y si se ofrecen a los inquilinos.',
         ),
-        BarraFiltros(
+        TarjetaFiltros(
+          enLinea: true,
           campos: [
             DropdownButtonFormField<bool?>(
               initialValue: _estado,
@@ -54,13 +56,8 @@ class _TiposSolicitudPageState extends ConsumerState<TiposSolicitudPage> {
               onChanged: (v) => _estado = v,
             ),
           ],
-          botones: [
-            OutlinedButton(
-              onPressed: () =>
-                  setState(() => _filtro = (pagina: 1, activo: _estado)),
-              child: const Text('Filtrar'),
-            ),
-          ],
+          onFiltrar: () =>
+              setState(() => _filtro = (pagina: 1, activo: _estado)),
         ),
         AsyncView(
           value: datos,

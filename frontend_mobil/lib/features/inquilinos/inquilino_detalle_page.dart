@@ -8,6 +8,7 @@ import '../../core/widgets/avisos.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
 import '../contratos/catalogo_comun.dart';
 import 'inquilino_campos.dart';
@@ -172,23 +173,27 @@ class _EditarInquilinoFormState extends ConsumerState<_EditarInquilinoForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FilaCampos(
-                  children: [
-                    TextFormField(
-                      initialValue: _inquilino.razonSocial,
-                      enabled: false,
-                      decoration: const InputDecoration(
-                        labelText: 'Razón social',
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: RejillaCampos(
+                    maxColumnas: 2,
+                    children: [
+                      TextFormField(
+                        initialValue: _inquilino.razonSocial,
+                        enabled: false,
+                        decoration: const InputDecoration(
+                          labelText: 'Razón social',
+                        ),
                       ),
-                    ),
-                    TextFormField(
-                      initialValue: _inquilino.identificacion ?? '—',
-                      enabled: false,
-                      decoration: const InputDecoration(
-                        labelText: 'Identificación (NIT)',
+                      TextFormField(
+                        initialValue: _inquilino.identificacion ?? '—',
+                        enabled: false,
+                        decoration: const InputDecoration(
+                          labelText: 'Identificación (NIT)',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Text(
                   'Razón social e identificación son inmutables tras la '
@@ -204,9 +209,15 @@ class _EditarInquilinoFormState extends ConsumerState<_EditarInquilinoForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                ParesDeCampos(
-                  campos: const [campoNombreComercial, campoNrc],
-                  controladores: _c,
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: RejillaCampos(
+                    maxColumnas: 2,
+                    children: textosInquilino(const [
+                      campoNombreComercial,
+                      campoNrc,
+                    ], _c),
+                  ),
                 ),
                 CampoTextoInquilino(
                   campo: campoRepresentante,

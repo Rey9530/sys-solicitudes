@@ -8,6 +8,7 @@ import '../../core/widgets/badges.dart';
 import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
@@ -87,9 +88,11 @@ class _ContratosPageState extends ConsumerState<ContratosPage> {
             ),
           ],
         ),
-        PanelFiltros(
-          children: [
+        TarjetaFiltros(
+          enLinea: true,
+          campos: [
             CampoFiltro(
+              ancho: 220,
               child: CampoSelect<String>(
                 key: const Key('contratos-filtro-local'),
                 label: 'Local',
@@ -133,6 +136,8 @@ class _ContratosPageState extends ConsumerState<ContratosPage> {
                 ),
               ),
             ),
+          ],
+          acciones: [
             if (hayFiltros)
               TextButton(
                 onPressed: _filtrar,

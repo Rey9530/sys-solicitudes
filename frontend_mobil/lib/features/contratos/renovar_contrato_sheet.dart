@@ -8,6 +8,7 @@ import '../../core/format/montos.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/campos.dart';
+import '../../core/widgets/filtros.dart';
 import 'catalogo_comun.dart';
 import 'cerrar_contrato_sheet.dart';
 import 'contrato_form_page.dart';
@@ -112,28 +113,32 @@ class _RenovarContratoSheetState extends ConsumerState<_RenovarContratoSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilaCampos(
-              children: [
-                CampoFecha(
-                  key: const Key('renovar-inicio'),
-                  label: 'Nueva fecha de inicio *',
-                  valorYmd: _inicio,
-                  primera: primeraFechaContrato,
-                  ultima: ultimaFechaContrato,
-                  errorText: _errorInicio,
-                  onChanged: (v) => setState(() => _inicio = v),
-                ),
-                CampoFecha(
-                  key: const Key('renovar-fin'),
-                  label: 'Nueva fecha de fin',
-                  valorYmd: _fin,
-                  primera: primeraFechaContrato,
-                  ultima: ultimaFechaContrato,
-                  permitirVacio: true,
-                  errorText: _errorFin,
-                  onChanged: (v) => setState(() => _fin = v),
-                ),
-              ],
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: RejillaCampos(
+                maxColumnas: 2,
+                children: [
+                  CampoFecha(
+                    key: const Key('renovar-inicio'),
+                    label: 'Nueva fecha de inicio *',
+                    valorYmd: _inicio,
+                    primera: primeraFechaContrato,
+                    ultima: ultimaFechaContrato,
+                    errorText: _errorInicio,
+                    onChanged: (v) => setState(() => _inicio = v),
+                  ),
+                  CampoFecha(
+                    key: const Key('renovar-fin'),
+                    label: 'Nueva fecha de fin',
+                    valorYmd: _fin,
+                    primera: primeraFechaContrato,
+                    ultima: ultimaFechaContrato,
+                    permitirVacio: true,
+                    errorText: _errorFin,
+                    onChanged: (v) => setState(() => _fin = v),
+                  ),
+                ],
+              ),
             ),
             TextFormField(
               key: const Key('renovar-monto'),

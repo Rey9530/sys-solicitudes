@@ -7,6 +7,7 @@ import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
 import '../contratos/catalogo_comun.dart';
 import 'locales_api.dart';
@@ -116,78 +117,76 @@ class _LocalFormPageState extends ConsumerState<LocalFormPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FilaCampos(
-                  children: [
-                    TextFormField(
-                      key: const Key('local-modulo'),
-                      controller: _modulo,
-                      textCapitalization: TextCapitalization.characters,
-                      inputFormatters: [LengthLimitingTextInputFormatter(20)],
-                      decoration: const InputDecoration(
-                        labelText: 'Módulo',
-                        hintText: 'A',
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: RejillaCampos(
+                    maxColumnas: 2,
+                    children: [
+                      TextFormField(
+                        key: const Key('local-modulo'),
+                        controller: _modulo,
+                        textCapitalization: TextCapitalization.characters,
+                        inputFormatters: [LengthLimitingTextInputFormatter(20)],
+                        decoration: const InputDecoration(
+                          labelText: 'Módulo',
+                          hintText: 'A',
+                        ),
                       ),
-                    ),
-                    TextFormField(
-                      key: const Key('local-nivel'),
-                      controller: _nivel,
-                      inputFormatters: [LengthLimitingTextInputFormatter(10)],
-                      decoration: const InputDecoration(
-                        labelText: 'Nivel',
-                        hintText: '1',
+                      TextFormField(
+                        key: const Key('local-nivel'),
+                        controller: _nivel,
+                        inputFormatters: [LengthLimitingTextInputFormatter(10)],
+                        decoration: const InputDecoration(
+                          labelText: 'Nivel',
+                          hintText: '1',
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                FilaCampos(
-                  children: [
-                    TextFormField(
-                      key: const Key('local-codigo'),
-                      controller: _codigo,
-                      textCapitalization: TextCapitalization.characters,
-                      validator: _validarCodigo,
-                      decoration: InputDecoration(
-                        labelText: 'Local *',
-                        hintText: 'L-101',
-                        errorText: _errorCodigo,
+                      TextFormField(
+                        key: const Key('local-codigo'),
+                        controller: _codigo,
+                        textCapitalization: TextCapitalization.characters,
+                        validator: _validarCodigo,
+                        decoration: InputDecoration(
+                          labelText: 'Local *',
+                          hintText: 'L-101',
+                          errorText: _errorCodigo,
+                        ),
                       ),
-                    ),
-                    TextFormField(
-                      key: const Key('local-area'),
-                      controller: _area,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
+                      TextFormField(
+                        key: const Key('local-area'),
+                        controller: _area,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        validator: validarAreaLocal,
+                        decoration: const InputDecoration(
+                          labelText: 'Área (m²)',
+                        ),
                       ),
-                      validator: validarAreaLocal,
-                      decoration: const InputDecoration(labelText: 'Área (m²)'),
-                    ),
-                  ],
-                ),
-                FilaCampos(
-                  children: [
-                    TextFormField(
-                      key: const Key('local-energia'),
-                      controller: _energia,
-                      keyboardType: TextInputType.text,
-                      inputFormatters: formatoMedidor,
-                      validator: validarMedidor,
-                      decoration: const InputDecoration(
-                        labelText: 'Medidor energía',
-                        hintText: '10456050',
+                      TextFormField(
+                        key: const Key('local-energia'),
+                        controller: _energia,
+                        keyboardType: TextInputType.text,
+                        inputFormatters: formatoMedidor,
+                        validator: validarMedidor,
+                        decoration: const InputDecoration(
+                          labelText: 'Medidor energía',
+                          hintText: '10456050',
+                        ),
                       ),
-                    ),
-                    TextFormField(
-                      key: const Key('local-agua'),
-                      controller: _agua,
-                      keyboardType: TextInputType.text,
-                      inputFormatters: formatoMedidor,
-                      validator: validarMedidor,
-                      decoration: const InputDecoration(
-                        labelText: 'Medidor agua',
-                        hintText: '9999999',
+                      TextFormField(
+                        key: const Key('local-agua'),
+                        controller: _agua,
+                        keyboardType: TextInputType.text,
+                        inputFormatters: formatoMedidor,
+                        validator: validarMedidor,
+                        decoration: const InputDecoration(
+                          labelText: 'Medidor agua',
+                          hintText: '9999999',
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
                 Wrap(
                   alignment: WrapAlignment.end,

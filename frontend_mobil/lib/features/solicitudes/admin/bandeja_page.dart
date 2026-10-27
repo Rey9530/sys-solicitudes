@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/widgets/campo_select.dart';
 import '../../../core/widgets/estados.dart';
+import '../../../core/widgets/filtros.dart';
 import '../../../core/widgets/pagina.dart';
 import '../../../core/widgets/paginador.dart';
 import '../comun/filtros.dart';
@@ -103,6 +104,7 @@ class _BandejaState extends ConsumerState<BandejaPage> {
             ],
           ),
           TarjetaFiltros(
+            plegable: true,
             onFiltrar: _filtrar,
             campos: [
               CampoSelect<String>(

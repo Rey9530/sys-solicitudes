@@ -8,6 +8,7 @@ import '../../core/widgets/avisos.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
@@ -90,7 +91,8 @@ class _CategoriasPageState extends ConsumerState<CategoriasPage> {
             ),
           ],
         ),
-        BarraFiltros(
+        TarjetaFiltros(
+          enLinea: true,
           campos: [
             TextField(
               key: const Key('categorias-buscar'),
@@ -115,9 +117,7 @@ class _CategoriasPageState extends ConsumerState<CategoriasPage> {
               onChanged: (v) => _estado = v,
             ),
           ],
-          botones: [
-            OutlinedButton(onPressed: _filtrar, child: const Text('Filtrar')),
-          ],
+          onFiltrar: _filtrar,
         ),
         AsyncView(
           value: datos,

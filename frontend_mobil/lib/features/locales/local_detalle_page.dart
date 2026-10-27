@@ -12,6 +12,7 @@ import '../../core/widgets/badges.dart';
 import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
 import '../contratos/catalogo_comun.dart';
@@ -157,97 +158,102 @@ class _EditarLocalFormState extends ConsumerState<_EditarLocalForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilaCampos(
-              children: [
-                TextFormField(
-                  key: const Key('editar-local-modulo'),
-                  controller: _modulo,
-                  textCapitalization: TextCapitalization.characters,
-                  inputFormatters: [LengthLimitingTextInputFormatter(20)],
-                  decoration: const InputDecoration(
-                    labelText: 'Módulo',
-                    hintText: 'A',
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: RejillaCampos(
+                maxColumnas: 2,
+                children: [
+                  TextFormField(
+                    key: const Key('editar-local-modulo'),
+                    controller: _modulo,
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: [LengthLimitingTextInputFormatter(20)],
+                    decoration: const InputDecoration(
+                      labelText: 'Módulo',
+                      hintText: 'A',
+                    ),
                   ),
-                ),
-                TextFormField(
-                  key: const Key('editar-local-nivel'),
-                  controller: _nivel,
-                  inputFormatters: [LengthLimitingTextInputFormatter(10)],
-                  decoration: const InputDecoration(
-                    labelText: 'Nivel',
-                    hintText: '1',
+                  TextFormField(
+                    key: const Key('editar-local-nivel'),
+                    controller: _nivel,
+                    inputFormatters: [LengthLimitingTextInputFormatter(10)],
+                    decoration: const InputDecoration(
+                      labelText: 'Nivel',
+                      hintText: '1',
+                    ),
                   ),
-                ),
-              ],
-            ),
-            FilaCampos(
-              children: [
-                TextFormField(
-                  initialValue: _local.codigo,
-                  enabled: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Local',
-                    helperText: 'El local es inmutable.',
-                  ),
-                ),
-                if (_conVigente)
-                  CampoSelect<String>(
-                    key: const Key('editar-local-estado'),
-                    label: 'Estado',
-                    valor: 'alquilado',
-                    opciones: const [('alquilado', 'alquilado')],
-                    // Solo lectura.
+                  TextFormField(
+                    initialValue: _local.codigo,
                     enabled: false,
-                    onChanged: (_) {},
-                    ayuda: 'Con contrato vigente el estado se gestiona desde contratos.',
-                  )
-                else
-                  CampoSelect<String>(
-                    key: const Key('editar-local-estado'),
-                    label: 'Estado',
-                    valor: _estado,
-                    opciones: [
-                      for (final e in estadosLocalSinContrato)
-                        (e, estadoLocalCrudo(e)),
-                    ],
-                    onChanged: (v) => setState(() => _estado = v),
+                    decoration: const InputDecoration(
+                      labelText: 'Local',
+                      helperText: 'El local es inmutable.',
+                    ),
                   ),
-              ],
+                  if (_conVigente)
+                    CampoSelect<String>(
+                      key: const Key('editar-local-estado'),
+                      label: 'Estado',
+                      valor: 'alquilado',
+                      opciones: const [('alquilado', 'alquilado')],
+                      // Solo lectura.
+                      enabled: false,
+                      onChanged: (_) {},
+                      ayuda: 'Con contrato vigente el estado se gestiona desde contratos.',
+                    )
+                  else
+                    CampoSelect<String>(
+                      key: const Key('editar-local-estado'),
+                      label: 'Estado',
+                      valor: _estado,
+                      opciones: [
+                        for (final e in estadosLocalSinContrato)
+                          (e, estadoLocalCrudo(e)),
+                      ],
+                      onChanged: (v) => setState(() => _estado = v),
+                    ),
+                ],
+              ),
             ),
-            FilaCampos(
-              children: [
-                TextFormField(
-                  key: const Key('editar-local-area'),
-                  controller: _area,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  validator: validarAreaLocal,
-                  decoration: const InputDecoration(labelText: 'Área (m²)'),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: TextFormField(
+                key: const Key('editar-local-area'),
+                controller: _area,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
-              ],
+                validator: validarAreaLocal,
+                decoration: const InputDecoration(labelText: 'Área (m²)'),
+              ),
             ),
-            FilaCampos(
-              children: [
-                TextFormField(
-                  key: const Key('editar-local-energia'),
-                  controller: _energia,
-                  keyboardType: TextInputType.text,
-                  inputFormatters: formatoMedidor,
-                  validator: validarMedidor,
-                  decoration: const InputDecoration(
-                    labelText: 'Medidor energía',
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: RejillaCampos(
+                maxColumnas: 2,
+                children: [
+                  TextFormField(
+                    key: const Key('editar-local-energia'),
+                    controller: _energia,
+                    keyboardType: TextInputType.text,
+                    inputFormatters: formatoMedidor,
+                    validator: validarMedidor,
+                    decoration: const InputDecoration(
+                      labelText: 'Medidor energía',
+                    ),
                   ),
-                ),
-                TextFormField(
-                  key: const Key('editar-local-agua'),
-                  controller: _agua,
-                  keyboardType: TextInputType.text,
-                  inputFormatters: formatoMedidor,
-                  validator: validarMedidor,
-                  decoration: const InputDecoration(labelText: 'Medidor agua'),
-                ),
-              ],
+                  TextFormField(
+                    key: const Key('editar-local-agua'),
+                    controller: _agua,
+                    keyboardType: TextInputType.text,
+                    inputFormatters: formatoMedidor,
+                    validator: validarMedidor,
+                    decoration: const InputDecoration(
+                      labelText: 'Medidor agua',
+                    ),
+                  ),
+                ],
+              ),
             ),
             Align(
               alignment: Alignment.centerRight,
