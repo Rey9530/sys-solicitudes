@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/colores.dart';
 import '../../../core/widgets/badges.dart';
 import '../../../core/widgets/pagina.dart';
+import '../../../core/widgets/pestanas.dart';
 
 /// Estilo visual de un botón de acción (variantes del web).
 enum EstiloAccion { principal, exito, peligro, secundaria, fantasma }
@@ -386,64 +387,6 @@ class BarraAccionesTelefono extends StatelessWidget {
   }
 }
 
-/// Una pestaña del detalle.
-class Pestana {
-  const Pestana(this.etiqueta, this.contenido);
-
-  final String etiqueta;
-  final Widget Function() contenido;
-}
-
-/// Pestañas Detalle / Comentarios / Historial / Adjuntos. Solo pinta la
-/// pestaña elegida (va dentro de la lista de la página, sin altura fija).
-class PestanasSolicitud extends StatefulWidget {
-  const PestanasSolicitud({super.key, required this.pestanas});
-
-  final List<Pestana> pestanas;
-
-  @override
-  State<PestanasSolicitud> createState() => _PestanasSolicitudState();
-}
-
-class _PestanasSolicitudState extends State<PestanasSolicitud>
-    with SingleTickerProviderStateMixin {
-  late final TabController _tabs = TabController(
-    length: widget.pestanas.length,
-    vsync: this,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _tabs.addListener(() {
-      if (!_tabs.indexIsChanging) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _tabs.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        TabBar(
-          controller: _tabs,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          tabs: [for (final p in widget.pestanas) Tab(text: p.etiqueta)],
-        ),
-        const SizedBox(height: 14),
-        widget.pestanas[_tabs.index].contenido(),
-      ],
-    );
-  }
-}
-
 /// Estructura del detalle de una solicitud:
 /// - teléfono (< 600 px): una columna + barra fija inferior de acciones;
 /// - tablet vertical: panel de acciones arriba de las pestañas;
@@ -469,7 +412,7 @@ class VistaDetalleSolicitud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final telefono = MediaQuery.sizeOf(context).width < 600;
-    final pestanasW = PestanasSolicitud(pestanas: pestanas);
+    final pestanasW = Pestanas(pestanas: pestanas);
     final panelW = PanelAcciones(config: panel, pendiente: pendiente);
     final contenido = LayoutBuilder(
       builder: (context, c) {

@@ -12,6 +12,7 @@ import '../../../core/widgets/badges.dart';
 import '../../../core/widgets/dialogos.dart';
 import '../../../core/widgets/estados.dart';
 import '../../../core/widgets/pagina.dart';
+import '../../../core/widgets/pestanas.dart';
 import '../comun/comentarios_tab.dart';
 import '../comun/detalle_campos.dart';
 import '../comun/detalle_layout.dart';

@@ -10,6 +10,7 @@ import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
 import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
+import '../../core/widgets/pestanas.dart';
 import '../contratos/catalogo_comun.dart';
 import 'inquilino_campos.dart';
 import 'inquilinos_api.dart';
@@ -55,27 +56,27 @@ class InquilinoDetallePage extends ConsumerWidget {
                 ),
               ],
             ),
-            PestanasInline(
+            Pestanas(
               pestanas: [
                 Pestana(
                   'Datos',
-                  _EditarInquilinoForm(
+                  () => _EditarInquilinoForm(
                     key: ValueKey(detalle),
                     detalle: detalle,
                   ),
                 ),
                 Pestana(
                   'Contratos',
-                  ContratosMini(contratos: detalle.historicoContratos),
+                  () => ContratosMini(contratos: detalle.historicoContratos),
                   contador: detalle.historicoContratos.length,
                 ),
                 Pestana(
                   'Usuarios',
-                  UsuariosInquilinoTab(inquilinoId: id),
+                  () => UsuariosInquilinoTab(inquilinoId: id),
                   contador: usuarios?.length,
                 ),
                 if (puedeHacer(ref, 'solicitudes.bandeja.ver'))
-                  Pestana('Solicitudes', _SolicitudesInquilino(id: id)),
+                  Pestana('Solicitudes', () => _SolicitudesInquilino(id: id)),
               ],
             ),
           ],

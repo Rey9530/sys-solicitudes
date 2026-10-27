@@ -15,6 +15,7 @@ import '../../core/widgets/estados.dart';
 import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
+import '../../core/widgets/pestanas.dart';
 import '../contratos/catalogo_comun.dart';
 import 'local_form_page.dart';
 import 'locales_api.dart';
@@ -50,28 +51,28 @@ class LocalDetallePage extends ConsumerWidget {
               badges: [EstadoLocalBadge(local.estado)],
               rutaVolver: '/admin/locales',
             ),
-            PestanasInline(
+            Pestanas(
               pestanas: [
                 Pestana(
                   'Datos',
-                  _EditarLocalForm(
+                  () => _EditarLocalForm(
                     key: ValueKey(local.updatedAt),
                     detalle: detalle,
                   ),
                 ),
                 Pestana(
                   'Contratos',
-                  ContratosMini(contratos: detalle.historicoContratos),
+                  () => ContratosMini(contratos: detalle.historicoContratos),
                   contador: detalle.historicoContratos.length,
                 ),
                 if (verAdjuntos)
                   Pestana(
                     'Adjuntos',
-                    _AdjuntosLocal(id: id),
+                    () => _AdjuntosLocal(id: id),
                     contador: adjuntos?.length,
                   ),
                 if (puedeHacer(ref, 'solicitudes.bandeja.ver'))
-                  Pestana('Solicitudes', _SolicitudesLocal(localId: id)),
+                  Pestana('Solicitudes', () => _SolicitudesLocal(localId: id)),
               ],
             ),
             const SizedBox(height: 16),
