@@ -64,6 +64,8 @@ Future<void> esperar(
   expect(finder, findsWidgets, reason: 'No apareció a tiempo');
 }
 
+bool _superficieConvertida = false;
+
 /// Captura de pantalla con nombre (la guarda el driver). Deja pintar unos
 /// cuadros antes: la captura toma el último frame ya rasterizado.
 Future<void> captura(
@@ -71,7 +73,11 @@ Future<void> captura(
   WidgetTester tester,
   String nombre,
 ) async {
-  if (Platform.isAndroid) await binding.convertFlutterSurfaceToImage();
+  // En Android la superficie se convierte una sola vez por ejecución.
+  if (Platform.isAndroid && !_superficieConvertida) {
+    await binding.convertFlutterSurfaceToImage();
+    _superficieConvertida = true;
+  }
   for (var i = 0; i < 5; i++) {
     await tester.pump(const Duration(milliseconds: 100));
   }
