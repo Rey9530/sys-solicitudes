@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -451,6 +452,33 @@ void main() {
       expect(find.text('Comentario agregado'), findsOneWidget);
     });
 
+    testWidgets('adjuntos: el inquilino solo ve "Eliminar" en lo que él '
+        'subió', (tester) async {
+      Map<String, Object?> adjunto(String id, String subio) => {
+        'id': id,
+        'nombreOriginal': '$id.pdf',
+        'mimeType': 'application/pdf',
+        'tamanoBytes': 1024,
+        'usuarioSubioId': subio,
+        'createdAt': ahoraPrueba,
+      };
+      await abrir(
+        tester,
+        detalle(
+          cambios: {
+            'adjuntos': [
+              adjunto('mio', _sesion.usuario.id),
+              adjunto('del-admin', 'u-admin'),
+            ],
+          },
+        ),
+      );
+      await _pestana(tester, 'Adjuntos (2)');
+      expect(find.byTooltip('Eliminar mio.pdf'), findsOneWidget);
+      expect(find.byTooltip('Eliminar del-admin.pdf'), findsNothing);
+      expect(find.byTooltip('Descargar del-admin.pdf'), findsOneWidget);
+    });
+
     testWidgets('adjuntos: solo se suben en borrador o subsanación', (
       tester,
     ) async {
@@ -663,6 +691,36 @@ void main() {
       fecha: diaPlaza(3),
       hora: '08:00',
     );
+
+    testWidgets('salir del wizard mientras guarda no rompe', (tester) async {
+      final respuesta = Completer<Object?>();
+      final visible = ValueNotifier(true);
+      addTearDown(visible.dispose);
+      await montar(
+        tester,
+        () => ValueListenableBuilder<bool>(
+          valueListenable: visible,
+          builder: (_, ver, _) => ver
+              ? WizardSolicitudPage(prefill: prefill)
+              : const Text('Otra pantalla'),
+        ),
+        overridesBase(
+          apiFalsa({...rutas(), 'POST /solicitudes': (_) => respuesta.future}),
+          sesion: _sesion,
+        ),
+      );
+      await llenar(tester);
+      await tester.tap(find.byKey(const Key('wizard-guardar')));
+      await tester.pump();
+
+      // Se sale con el POST en vuelo; luego el backend responde.
+      visible.value = false;
+      await tester.pumpAndSettle();
+      respuesta.complete(creada());
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(peticiones('POST', '/solicitudes'), hasLength(1));
+    });
 
     testWidgets('"Guardar borrador" crea con el payload completo', (
       tester,

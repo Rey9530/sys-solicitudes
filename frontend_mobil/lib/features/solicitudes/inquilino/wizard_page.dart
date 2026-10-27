@@ -140,6 +140,9 @@ class _WizardState extends ConsumerState<_Wizard> {
     }
     setState(() => _enviando = true);
     final api = ref.read(apiClientProvider);
+    // Se toma antes de los await: si se sale del wizard mientras guarda,
+    // `ref` ya no se puede usar y la lista igual debe recargarse.
+    final contenedor = ProviderScope.containerOf(context, listen: false);
     final payload = _form.payload();
     String id;
     String codigo;
@@ -175,7 +178,7 @@ class _WizardState extends ConsumerState<_Wizard> {
       try {
         await enviar(api, id);
       } on Object catch (e) {
-        _invalidar(id);
+        _invalidar(contenedor, id);
         if (!mounted) return;
         setState(() => _enviando = false);
         final sinSubir = fallidos.isEmpty
@@ -189,7 +192,7 @@ class _WizardState extends ConsumerState<_Wizard> {
         return;
       }
     }
-    _invalidar(id);
+    _invalidar(contenedor, id);
     if (!mounted) return;
     setState(() => _enviando = false);
     final numero = codigo.isEmpty ? '' : ' $codigo';
@@ -210,9 +213,10 @@ class _WizardState extends ConsumerState<_Wizard> {
     _irAlDetalle(id);
   }
 
-  void _invalidar(String id) {
-    ref.invalidate(misSolicitudesProvider);
-    ref.invalidate(solicitudProvider(id));
+  /// Recarga la lista y el detalle de [id].
+  void _invalidar(ProviderContainer contenedor, String id) {
+    contenedor.invalidate(misSolicitudesProvider);
+    contenedor.invalidate(solicitudProvider(id));
   }
 
   /// Al crear, el detalle reemplaza al wizard (atrás vuelve a la lista); al

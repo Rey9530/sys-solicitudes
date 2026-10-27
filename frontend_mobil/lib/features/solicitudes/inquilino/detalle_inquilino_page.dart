@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/adjuntos/adjuntos_seccion.dart';
 import '../../../core/api/api_providers.dart';
+import '../../../core/auth/sesion_controller.dart';
 import '../../../core/theme/colores.dart';
 import '../../../core/widgets/avisos.dart';
 import '../../../core/widgets/badges.dart';
@@ -189,6 +190,7 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
   Widget _vista(SolicitudDetalle d) {
     final s = d.solicitud;
     final api = ref.read(apiClientProvider);
+    final usuarioId = ref.watch(sesionProvider).value?.usuario.id;
     final esSubsanacion = s.estado == 'requerida_subsanacion';
     final esPausada = s.estado == 'pausada';
     final puedeAdjuntar = s.estado == 'borrador' || esSubsanacion;
@@ -247,6 +249,9 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
             // El backend solo acepta subir en borrador o requerida_subsanacion.
             puedeSubir: puedeAdjuntar,
             puedeEliminar: puedeAdjuntar,
+            // El backend solo deja borrar al admin o a quien subió el archivo.
+            eliminable: (a) =>
+                a.usuarioSubioId != null && a.usuarioSubioId == usuarioId,
             subir: (nombre, bytes, mime) =>
                 subirAdjuntoSolicitud(api, s.id, nombre, bytes, mime),
             alCambiar: () => ref.invalidate(solicitudProvider(widget.id)),
