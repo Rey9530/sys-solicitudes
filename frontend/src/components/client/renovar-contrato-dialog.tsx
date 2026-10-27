@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { sinVacios } from '@/lib/form-resolver';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { RenovarContratoSchema, type ContratoOutput } from '@app/contracts';
@@ -37,7 +38,7 @@ export function RenovarContratoDialog({ contrato }: { contrato: ContratoOutput }
     watch,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(RenovarContratoSchema),
+    resolver: sinVacios(zodResolver(RenovarContratoSchema)),
     defaultValues: { nuevoMontoMensual: contrato.montoMensual ?? undefined },
   });
 

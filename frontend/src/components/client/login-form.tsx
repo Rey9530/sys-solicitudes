@@ -48,6 +48,10 @@ export function LoginForm() {
         toast.error(
           'Cuenta bloqueada temporalmente por varios intentos fallidos. Intenta más tarde.',
         );
+      } else if (result.error === 'plaza_inactiva') {
+        toast.error(
+          'La plaza de este usuario está desactivada. Contacta al administrador de la plataforma.',
+        );
       } else if (result.error === 'invalid') {
         toast.error('Email o contraseña incorrectos');
       } else {

@@ -20,6 +20,7 @@ export const DOMAIN_ERRORS = {
   // ── Auth (módulo 02) ────────────────────────────────────────────────────────
   INVALID_CREDENTIALS: d(401, 'Credenciales inválidas', 'Email o contraseña incorrectos.'),
   ACCOUNT_LOCKED: d(423, 'Cuenta bloqueada', 'La cuenta está bloqueada temporalmente por intentos fallidos.'),
+  PLAZA_INACTIVA: d(403, 'Plaza desactivada', 'La plaza de este usuario está desactivada.'),
   TOKEN_EXPIRED: d(401, 'Token expirado', 'El token de acceso expiró; refresca la sesión.'),
   TOKEN_INVALID: d(401, 'Token inválido', 'El token de acceso no es válido.'),
   TOKEN_MISSING_SIGNATURE: d(401, 'Token inválido', 'El token no tiene una firma válida.'),
@@ -48,6 +49,8 @@ export const DOMAIN_ERRORS = {
   ROL_NO_PERMITIDO: d(400, 'Solicitud inválida', 'El rol indicado no se puede asignar por API.'),
   ROL_STAFF_NO_EXISTE: d(400, 'Solicitud inválida', 'El rol de staff no existe o está inactivo.'),
   ROL_STAFF_REQUERIDO: d(400, 'Solicitud inválida', 'Un usuario admin_plaza requiere rolStaffId.'),
+  ROL_STAFF_INVALIDO: d(400, 'Solicitud inválida', 'Solo un admin_plaza puede cambiar de rol de staff, y siempre a un rol concreto.'),
+  ULTIMO_ADMIN_SISTEMA: d(409, 'Conflicto', 'La plaza debe conservar al menos un usuario con el rol de administrador del sistema.'),
   INQUILINO_REQUERIDO: d(400, 'Solicitud inválida', 'Un usuario inquilino requiere inquilinoId.'),
 
   // ── Locales / inquilinos / contratos (módulo 04) ───────────────────────────

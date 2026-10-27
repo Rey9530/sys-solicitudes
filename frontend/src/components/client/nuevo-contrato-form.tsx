@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { sinVacios } from '@/lib/form-resolver';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { CreateContratoSchema } from '@app/contracts';
@@ -31,7 +32,7 @@ export function NuevoContratoForm({
     setValue,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(CreateContratoSchema),
+    resolver: sinVacios(zodResolver(CreateContratoSchema)),
     defaultValues: { moneda: 'USD' },
   });
 

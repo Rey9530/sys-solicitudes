@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { sinVacios } from '@/lib/form-resolver';
 import { toast } from 'sonner';
 import { CreateInquilinoSchema, type CreateInquilinoInput } from '@app/contracts';
 import { createInquilinoAction } from '@/app/(admin-plaza)/admin/inquilinos/actions';
@@ -28,7 +29,7 @@ export function NuevoInquilinoForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<CreateInquilinoInput>({ resolver: zodResolver(CreateInquilinoSchema) });
+  } = useForm<CreateInquilinoInput>({ resolver: sinVacios(zodResolver(CreateInquilinoSchema)) });
 
   const onSubmit = async (values: CreateInquilinoInput) => {
     setSubmitting(true);

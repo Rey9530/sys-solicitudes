@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { sinVacios } from '@/lib/form-resolver';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { CreateLocalSchema } from '@app/contracts';
@@ -27,7 +28,7 @@ export function NuevoLocalForm() {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(CreateLocalSchema) });
+  } = useForm<FormValues>({ resolver: sinVacios(zodResolver(CreateLocalSchema)) });
 
   const onSubmit = async (values: FormValues) => {
     setSubmitting(true);

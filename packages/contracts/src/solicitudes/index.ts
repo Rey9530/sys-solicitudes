@@ -292,13 +292,15 @@ export const CreateSolicitudSchema = BaseSolicitudSchema.and(
 export type CreateSolicitudInput = z.infer<typeof CreateSolicitudSchema>;
 
 export const UpdateSolicitudSchema = BaseSolicitudSchema.partial().extend({
-  // Para updates permitidos en borrador/requerida_subsanacion
-  camposExtra: z.union([
-    CamposExtraMantenimientoSchema,
-    CamposExtraEventoSchema,
-    CamposExtraRemodelacionSchema,
-    CamposExtraOtroSchema,
-  ]).optional(),
+  // Para updates permitidos en borrador/requerida_subsanacion.
+  // Fix 2026-10-27 (auditoría F1): antes era un `z.union` de los 4 schemas por
+  // tipo. Como cada opción descarta claves desconocidas, un payload de
+  // `remodelacion` encajaba con la opción `evento` y perdía sus campos propios
+  // → editar una remodelación respondía siempre 422 CAMPOS_EXTRA_INVALIDOS.
+  // El PATCH recibe `tipo` y `camposExtra` por separado, así que aquí solo se
+  // exige un objeto y `validateCamposExtra(tipoFinal, …)` del service lo valida
+  // contra el schema del tipo correcto.
+  camposExtra: z.record(z.string(), z.unknown()).optional(),
 });
 export type UpdateSolicitudInput = z.infer<typeof UpdateSolicitudSchema>;
 

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -75,7 +76,7 @@ export class AuthService {
 
     const usuario = await this.prisma.usuario.findFirst({
       where: { email, deleted_at: null },
-      include: { rol: true },
+      include: { rol: true, plaza: { select: { deleted_at: true } } },
     });
 
     if (!usuario) {
@@ -94,6 +95,21 @@ export class AuthService {
         usuarioId: usuario.id,
       });
       throw this.invalidCredentials();
+    }
+
+    // Fix 2026-10-27 (auditoría F7): una plaza desactivada no permite iniciar
+    // sesión a sus usuarios (el diálogo de desactivación lo promete). Se
+    // comprueba después de la contraseña para no revelar cuentas.
+    if (usuario.plaza?.deleted_at) {
+      await this.recordLogin({
+        email,
+        exitoso: false,
+        motivo: 'plaza_inactiva',
+        meta,
+        plazaId: usuario.plaza_id,
+        usuarioId: usuario.id,
+      });
+      throw this.plazaInactiva();
     }
 
     // Éxito.
@@ -145,7 +161,7 @@ export class AuthService {
 
     const usuario = await this.prisma.usuario.findFirst({
       where: { id: row.usuario_id, deleted_at: null },
-      include: { rol: true },
+      include: { rol: true, plaza: { select: { deleted_at: true } } },
     });
     if (!usuario) {
       throw new UnauthorizedException({
@@ -154,6 +170,7 @@ export class AuthService {
         message: 'El usuario ya no está disponible.',
       });
     }
+    if (usuario.plaza?.deleted_at) throw this.plazaInactiva();
 
     return this.buildTokenResponse(usuario, meta);
   }
@@ -348,6 +365,15 @@ export class AuthService {
         permisos,
       },
     };
+  }
+
+  /** F7: la plaza del usuario fue desactivada por el superadmin. */
+  private plazaInactiva(): ForbiddenException {
+    return new ForbiddenException({
+      code: 'PLAZA_INACTIVA',
+      title: 'Acceso denegado',
+      message: 'La plaza de este usuario está desactivada. Contacta al administrador de la plataforma.',
+    });
   }
 
   private invalidCredentials(): UnauthorizedException {
