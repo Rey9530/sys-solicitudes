@@ -153,6 +153,9 @@ class _ImportadorState extends ConsumerState<_Importador> {
       ref.invalidate(contratosProvider);
       ref.invalidate(localesProvider);
       ref.invalidate(inquilinosProvider);
+      // Filtros de Contratos (la lista sigue montada debajo de esta página).
+      ref.invalidate(opcionesLocalesProvider);
+      ref.invalidate(opcionesInquilinosProvider);
     } on Object catch (e) {
       if (mounted) mostrarError(context, e);
     } finally {

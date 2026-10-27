@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/adjuntos/adjuntos.dart';
 import 'package:frontend_mobil/core/auth/sesion.dart';
@@ -12,6 +13,8 @@ import 'package:frontend_mobil/features/contratos/contratos_modelos.dart';
 import 'package:frontend_mobil/features/contratos/contratos_page.dart';
 import 'package:frontend_mobil/features/contratos/mi_contrato_page.dart';
 import 'package:frontend_mobil/features/contratos/mis_contratos_page.dart';
+import 'package:frontend_mobil/features/inquilinos/inquilinos_providers.dart';
+import 'package:frontend_mobil/features/locales/locales_providers.dart';
 
 import '../../helpers/api_falsa.dart';
 import '../../helpers/pantallas.dart';
@@ -617,6 +620,38 @@ void main() {
       expect(find.text('Locales creados'), findsOneWidget);
       expect(find.text('Creado'), findsWidgets);
       expect(find.text('Ver contratos'), findsOneWidget);
+    });
+
+    testWidgets('importar recarga las opciones de los filtros de Contratos', (
+      tester,
+    ) async {
+      // La lista de Contratos queda montada debajo con sus filtros vivos.
+      await _montar(
+        tester,
+        Column(
+          children: [
+            Consumer(
+              builder: (_, ref, _) {
+                ref.watch(opcionesLocalesProvider(false));
+                ref.watch(opcionesInquilinosProvider);
+                return const SizedBox.shrink();
+              },
+            ),
+            const Expanded(child: CargaInicialPage()),
+          ],
+        ),
+        selector: _xlsx,
+      );
+      int gets(String ruta) => peticionesFalsas
+          .where((r) => r.method == 'GET' && r.url.path.endsWith(ruta))
+          .length;
+      expect((gets('/locales'), gets('/inquilinos')), (1, 1));
+
+      await _tocar(tester, find.byKey(const Key('carga-elegir')));
+      await _tocar(tester, find.byKey(const Key('carga-importar')));
+      await tester.tap(find.text('Sí, importar'));
+      await tester.pumpAndSettle();
+      expect((gets('/locales'), gets('/inquilinos')), (2, 2));
     });
 
     testWidgets('fila con varios mensajes: tocarla los muestra todos', (
