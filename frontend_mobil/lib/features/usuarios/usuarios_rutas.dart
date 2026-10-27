@@ -1,23 +1,25 @@
 import 'package:go_router/go_router.dart';
 
-import '../../core/widgets/en_construccion_page.dart';
+import 'matriz_permisos_page.dart';
+import 'usuario_plaza_page.dart';
+import 'usuarios_plaza_page.dart';
 
-/// Rutas del módulo (mismas URLs que el web). Stub: lo reemplaza la tarea
-/// del plan que implementa este módulo, sin cambiar la firma.
+/// Rutas de usuarios de plaza, roles de staff y matriz de permisos (mismas
+/// URLs que el web). `permisos` va antes de `:id` para que no la capture el
+/// parámetro.
 List<RouteBase> rutasUsuarios() => [
   GoRoute(
     path: '/admin/usuarios-plaza',
     builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Usuarios de plaza'),
+        UsuariosPlazaPage(tab: state.uri.queryParameters['tab']),
   ),
   GoRoute(
     path: '/admin/usuarios-plaza/permisos',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Permisos de roles'),
+    builder: (context, state) => const MatrizPermisosPage(),
   ),
   GoRoute(
     path: '/admin/usuarios-plaza/:id',
     builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Usuario de plaza'),
+        UsuarioPlazaPage(id: state.pathParameters['id']!),
   ),
 ];
