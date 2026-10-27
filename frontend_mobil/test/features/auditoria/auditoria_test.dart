@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/auth/sesion.dart';
+import 'package:frontend_mobil/features/auditoria/auditoria_api.dart';
 import 'package:frontend_mobil/features/auditoria/auditoria_modelos.dart';
 import 'package:frontend_mobil/features/auditoria/auditoria_page.dart';
 
@@ -230,5 +231,47 @@ void main() {
       find.text('No hay eventos de auditoría que coincidan con esos filtros.'),
       findsOneWidget,
     );
+  });
+
+  test('enlace de la entidad: la subcategoría abre las subcategorías de su '
+      'categoría (si el payload la trae)', () {
+    RegistroAuditoria r(
+      String tipo, {
+      String? id = 'e-1',
+      Object? antes,
+      Object? despues,
+    }) => RegistroAuditoria(
+      id: 'x',
+      accion: '$tipo.update',
+      entidadTipo: tipo,
+      createdAt: '2026-10-27T20:27:05.838Z',
+      entidadId: id,
+      antes: antes,
+      despues: despues,
+    );
+
+    expect(rutaEntidadAuditada(r('local')), '/admin/locales/e-1');
+    expect(rutaEntidadAuditada(r('categoria')), '/admin/categorias/e-1');
+    // Alta, edición y baja guardan la subcategoría completa en `despues`.
+    expect(
+      rutaEntidadAuditada(
+        r('subcategoria', despues: {'id': 'e-1', 'categoriaId': 'cat-9'}),
+      ),
+      '/admin/categorias/cat-9/subcategorias',
+    );
+    // Responsable y supervisores no traen la categoría: sin enlace (antes
+    // daba 404 con el id de la subcategoría).
+    expect(
+      rutaEntidadAuditada(
+        r(
+          'subcategoria',
+          antes: {'responsableId': 'u-1'},
+          despues: {'responsableId': 'u-2', 'solicitudesReasignadas': 0},
+        ),
+      ),
+      isNull,
+    );
+    expect(rutaEntidadAuditada(r('plaza')), isNull);
+    expect(rutaEntidadAuditada(r('local', id: null)), isNull);
   });
 }

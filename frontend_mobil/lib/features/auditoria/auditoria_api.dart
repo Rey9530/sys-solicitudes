@@ -32,18 +32,36 @@ Tono tonoAccion(String accion) => switch (accion.split('.').last) {
 
 /// Ruta del detalle de la entidad auditada, o `null` si la app no tiene esa
 /// pantalla (p. ej. `plaza`: el web enlazaba a una ruta inexistente, C-R6).
-String? rutaEntidadAuditada(String tipo, String? id) {
+String? rutaEntidadAuditada(RegistroAuditoria r) {
+  final id = r.entidadId;
   if (id == null) return null;
-  final base = switch (tipo) {
+  // Una subcategoría no tiene detalle propio: se abre la lista de su
+  // categoría, que solo viene en el payload de alta/edición/baja (en
+  // responsable y supervisores no hay forma fiable de saberla).
+  if (r.entidadTipo == 'subcategoria') {
+    final categoriaId =
+        _texto(r.despues, 'categoriaId') ?? _texto(r.antes, 'categoriaId');
+    return categoriaId == null
+        ? null
+        : '/admin/categorias/$categoriaId/subcategorias';
+  }
+  final base = switch (r.entidadTipo) {
     'local' => '/admin/locales',
     'inquilino' => '/admin/inquilinos',
     'contrato' => '/admin/contratos',
     'solicitud' => '/admin/solicitudes',
-    'categoria' || 'subcategoria' => '/admin/categorias',
+    'categoria' => '/admin/categorias',
     'usuario' => '/admin/usuarios-plaza',
     _ => null,
   };
   return base == null ? null : '$base/$id';
+}
+
+/// `payload[clave]` si [payload] es un objeto JSON y el valor es texto.
+String? _texto(Object? payload, String clave) {
+  if (payload is! Map<String, dynamic>) return null;
+  final v = payload[clave];
+  return v is String && v.isNotEmpty ? v : null;
 }
 
 /// Primeros 8 caracteres de un id.

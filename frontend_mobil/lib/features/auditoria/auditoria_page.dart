@@ -261,7 +261,7 @@ class DetalleAuditoria extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = registro;
     final c = ColoresPlazapp.of(context);
-    final ruta = rutaEntidadAuditada(r.entidadTipo, r.entidadId);
+    final ruta = rutaEntidadAuditada(r);
     final quien = r.usuarioNombre != null
         ? '${r.usuarioNombre} <${r.usuarioEmail ?? ''}>'
         : r.usuarioId != null
