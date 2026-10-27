@@ -241,3 +241,30 @@
 - [ ] **Step 3:** `navegacion_completa_test.dart`: por cada rol recorre todos los ítems del menú y abre el primer detalle de cada listado; falla si aparece `ErrorView` o una excepción de layout. Captura por pantalla.
 - [ ] **Step 4:** Ejecutar `scripts/e2e.sh ios-phone`, `ios-tablet` y `android` con el backend local levantado → todos pasan; revisar las capturas (texto cortado, solapes). Corregir lo que aparezca en la task dueña de la pantalla.
 - [ ] **Step 5:** Documentar en `README.md` cómo correr las E2E y dónde quedan las capturas. Commit `test(movil): E2E en simulador iOS (teléfono y tablet) y emulador Android`.
+
+---
+
+## Bitácora de ejecución
+
+**2026-10-27 — Tasks 1–4 (núcleo, ejecutadas en la sesión principal)**
+
+- Commits: `e3a8ebb` (T1), `b04c36f` (T2), `9c1e8de` (T3), `ab69fba` (T4), `4886c71` (humo E2E +
+  modelos de solicitudes compartidos), `a79fc25` (script E2E), `ea85ab1` (`sinPlaza`).
+- Desviaciones de nombres respecto a las Interfaces del plan (el código manda):
+  - `puede(...)` libre se llama `puedeCon(permisos, permiso)`; la sesión expone `Sesion.puede(...)`.
+  - `enum Tono` vive en `core/theme/colores.dart` (lo usan el tema y los badges).
+  - Los providers HTTP están en `core/api/api_providers.dart` (`tokenStorageProvider`,
+    `apiClientProvider`), no en `api_client.dart`, para que `ApiClient` no dependa de Riverpod.
+  - Campos y grillas en `core/widgets/campos.dart` (`CampoFecha`, `CampoHora`, `KeyValueGrid`);
+    estructura de pantalla en `core/widgets/pagina.dart` (`ContenidoPagina`, `EncabezadoPagina`,
+    `Seccion`) — no estaban en el plan y los usan todas las pantallas.
+  - Adjuntos: modelo, API y `SelectorArchivos` (inyectable en pruebas) en `core/adjuntos/adjuntos.dart`.
+  - `ApiClient.get/bytes` aceptan `sinPlaza: true` (dashboard global sin `x-plaza-id`, bug F16).
+  - Las rutas `/superadmin/solicitudes*` pasaron a `rutasSolicitudesGlobales()` en el módulo de
+    solicitudes (dueño único por archivo para paralelizar).
+- ⚠️ Verificado en dispositivo: prueba de humo (login real de admin e inquilino) en simulador
+  iPhone 17 Pro (iOS 26.2) y emulador Android `Medium_Phone_API_36.1`. En Android,
+  `convertFlutterSurfaceToImage` solo puede llamarse una vez por ejecución.
+- Tasks 5–10 se ejecutan en paralelo (un agente por grupo, worktrees aislados): solicitudes (T5+T6),
+  calendario (T7), locales/inquilinos/contratos (T8), catálogos/usuarios (T9), paneles/campana/
+  superadmin (T10).
