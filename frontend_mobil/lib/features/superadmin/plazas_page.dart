@@ -57,12 +57,14 @@ class _PlazasPageState extends ConsumerState<PlazasPage> {
     );
     if (!ok || !mounted) return;
     setState(() => _desactivando = p.id);
+    // Se toman antes del await: si la pantalla se cierra mientras tanto,
+    // `ref` ya no se puede usar.
+    final plaza = ref.read(plazaSeleccionadaProvider.notifier);
+    final eraLaElegida = ref.read(plazaSeleccionadaProvider) == p.id;
     try {
       await desactivarPlaza(ref.read(apiClientProvider), p.id);
       // Si era la plaza elegida, se vuelve a la vista global.
-      if (ref.read(plazaSeleccionadaProvider) == p.id) {
-        await ref.read(plazaSeleccionadaProvider.notifier).seleccionar(null);
-      }
+      if (eraLaElegida) await plaza.seleccionar(null);
       if (!mounted) return;
       mostrarExito(context, 'Plaza desactivada');
       _recargar();
