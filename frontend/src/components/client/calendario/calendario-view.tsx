@@ -285,7 +285,7 @@ export function CalendarioView({
         className={`card card-pad space-y-4 text-sm cal-filters${filtrosAbiertos ? '' : ' collapsed'}`}
       >
         <div>
-          <p className="mb-1 font-medium text-gray-700">Tipo</p>
+          <p className="mb-1 font-medium text-[var(--text-2)]">Tipo</p>
           {TIPOS.filter((t) => t.value !== 'hito_contrato' || mostrarHitosConfig)
             .filter((t) => visibles.includes(t.value))
             .map((t) => (
@@ -310,7 +310,7 @@ export function CalendarioView({
             ))}
         </div>
         <div>
-          <p className="mb-1 font-medium text-gray-700">Local</p>
+          <p className="mb-1 font-medium text-[var(--text-2)]">Local</p>
           <div className="max-h-44 space-y-0.5 overflow-y-auto">
             {locales.map((l) => (
               <label key={l.id} className="flex items-center gap-2 py-0.5">
@@ -328,7 +328,7 @@ export function CalendarioView({
         </div>
         {rol === 'admin' && inquilinos.length > 0 && (
           <div>
-            <p className="mb-1 font-medium text-gray-700">Inquilino</p>
+            <p className="mb-1 font-medium text-[var(--text-2)]">Inquilino</p>
             <div className="max-h-44 space-y-0.5 overflow-y-auto">
               {inquilinos.map((i) => (
                 <label key={i.id} className="flex items-center gap-2 py-0.5">
@@ -349,7 +349,7 @@ export function CalendarioView({
           </div>
         )}
         <div>
-          <p className="mb-1 font-medium text-gray-700">Zona horaria</p>
+          <p className="mb-1 font-medium text-[var(--text-2)]">Zona horaria</p>
           <label className="flex items-center gap-2 py-0.5">
             <input type="radio" checked={!tzPlaza} onChange={() => setParam('tz', null)} />
             Mi zona horaria
@@ -421,12 +421,12 @@ export function CalendarioView({
           {seleccionado && (
             <div className="space-y-2 text-sm">
               {seleccionado.props.choque && (
-                <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-700">
+                <p className="banner banner-danger">
                   ⚠️ Este evento se solapa con otro en el mismo local.
                 </p>
               )}
               {seleccionado.props.solicitudCodigo && (
-                <p className="text-gray-700">
+                <p className="text-[var(--text-2)]">
                   N.º solicitud:{' '}
                   <strong className="mono">{seleccionado.props.solicitudCodigo}</strong>
                 </p>
@@ -471,7 +471,7 @@ export function CalendarioView({
                 {slotNuevo.hora ? ` a las ${formatHora12(slotNuevo.hora)}` : ''}
               </p>
               {slotOcupado ? (
-                <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                <p className="banner banner-warn">
                   Ya hay un evento aprobado en este horario. Elige otro slot del calendario.
                 </p>
               ) : (

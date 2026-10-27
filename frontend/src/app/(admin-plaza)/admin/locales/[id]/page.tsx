@@ -8,7 +8,7 @@ import { EditarLocalForm } from '@/components/client/editar-local-form';
 import { AdjuntoUploader } from '@/components/client/adjunto-uploader';
 import { LocalEstadoBadge, ContratoEstadoBadge } from '@/components/estado-badge';
 import { PageHeader } from '@/components/ui/page-header';
-import { formatDateInPlazaTz } from '@/lib/datetime';
+import { formatDateInPlazaTz, formatFechaDMY } from '@/lib/datetime';
 import {
   subirAdjuntoLocalAction,
   descargarAdjuntoLocalAction,
@@ -41,10 +41,10 @@ export default async function LocalDetailPage({
       <PageHeader
         breadcrumb={[{ label: 'Locales', href: '/admin/locales' }, { label: local.codigo }]}
         title={
-          <>
+          <span>
             <span className="mono">{local.codigo}</span>
             {local.modulo ? ` · Módulo ${local.modulo}` : ''}
-          </>
+          </span>
         }
         badges={<LocalEstadoBadge estado={local.estado} />}
       />
@@ -73,7 +73,7 @@ export default async function LocalDetailPage({
                   >
                     <div className="mc-main">
                       <b>
-                        {c.fechaInicio} → {c.fechaFin ?? 'indefinido'}
+                        {formatFechaDMY(c.fechaInicio)} → {c.fechaFin ? formatFechaDMY(c.fechaFin) : 'indefinido'}
                       </b>
                       <span>
                         {c.moneda} {c.montoMensual ?? '—'} / mes

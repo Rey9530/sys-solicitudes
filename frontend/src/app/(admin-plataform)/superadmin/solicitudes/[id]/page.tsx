@@ -15,6 +15,7 @@ import {
 } from '@/components/estado-badge';
 import { Card } from '@/components/ui/card';
 import { formatDateInPlazaTz, formatFechaDMY, formatHora12 } from '@/lib/datetime';
+import { Banner } from '@/components/ui/banner';
 
 /** El número de solicitud también en el título de la pestaña (2026-09-28). */
 export async function generateMetadata({
@@ -97,11 +98,11 @@ export default async function SuperadminSolicitudDetallePage({ params }: PagePro
         ]}
       />
 
-      <div className="banner banner-info mb-4">
-        <b>Vista de plataforma (superadmin):</b> solo lectura. Para operar esta
-        solicitud, impersone la plaza <code>{plaza.nombreComercial || plaza.id}</code>{' '}
-        desde el selector del topbar.
-      </div>
+      <Banner tone="info" className="mb-4">
+        <b>Vista de plataforma (superadmin):</b> solo lectura. Para operar esta solicitud,
+        selecciona la plaza <b>{plaza.nombreComercial || plaza.id}</b> en el selector de la barra
+        superior.
+      </Banner>
 
       <Card className="card-pad mb-4">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">

@@ -79,20 +79,20 @@ export function EditarLocalForm({
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label>Módulo *</Label>
+          <Label htmlFor="modulo">Módulo *</Label>
           <Input id="modulo" placeholder="A" {...register('modulo')} />
           {errors.modulo && <p className="text-xs text-red-600">{errors.modulo.message}</p>}
         </div>
         <div className="grid gap-1.5">
-          <Label>Nivel *</Label>
+          <Label htmlFor="nivel">Nivel *</Label>
           <Input id="nivel" placeholder="1" {...register('nivel')} />
           {errors.nivel && <p className="text-xs text-red-600">{errors.nivel.message}</p>}
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="grid gap-1.5">
-          <Label>Local</Label>
-          <Input value={local.codigo} disabled />
+          <Label htmlFor="local-codigo">Local</Label>
+          <Input id="local-codigo" value={local.codigo} disabled />
           <p className="text-xs text-gray-400">El local es inmutable.</p>
         </div>
         <div className="grid gap-1.5">

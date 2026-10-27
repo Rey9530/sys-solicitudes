@@ -9,6 +9,7 @@ import { AltaUsuarioInquilinoDialog } from '@/components/client/alta-usuario-inq
 import { UsuariosInquilinoTable } from '@/components/client/usuarios-inquilino-table';
 import { ContratoEstadoBadge } from '@/components/estado-badge';
 import { PageHeader } from '@/components/ui/page-header';
+import { formatFechaDMY } from '@/lib/datetime';
 
 export const metadata: Metadata = { title: 'Detalle de inquilino' };
 
@@ -93,7 +94,7 @@ export default async function InquilinoDetailPage({
                   >
                     <div className="mc-main">
                       <b>
-                        {c.fechaInicio} → {c.fechaFin ?? 'indefinido'}
+                        {formatFechaDMY(c.fechaInicio)} → {c.fechaFin ? formatFechaDMY(c.fechaFin) : 'indefinido'}
                       </b>
                       <span>
                         {c.moneda} {c.montoMensual ?? '—'} / mes

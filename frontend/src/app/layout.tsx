@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Script from 'next/script';
 import { Toaster } from 'sonner';
 import { Providers } from './providers';
+// Mensajes de validación en español también en server actions (safeParse).
+import '@/lib/zod-es';
 import './globals.css';
 
 export const metadata: Metadata = {

@@ -27,6 +27,7 @@ import {
   eliminarAdjuntoAdminAction,
 } from '@/app/(admin-plaza)/admin/solicitudes/actions';
 import { Button } from '@/components/ui/button';
+import { promptAction } from '@/lib/sweetalert';
 import { Tabs } from '@/components/client/tabs';
 import { AdjuntoUploader } from '@/components/client/adjunto-uploader';
 import { Can } from '@/components/client/can';
@@ -316,6 +317,7 @@ export function SolicitudDetailAdmin({
                         rows={2}
                         maxLength={4000}
                         placeholder="Comentario para el inquilino…"
+                        aria-label="Comentario para el inquilino"
                         className="textarea"
                         value={comentario}
                         onChange={(e) => setComentario(e.target.value)}
@@ -503,6 +505,7 @@ export function SolicitudDetailAdmin({
                     <Can permiso="solicitudes.cambiar_prioridad">
                       <select
                         className="select"
+                        aria-label="Cambiar prioridad"
                         style={{ height: 30, width: 'auto', padding: '0 26px 0 8px', fontSize: 12 }}
                         value={solicitud.prioridad}
                         disabled={pending}
@@ -552,9 +555,19 @@ export function SolicitudDetailAdmin({
                             variant="ghost"
                             size="block"
                             disabled={pending}
-                            onClick={() => {
-                              const motivo = prompt('Motivo (opcional):') ?? undefined;
-                              void run(() => liberarAction(solicitud.id, motivo), 'Liberada: volvió a la cola');
+                            onClick={async () => {
+                              const motivo = await promptAction({
+                                title: 'Liberar solicitud',
+                                text: 'La solicitud vuelve a la cola de asignación.',
+                                icon: 'question',
+                                inputPlaceholder: 'Motivo (opcional)',
+                                confirmButtonText: 'Sí, liberar',
+                              });
+                              if (motivo === null) return;
+                              void run(
+                                () => liberarAction(solicitud.id, motivo || undefined),
+                                'Liberada: volvió a la cola',
+                              );
                             }}
                           >
                             Liberar
@@ -569,8 +582,16 @@ export function SolicitudDetailAdmin({
                         variant="danger"
                         size="block"
                         disabled={pending}
-                        onClick={() => {
-                          const motivo = prompt('Motivo de cancelación:') ?? undefined;
+                        onClick={async () => {
+                          const motivo = await promptAction({
+                            title: 'Cancelar solicitud',
+                            text: 'La solicitud quedará cancelada y no podrá reabrirse.',
+                            icon: 'warning',
+                            inputPlaceholder: 'Motivo de cancelación',
+                            confirmButtonText: 'Sí, cancelar',
+                            required: true,
+                            requiredMessage: 'Indica el motivo de la cancelación.',
+                          });
                           if (!motivo) return;
                           void run(() => cancelarAdminAction(solicitud.id, motivo), 'Cancelada');
                         }}
@@ -702,7 +723,15 @@ function CampoExtra({ k, v }: { k: string; v: unknown }) {
   return (
     <div>
       <div className="dt">{CAMPOS_EXTRA_LABEL[k] ?? k}</div>
-      <div className="dd">{typeof v === 'boolean' ? (v ? 'Sí' : 'No') : String(v ?? '—')}</div>
+      <div className="dd">
+        {typeof v === 'boolean'
+          ? v
+            ? 'Sí'
+            : 'No'
+          : typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+            ? formatFechaDMY(v)
+            : String(v ?? '—')}
+      </div>
     </div>
   );
 }
@@ -739,6 +768,7 @@ function DecisionDialog({
           rows={4}
           maxLength={4000}
           autoFocus
+          aria-label={obligatorio ? 'Comentario (obligatorio)' : 'Comentario (opcional)'}
           className="textarea"
           value={texto}
           onChange={(e) => setTexto(e.target.value)}

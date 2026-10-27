@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { SessionProvider } from 'next-auth/react';
+// Mensajes de validación en español en el navegador (formularios).
+import '@/lib/zod-es';
 
 /**
  * Wrapper client-side para proveedores globales. Por ahora solo expone el

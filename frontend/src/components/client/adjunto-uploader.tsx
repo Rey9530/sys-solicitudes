@@ -235,7 +235,7 @@ export function AdjuntoUploader({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red-600 hover:bg-red-50"
+                    className="text-red-600 hover:bg-[var(--danger-bg)]"
                     disabled={pendingId === a.id}
                     onClick={() => onDelete(a)}
                     aria-label={`Eliminar ${a.nombreOriginal}`}
@@ -255,20 +255,20 @@ export function AdjuntoUploader({
 function AdjuntoIcon({ mime }: { mime: string }) {
   if (mime.startsWith('image/')) {
     return (
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-[var(--surface-3)] text-[var(--text-muted)]">
         <ImageIcon className="h-5 w-5" />
       </div>
     );
   }
   if (mime.startsWith('video/')) {
     return (
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400">
+      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-[var(--surface-3)] text-[var(--text-muted)]">
         <FileVideo className="h-5 w-5" />
       </div>
     );
   }
   return (
-    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-gray-100 text-gray-400">
+    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded bg-[var(--surface-3)] text-[var(--text-muted)]">
       <FileIcon className="h-5 w-5" />
     </div>
   );

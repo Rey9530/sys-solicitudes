@@ -77,6 +77,62 @@ export async function confirmAction(options: ConfirmActionOptions): Promise<bool
   return result.isConfirmed === true;
 }
 
+export interface PromptActionOptions {
+  title: string;
+  text?: string;
+  icon?: SweetAlertIcon;
+  inputPlaceholder?: string;
+  confirmButtonText?: string;
+  cancelButtonText?: string;
+  /** Si es true, no se puede confirmar con el texto vacío. */
+  required?: boolean;
+  requiredMessage?: string;
+  maxLength?: number;
+}
+
+/**
+ * Diálogo con un campo de texto (motivo, comentario). Devuelve el texto
+ * recortado (`''` si se dejó vacío) o `null` si el usuario canceló: quien lo
+ * llama DEBE abortar con `null`. Reemplaza a `window.prompt`, cuyo "Cancelar"
+ * devolvía `null` y el código seguía adelante (bug 2026-10-27: cancelar el
+ * prompt cancelaba/liberaba la solicitud igualmente).
+ */
+export async function promptAction(options: PromptActionOptions): Promise<string | null> {
+  const {
+    title,
+    text,
+    icon,
+    inputPlaceholder,
+    confirmButtonText = 'Confirmar',
+    cancelButtonText = 'Volver',
+    required = false,
+    requiredMessage = 'Este campo es obligatorio.',
+    maxLength = 1000,
+  } = options;
+
+  const result: SweetAlertResult<string> = await Swal.fire<string>({
+    title,
+    text,
+    icon,
+    input: 'textarea',
+    inputPlaceholder,
+    inputAttributes: { maxlength: String(maxLength), 'aria-label': inputPlaceholder ?? title },
+    inputValidator: (value) => (required && !value.trim() ? requiredMessage : undefined),
+    showCancelButton: true,
+    confirmButtonText,
+    cancelButtonText,
+    focusCancel: false,
+    customClass: {
+      confirmButton: 'btn btn-primary',
+      cancelButton: 'btn btn-secondary',
+    },
+    buttonsStyling: false,
+    heightAuto: false,
+  });
+  if (!result.isConfirmed) return null;
+  return (result.value ?? '').trim();
+}
+
 /** Diálogo de éxito. Auto-cierre opcional. */
 export async function notifySuccess(title: string, text?: string, timerMs = 2200): Promise<void> {
   await Swal.fire({

@@ -147,8 +147,8 @@ export function RolStaffFormDialog({
         {isEdit ? (
           <form onSubmit={editForm.handleSubmit(onEdit)} className="grid gap-3" noValidate>
             <div className="grid gap-1.5">
-              <Label>Código</Label>
-              <Input value={rol!.codigo} disabled />
+              <Label htmlFor="rol-codigo">Código</Label>
+              <Input id="rol-codigo" value={rol!.codigo} disabled />
               <p className="text-xs text-gray-400">Inmutable tras la creación.</p>
             </div>
             <div className="grid gap-1.5">

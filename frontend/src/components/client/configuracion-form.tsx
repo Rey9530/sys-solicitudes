@@ -149,20 +149,20 @@ export function ConfiguracionForm({
             content: (
               <div className="card card-pad max-w-md space-y-3">
                 <div className="grid gap-1">
-                  <label className={labelClass}>Nombre comercial</label>
-                  <Input value={nombre} onChange={(e) => setNombre(e.target.value)} />
+                  <label htmlFor="cfg-nombre-comercial" className={labelClass}>Nombre comercial</label>
+                  <Input id="cfg-nombre-comercial" value={nombre} onChange={(e) => setNombre(e.target.value)} />
                 </div>
                 <div className="grid gap-1">
-                  <label className={labelClass}>Email de contacto</label>
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                  <label htmlFor="cfg-email-de-contacto" className={labelClass}>Email de contacto</label>
+                  <Input id="cfg-email-de-contacto" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
                 </div>
                 <div className="grid gap-1">
-                  <label className={labelClass}>Teléfono</label>
-                  <Input value={telefono} onChange={(e) => setTelefono(e.target.value)} />
+                  <label htmlFor="cfg-telefono" className={labelClass}>Teléfono</label>
+                  <Input id="cfg-telefono" value={telefono} onChange={(e) => setTelefono(e.target.value)} />
                 </div>
                 <div className="grid gap-1">
-                  <label className={labelClass}>Zona horaria</label>
-                  <Input value="America/El_Salvador" disabled />
+                  <label htmlFor="cfg-zona-horaria" className={labelClass}>Zona horaria</label>
+                  <Input id="cfg-zona-horaria" value="America/El_Salvador" disabled />
                   <p className="text-xs text-gray-400">
                     Fija para todas las plazas en v1 (decisión T-V08).
                   </p>
@@ -181,9 +181,10 @@ export function ConfiguracionForm({
             content: (
               <div className="card card-pad max-w-md space-y-3">
                 <div className="grid gap-1">
-                  <label className={labelClass}>Color primario</label>
+                  <label htmlFor="cfg-color-primario" className={labelClass}>Color primario</label>
                   <div className="flex items-center gap-2">
                     <input
+                      id="cfg-color-primario"
                       type="color"
                       value={color}
                       onChange={(e) => setColor(e.target.value)}
@@ -198,7 +199,9 @@ export function ConfiguracionForm({
                   </div>
                 </div>
                 <div className="grid gap-1">
-                  <label className={labelClass}>Logo (PNG/SVG, máx 2 MB)</label>
+                  <label htmlFor="cfg-logo" className={labelClass}>
+                    Logo (PNG/SVG, máx 2 MB)
+                  </label>
                   {plaza.logoUrl && (
                     // eslint-disable-next-line @next/next/no-img-element -- preview simple del logo subido (URL MinIO pre-firmada)
                     <img
@@ -208,6 +211,7 @@ export function ConfiguracionForm({
                     />
                   )}
                   <input
+                    id="cfg-logo"
                     type="file"
                     accept="image/png,image/svg+xml"
                     className="text-sm"
@@ -331,8 +335,9 @@ export function ConfiguracionForm({
                   ))}
                 </div>
                 <div className="grid gap-1">
-                  <label className={labelClass}>Tamaño máximo por archivo (MB)</label>
+                  <label htmlFor="cfg-tamano-maximo-por-archivo-mb" className={labelClass}>Tamaño máximo por archivo (MB)</label>
                   <Input
+                    id="cfg-tamano-maximo-por-archivo-mb"
                     type="number"
                     min={1}
                     className="w-28"

@@ -21,6 +21,7 @@ import {
   eliminarAdjuntoSolicitudAction,
 } from '@/app/(inquilino)/inquilino/solicitudes/actions';
 import { Button } from '@/components/ui/button';
+import { promptAction } from '@/lib/sweetalert';
 import { Tabs } from '@/components/client/tabs';
 import { AdjuntoUploader } from '@/components/client/adjunto-uploader';
 import { Avatar } from '@/components/ui/avatar';
@@ -49,6 +50,8 @@ const CAMPOS_EXTRA_LABEL: Record<string, string> = {
 
 function formatValor(v: unknown): string {
   if (typeof v === 'boolean') return v ? 'Sí' : 'No';
+  // Fechas civiles de campos extra ("2026-10-02") con el mismo formato que las del permiso.
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)) return formatFechaDMY(v);
   return String(v ?? '—');
 }
 
@@ -127,6 +130,13 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
   const esTerminal = esEstadoTerminal(estado);
   const esAprobadaPendienteCierre = estado === 'aprobada';
   const puedeAdjuntar = esBorrador || esSubsanacion;
+  // Motivo de la última subsanación pedida (el inquilino lo necesita a la vista
+  // para saber qué corregir; antes solo aparecía dentro de la pestaña Historial).
+  const motivoSubsanacion = esSubsanacion
+    ? [...solicitud.historial]
+        .filter((h) => h.estadoNuevo === 'requerida_subsanacion' && h.comentario)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]?.comentario
+    : null;
 
   return (
     <div className="page wide">
@@ -151,6 +161,18 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
           </Button>
         </div>
       </div>
+
+      {esSubsanacion && !esPausada && (
+        <div className="mb-4">
+          <Banner tone="warn">
+            <b>La administración pidió correcciones.</b>
+            {motivoSubsanacion && <span className="mt-1 block">«{motivoSubsanacion}»</span>}
+            <span className="mt-1 block">
+              Edita la solicitud y pulsa «Reenviar subsanada» para que vuelva a revisión.
+            </span>
+          </Banner>
+        </div>
+      )}
 
       {esPausada && (
         <div className="mb-4">
@@ -282,6 +304,7 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
                         rows={2}
                         maxLength={4000}
                         placeholder="Escribe un comentario…"
+                        aria-label="Escribe un comentario"
                         className="textarea"
                         value={comentario}
                         onChange={(e) => setComentario(e.target.value)}
@@ -387,9 +410,19 @@ export function SolicitudDetailInquilino({ solicitud }: { solicitud: SolicitudDe
                   variant="danger"
                   size="block"
                   disabled={pending}
-                  onClick={() => {
-                    const motivo = prompt('Motivo de cancelación (opcional):') ?? undefined;
-                    void run(() => cancelarSolicitudAction(solicitud.id, motivo), 'Cancelada');
+                  onClick={async () => {
+                    const motivo = await promptAction({
+                      title: 'Cancelar solicitud',
+                      text: 'La solicitud quedará cancelada y no podrá reabrirse.',
+                      icon: 'warning',
+                      inputPlaceholder: 'Motivo de cancelación (opcional)',
+                      confirmButtonText: 'Sí, cancelar',
+                    });
+                    if (motivo === null) return;
+                    void run(
+                      () => cancelarSolicitudAction(solicitud.id, motivo || undefined),
+                      'Cancelada',
+                    );
                   }}
                 >
                   Cancelar

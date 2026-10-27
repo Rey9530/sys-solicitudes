@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
 /** Filtros de inquilinos por razón social / identificación (T-059). */
@@ -11,6 +12,8 @@ export function InquilinosFiltros({
   identificacion?: string;
 }) {
   const router = useRouter();
+  const razonRef = useRef<HTMLInputElement>(null);
+  const identRef = useRef<HTMLInputElement>(null);
 
   const apply = (next: Record<string, string | undefined>) => {
     const params = new URLSearchParams();
@@ -28,6 +31,7 @@ export function InquilinosFiltros({
           <label htmlFor="if-razon">Razón social</label>
           <input
             id="if-razon"
+            ref={razonRef}
             className="input"
             style={{ width: 224 }}
             defaultValue={razonSocial ?? ''}
@@ -44,6 +48,7 @@ export function InquilinosFiltros({
           <label htmlFor="if-ident">Identificación</label>
           <input
             id="if-ident"
+            ref={identRef}
             className="input"
             style={{ width: 176 }}
             defaultValue={identificacion ?? ''}
@@ -56,6 +61,18 @@ export function InquilinosFiltros({
             }}
           />
         </div>
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() =>
+            apply({
+              razonSocial: razonRef.current?.value || undefined,
+              identificacion: identRef.current?.value || undefined,
+            })
+          }
+        >
+          Filtrar
+        </button>
         {(razonSocial || identificacion) && (
           <button
             type="button"

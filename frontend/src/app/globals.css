@@ -1102,6 +1102,7 @@
   /* Page header */
   .breadcrumb {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 7px;
     font-size: 12.5px;
@@ -1694,7 +1695,8 @@
     border: 1px solid var(--border);
     gap: 2px;
   }
-  .segment button {
+  .segment button,
+  .segment a {
     padding: 6px 13px;
     border-radius: 5px;
     font-size: 12.5px;
@@ -1702,7 +1704,8 @@
     color: var(--text-3);
     transition: all 0.14s;
   }
-  .segment button.on {
+  .segment button.on,
+  .segment a.on {
     background: var(--surface);
     color: var(--text);
     box-shadow: var(--shadow-xs);
@@ -1740,6 +1743,22 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
     -webkit-overflow-scrolling: touch;
+    /* Sombras de scroll: indican que hay más columnas a izquierda/derecha
+       (tabla densa en laptops). Las capas `local` tapan la sombra cuando se
+       llega al borde. */
+    background:
+      linear-gradient(to right, var(--surface) 30%, transparent) left center / 40px 100%
+        no-repeat local,
+      linear-gradient(to left, var(--surface) 30%, transparent) right center / 40px 100%
+        no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgb(0 0 0 / 0.14), transparent) left center /
+        14px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, rgb(0 0 0 / 0.14), transparent) right center /
+        14px 100% no-repeat scroll;
+  }
+  /* Códigos (local, contrato, medidor…) nunca se parten a media palabra. */
+  .tbl .mono {
+    white-space: nowrap;
   }
   table.tbl {
     width: 100%;
@@ -1824,8 +1843,10 @@
   }
   .tbl-foot {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
+    gap: 8px 12px;
     padding: 13px 16px;
     border-top: 1px solid var(--border);
     font-size: 12.5px;
@@ -1863,6 +1884,25 @@
   .pager button:disabled {
     opacity: 0.4;
     pointer-events: none;
+  }
+  .pager .pager-gap,
+  .pager .pager-off {
+    min-width: 24px;
+    height: 32px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-3);
+  }
+  .pager .pager-off {
+    opacity: 0.4;
+  }
+  /* Teléfonos: solo ‹ página actual › (el texto "Página X de Y" da el total). */
+  @media (max-width: 479px) {
+    .pager .pager-num:not(.on),
+    .pager .pager-gap {
+      display: none;
+    }
   }
 
   /* Tabs */
@@ -3222,6 +3262,14 @@
   /* Objetivos táctiles (WCAG 2.5.8): en pantallas táctiles los controles
      compactos crecen; en escritorio con ratón conservan su densidad. */
   @media (pointer: coarse) {
+    .breadcrumb a,
+    .dropzone button,
+    .segment a,
+    .segment button {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+    }
     .btn-sm {
       height: 36px;
       padding: 0 13px;
@@ -3232,6 +3280,7 @@
       height: 36px;
     }
     .check input,
+    .matriz-todos,
     .matriz-list input[type='checkbox'] {
       width: 20px;
       height: 20px;
