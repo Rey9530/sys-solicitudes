@@ -52,6 +52,15 @@ Future<void> _pestana(WidgetTester tester, String texto) async {
   await tester.pumpAndSettle();
 }
 
+/// Fechas válidas en modo estándar (inicio dentro de 3 días).
+Map<String, Object?> _fechasValidas() => {
+  'fechaEventoInicio': diaPlaza(3),
+  'fechaEventoFin': diaPlaza(3),
+  'horaInicio': '08:00',
+  'horaFin': '09:00',
+  'esEmergencia': false,
+};
+
 Map<String, String> _query(String metodo, String ruta) =>
     peticiones(metodo, ruta).last.url.queryParameters;
 
@@ -203,7 +212,7 @@ void main() {
     testWidgets('requerida_subsanacion: aviso con el motivo y acciones', (
       tester,
     ) async {
-      await abrir(tester, detalle());
+      await abrir(tester, detalle(cambios: _fechasValidas()));
       expect(
         find.text('La administración pidió correcciones.'),
         findsOneWidget,
@@ -321,7 +330,10 @@ void main() {
     });
 
     testWidgets('enviar, duplicar, editar y PDF', (tester) async {
-      await abrir(tester, detalle(estado: 'borrador'));
+      await abrir(
+        tester,
+        detalle(estado: 'borrador', cambios: _fechasValidas()),
+      );
       await tester.tap(boton('enviar'));
       await tester.pumpAndSettle();
       expect(
@@ -341,6 +353,61 @@ void main() {
 
       await tester.tap(boton('editar'));
       await tester.pumpAndSettle();
+      expect(
+        find.text('Ruta: /inquilino/solicitudes/$idSolicitud/editar'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('borrador sin fechas (duplicado): "Enviar" avisa y abre la '
+        'edición sin llamar a la API', (tester) async {
+      await abrir(
+        tester,
+        detalle(
+          estado: 'borrador',
+          cambios: {
+            'fechaEventoInicio': null,
+            'fechaEventoFin': null,
+            'horaInicio': null,
+            'horaFin': null,
+          },
+        ),
+      );
+      await tester.tap(boton('enviar'));
+      await tester.pumpAndSettle();
+      expect(peticiones('POST', '/solicitudes/$idSolicitud/enviar'), isEmpty);
+      expect(
+        find.text('Indica fecha y hora de inicio y fin del permiso.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Ruta: /inquilino/solicitudes/$idSolicitud/editar'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('subsanación con fechas ya vencidas: "Reenviar" avisa y abre '
+        'la edición', (tester) async {
+      await abrir(
+        tester,
+        detalle(
+          cambios: {
+            ..._fechasValidas(),
+            'fechaEventoInicio': diaPlaza(-2),
+            'fechaEventoFin': diaPlaza(-2),
+          },
+        ),
+      );
+      await tester.tap(boton('reenviar'));
+      await tester.pumpAndSettle();
+      expect(peticiones('POST', '/solicitudes/$idSolicitud/subsanar'), isEmpty);
+      expect(
+        find.text(
+          'La fecha de inicio debe ser al menos 48 horas después de este '
+          'momento.',
+        ),
+        findsOneWidget,
+      );
       expect(
         find.text('Ruta: /inquilino/solicitudes/$idSolicitud/editar'),
         findsOneWidget,
@@ -476,15 +543,6 @@ void main() {
       'PATCH /solicitudes/:id': (_) => solicitud,
     };
 
-    /// Fechas válidas en modo estándar (inicio dentro de 3 días).
-    Map<String, Object?> fechasValidas() => {
-      'fechaEventoInicio': diaPlaza(3),
-      'fechaEventoFin': diaPlaza(3),
-      'horaInicio': '08:00',
-      'horaFin': '09:00',
-      'esEmergencia': false,
-    };
-
     Future<void> siguiente(WidgetTester tester) async {
       await tester.tap(find.byKey(const Key('wizard-siguiente')));
       await tester.pumpAndSettle();
@@ -496,7 +554,7 @@ void main() {
       final json = detalle(
         estado: 'borrador',
         largos: true,
-        cambios: {...fechasValidas(), 'adminAsignado': null},
+        cambios: {..._fechasValidas(), 'adminAsignado': null},
       );
       await probarEnTamanos(
         tester,

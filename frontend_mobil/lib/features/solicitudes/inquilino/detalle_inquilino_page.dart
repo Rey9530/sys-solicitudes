@@ -19,6 +19,7 @@ import '../comun/historial_tab.dart';
 import '../solicitudes_api.dart';
 import '../solicitudes_modelos.dart';
 import '../solicitudes_providers.dart';
+import 'wizard/formulario_solicitud.dart';
 
 /// Detalle de solicitud del inquilino. Espejo de
 /// `frontend/src/components/client/solicitud-detail-inquilino.tsx`.
@@ -72,6 +73,24 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
     }
   }
 
+  /// Enviar / reenviar: antes se revisan las fechas del permiso con las
+  /// reglas del wizard (el backend no las valida al enviar y un borrador
+  /// duplicado no trae fechas). Si fallan, se avisa y se abre la edición.
+  void _enviarSiFechasValidas(
+    SolicitudItem s,
+    Future<void> Function() accion,
+    String exito,
+  ) {
+    final error = FormularioSolicitud.desdeSolicitud(s)
+        .validarFechas(DateTime.now());
+    if (error != null) {
+      mostrarError(context, error);
+      unawaited(context.push('/inquilino/solicitudes/${s.id}/editar'));
+      return;
+    }
+    unawaited(_ejecutar(accion, exito));
+  }
+
   Future<void> _cancelar() async {
     final motivo = await pedirTexto(
       context,
@@ -109,7 +128,8 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
             etiqueta: 'Enviar',
             estilo: EstiloAccion.principal,
             principal: true,
-            onPressed: () => _ejecutar(
+            onPressed: () => _enviarSiFechasValidas(
+              s,
               () => enviar(api, s.id),
               'Enviada: quedó en cola de asignación',
             ),
@@ -122,7 +142,8 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
             etiqueta: 'Reenviar subsanada',
             estilo: EstiloAccion.principal,
             principal: true,
-            onPressed: () => _ejecutar(
+            onPressed: () => _enviarSiFechasValidas(
+              s,
               () => subsanar(api, s.id),
               'Reenviada: volvió a la cola de asignación',
             ),
