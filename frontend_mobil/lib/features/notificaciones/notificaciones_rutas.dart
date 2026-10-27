@@ -1,13 +1,11 @@
 import 'package:go_router/go_router.dart';
 
-import '../../core/widgets/en_construccion_page.dart';
+import 'log_emails_page.dart';
 
-/// Rutas del módulo (mismas URLs que el web). Stub: lo reemplaza la tarea
-/// del plan que implementa este módulo, sin cambiar la firma.
+/// Rutas del módulo (mismas URLs que el web).
 List<RouteBase> rutasNotificaciones() => [
   GoRoute(
     path: '/admin/notificaciones',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Notificaciones'),
+    builder: (context, state) => const LogEmailsPage(),
   ),
 ];
