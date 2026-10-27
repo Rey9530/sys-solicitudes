@@ -1,68 +1,35 @@
-# CHANGELOG — Hallazgos de versiones
+# CHANGELOG — app móvil Plazapp
 
-Registro de las versiones investigadas vs. instaladas, y desviaciones del plan original. Mismo formato que el `CLAUDE.md` raíz.
+Versiones de paquetes verificadas en pub.dev antes de instalar (`https://pub.dev/api/packages/<pkg>`),
+con publisher y adopción. Regla del owner: solo paquetes oficiales o de publisher verificado,
+mantenidos y muy usados.
 
----
+## 2026-10-27 — Proyecto nuevo con Riverpod (reemplaza el prototipo con `provider`)
 
-## 2026-07-27 — Bootstrap inicial
+Flutter **3.47.8** / Dart **3.13.7** (actualizado desde 3.41.7 el mismo día: Riverpod 3.4 y
+go_router 18 exigen Dart ≥ 3.12).
 
-**Investigado en:** `https://pub.dev/packages/<pkg>` y `https://registry.npmjs.org/`
+| Paquete | Versión | Publisher | Descargas/mes | Uso |
+|---|---|---|---|---|
+| `flutter_riverpod` | 3.4.3 | dash-overflow.net ✔ | 4,0 M | estado e inyección |
+| `go_router` | 18.1.1 | flutter.dev ✔ (oficial) | 5,1 M | navegación por rol |
+| `http` | 1.6.0 | dart.dev ✔ (oficial) | 14 M | cliente HTTP, multipart |
+| `http_parser` | 4.1.2 | dart.dev ✔ (oficial) | — | `MediaType` del multipart |
+| `mime` | 2.1.0 | tools.dart.dev ✔ (oficial) | — | MIME por extensión |
+| `flutter_secure_storage` | 11.2.0 | steenbakker.dev ✔ | 5,6 M | tokens en Keychain/Keystore |
+| `shared_preferences` | 2.5.6 | flutter.dev ✔ (oficial) | 8,6 M | tema y plaza elegida |
+| `intl` | 0.20.3 | dart.dev ✔ (oficial) | 12,8 M | formatos en español |
+| `file_picker` | 13.3.0 | victorcarreras.dev ✔ | 4,7 M | elegir archivos |
+| `image_picker` | 1.2.4 | flutter.dev ✔ (oficial) | 5,6 M | cámara / galería |
+| `path_provider` | 2.1.6 | flutter.dev ✔ (oficial) | 9,8 M | archivos temporales |
+| `share_plus` | 13.3.1 | fluttercommunity.dev ✔ | 4,9 M | abrir/compartir PDF, CSV, ICS |
+| `url_launcher` | 6.3.3 | flutter.dev ✔ (oficial) | 8,9 M | URLs pre-firmadas de adjuntos |
+| `fl_chart` | 1.3.0 | flchart.dev ✔ | 2,1 M | gráficas del dashboard |
+| `flutter_lints` (dev) | 6.0.0 | flutter.dev ✔ (oficial) | 10 M | lints |
+| `flutter_localizations`, `flutter_test`, `integration_test` | SDK | flutter.dev | — | i18n y pruebas |
 
-### Dependencias (16 prod + 3 dev)
-
-| Paquete | Versión instalada | Notas de compatibilidad |
-|---|---|---|
-| `provider` | `^6.1.5` | resolved `6.1.5+1`. Flutter Favorite. `ValueListenableProvider` ya no existe en 6.x → usar `ValueListenableBuilder` con `Provider`. |
-| `dio` | `^5.11.0` | resolved `5.11.0`. Usar `QueuedInterceptor` (no el viejo `Interceptor`) para evitar refresh paralelo en 401s concurrentes. |
-| `flutter_secure_storage` | `^10.3.1` | resolved `10.3.1`. Flutter Favorite. ⚠️ `AndroidOptions.encryptedSharedPreferences` está deprecado en 10.x → ignorar (Flutter usa cifrado propio). |
-| `shared_preferences` | `^2.5.5` | resolved `2.5.5`. Solo primitivas + List<String>. Para objetos → JSON string + decode manual. |
-| `go_router` | `^17.3.0` | resolved `17.3.0`. Flutter Favorite (official). `StatefulShellRoute.indexedStack` para bottom-nav preserva estado por branch. |
-| `flutter_form_builder` | `^10.3.0` | resolved `10.3.0+2`. peer `intl >=0.20.0 <0.21.0`. Para formularios grandes; los pequeños pueden ser `TextFormField` a mano. |
-| `form_builder_validators` | `^11.3.0` | resolved `11.3.0`. peer `intl >=0.20.0 <0.21.0`. ~50 validators listos (email, phone, RUT, etc.). |
-| `table_calendar` | `^3.2.0` | resolved `3.2.0`. Mirror del FullCalendar del web. Sin dialog de creación built-in → bottom sheet propio. |
-| `fl_chart` | `^1.2.0` | resolved `1.2.0`. Line/bar/pie/radar/scatter — cubre todos los dashboards. API verbose (~30-50 líneas por chart). |
-| `image_picker` | `^1.2.3` | resolved `1.2.3`. Peer `flutter`. Requiere permisos en `Info.plist` (iOS) + `AndroidManifest.xml`. |
-| `file_picker` | `^11.0.2` | resolved `11.0.2`. API distinta a 8.x → leer migration notes si encuentras código viejo. Genera 2 warnings Kotlin no bloqueantes en build. |
-| `firebase_messaging` | `^16.4.3` | resolved `16.4.3`. Peer `firebase_core ^4.12.1`. **No integrado todavía** (Fase 2 — requiere Firebase project + credenciales). |
-| `firebase_core` | `^4.12.1` | resolved `4.12.1`. Scaffolding para `firebase_messaging`. |
-| `intl` | `^0.20.2` | resolved `0.20.2`. ⚠️ **PIN** por `flutter_localizations` → no se puede subir a `0.20.3`. Llamar `initializeDateFormatting('es')` en `main()` antes de usar. |
-| `logger` | `^2.7.0` | resolved `2.7.0`. Pretty console + opcional file output. |
-| `cupertino_icons` | `^1.0.8` | (default scaffold) |
-| `lucide_icons` | `^0.257.0` | resolved `0.257.0`. ⚠️ **Versión real `0.x`, no `1.x`** (corregido durante la implementación). Iconos en camelCase: `LucideIcons.calendarDays`, `LucideIcons.barChart3`, `LucideIcons.user` (no `userRound` — no existe en este package). |
-| `flutter_lints` | `^6.0.0` | (dev) |
-| `build_runner` | `^2.15.1` | resolved `2.15.1`. ⚠️ **2.15.2+ requiere `meta ^1.18.3`** pero `flutter_test` está pinned a `1.17.0` → conflicto. Usar `^2.15.1`. |
-| `json_serializable` | `^6.14.0` | resolved `6.14.0`. |
-
-### Desviaciones del plan original
-
-| # | Desviación | Por qué | Acción |
-|---|---|---|---|
-| 1 | `lucide_icons: ^0.257.0` (no `1.x`) | Versión real consultada en pub.dev | Documentado en `pubspec.yaml` y AGENTS.md |
-| 2 | `intl: ^0.20.2` (no `^0.20.3`) | Pin por `flutter_localizations` | Documentado |
-| 3 | `build_runner: ^2.15.1` (no `^2.15.2`) | Conflicto de `meta` con `flutter_test` | Documentado |
-| 4 | Algunos nombres de iconos lucide cambiados (`userRound` → `user`) | Nombres exactos de `lucide_icons 0.257.0` | Verificado contra el source de la lib |
-
-### Fuentes (bundled, no via `google_fonts`)
-
-| Familia | Versión | Pesos | Licencia |
-|---|---|---|---|
-| General Sans | Indian Type Foundry, 2023 | 400/500/600/700 | SIL OFL 1.1 (gratis con atribución) |
-| JetBrains Mono | JetBrains s.r.o. | 400/500/600/700 (v2.304) | SIL OFL 1.1 |
-
-Descargadas desde:
-- General Sans: `https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700` (URLs directas de los `.ttf`)
-- JetBrains Mono: `https://github.com/JetBrains/JetBrainsMono/releases/tag/v2.304` (zip)
-
-Atribuciones completas en `assets/fonts/LICENSE.md`.
-
-### Estado del build
-
-- `flutter analyze`: 0 errores, ~20 info-level warnings (estilo, no bloqueantes).
-- `flutter build apk --debug`: ✅ build successful. APK en `build/app/outputs/flutter-apk/app-debug.apk` (~160 MB debug).
-- 2 warnings Kotlin del plugin `file_picker` (`unchecked cast`) — son del package, no afectan funcionalidad.
-
-### Lo que NO se instaló (justificación)
-
-- `freezed`, `riverpod`, `flutter_bloc`, `auto_route`, `retrofit`, `get_it`, `hive`, `isar`, `drift`, `dio_smart_retry`, `flutter_hooks`, `talker`, `syncfusion_*`, `easy_localization`, `flutter_animate`, `sentry_flutter`, `flutter_dotenv`, `connectivity_plus`.
-
-Justificación detallada en el plan original (`docs/superpowers/plans/...`) y AGENTS.md.
+**Descartados:** `dio` (se usa `http`, oficial), `table_calendar` (sin publisher verificado; el
+calendario se dibuja con widgets propios), `provider` / `bloc` (decisión del owner: Riverpod),
+`freezed` / `retrofit` / `riverpod_generator` / `build_runner` (sin generación de código),
+`lucide_icons` (se usan los iconos Material del SDK), `firebase_*` (no hay push en v1),
+`cupertino_icons` (no se usan iconos Cupertino).
