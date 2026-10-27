@@ -15,6 +15,7 @@ import '../contratos/catalogo_comun.dart';
 import 'locales_api.dart';
 import 'locales_modelos.dart';
 import 'locales_providers.dart';
+import '../../core/api/payload.dart';
 
 /// `/admin/locales` — listado con filtros estado/módulo/nivel (espejo de
 /// `admin/locales/page.tsx` + `locales-table.tsx` + `locales-filtros.tsx`).
@@ -39,8 +40,7 @@ class _LocalesPageState extends ConsumerState<LocalesPage> {
 
   /// Módulo y nivel se aplican con Enter o al salir del campo (como el web).
   void _aplicarTextos() {
-    String? valor(TextEditingController c) =>
-        c.text.trim().isEmpty ? null : c.text.trim();
+    String? valor(TextEditingController c) => textoOpcional(c.text);
     if (valor(_modulo) == _filtro.modulo && valor(_nivel) == _filtro.nivel) {
       return;
     }

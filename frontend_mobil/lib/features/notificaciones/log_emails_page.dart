@@ -143,7 +143,7 @@ class _LogEmailsPageState extends ConsumerState<LogEmailsPage> {
       // Espera el log nuevo (las desuscripciones solo se invalidan).
       onRefresh: () {
         ref.invalidate(desuscripcionesProvider);
-        return ref.refresh(emailLogProvider(_f).future);
+        return recargar(ref, emailLogProvider(_f).future);
       },
       children: [
         EncabezadoPagina(

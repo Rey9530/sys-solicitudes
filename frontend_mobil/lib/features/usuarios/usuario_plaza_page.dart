@@ -33,7 +33,7 @@ class UsuarioPlazaPage extends ConsumerWidget {
       value: datos,
       onRetry: () => ref.invalidate(usuarioPlazaProvider(id)),
       data: (u) => ContenidoPagina(
-        onRefresh: () => ref.refresh(usuarioPlazaProvider(id).future),
+        onRefresh: () => recargar(ref, usuarioPlazaProvider(id).future),
         children: [
           EncabezadoPagina(
             titulo: u.nombre,

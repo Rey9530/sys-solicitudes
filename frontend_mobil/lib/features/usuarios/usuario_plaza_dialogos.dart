@@ -12,6 +12,8 @@ import '../../core/widgets/dialogos.dart';
 import 'usuarios_api.dart';
 import 'usuarios_modelos.dart';
 import 'usuarios_providers.dart';
+import '../../core/api/payload.dart';
+import '../../core/format/validaciones.dart';
 
 /// Códigos de error del backend que se muestran bajo el selector de rol.
 const _erroresDeRol = {
@@ -63,14 +65,6 @@ class EstadoUsuarioBadge extends StatelessWidget {
 /// Opción de rol en los selectores: `Nombre (codigo)` y ` — inactivo`.
 String etiquetaRol(RolStaff r) =>
     '${r.nombre} (${r.codigo})${r.activo ? '' : ' — inactivo'}';
-
-/// Validación de email del formulario de alta (mismo texto que el web).
-String? _validarEmail(String? v) {
-  final valor = (v ?? '').trim();
-  return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(valor)
-      ? null
-      : 'Email inválido';
-}
 
 String? _requerido(String? v) => (v ?? '').trim().isEmpty ? 'Requerido' : null;
 
@@ -284,7 +278,7 @@ class _AltaUsuarioPlazaDialogState
               labelText: 'Email',
               errorText: _errorEmail,
             ),
-            validator: _validarEmail,
+            validator: validarEmailObligatorio,
           ),
           const SizedBox(height: 12),
           TextFormField(

@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Refreshable;
 import 'package:go_router/go_router.dart';
 
 import '../theme/colores.dart';
@@ -8,8 +10,20 @@ import '../theme/colores.dart';
 /// Ancho máximo del contenido en tablets grandes.
 const anchoMaximoContenido = 1100.0;
 
+/// "Tirar para actualizar": vuelve a pedir [datos] y espera la respuesta (el
+/// indicador no se va antes de tener los datos). Si falla, no lanza: el error
+/// ya lo muestra `AsyncView`. Uso: `onRefresh: () => recargar(ref, p.future)`.
+Future<void> recargar<T>(WidgetRef ref, Refreshable<Future<T>> datos) async {
+  try {
+    final futuro = ref.refresh(datos);
+    await futuro;
+  } on Object {
+    // Se muestra en pantalla.
+  }
+}
+
 /// Contenido scrolleable de una pantalla: padding de 16 px y ancho máximo
-/// centrado. Con [onRefresh], "tirar para actualizar".
+/// centrado. Con [onRefresh], "tirar para actualizar" (usar [recargar]).
 class ContenidoPagina extends StatelessWidget {
   const ContenidoPagina({super.key, required this.children, this.onRefresh});
 

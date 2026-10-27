@@ -16,6 +16,7 @@ import '../contratos/catalogo_comun.dart';
 import 'inquilinos_api.dart';
 import 'inquilinos_modelos.dart';
 import 'inquilinos_providers.dart';
+import '../../core/format/validaciones.dart';
 
 /// Pestaña "Usuarios" del detalle de inquilino (espejo de
 /// `usuarios-inquilino-table.tsx`). A diferencia del web, cada acción se

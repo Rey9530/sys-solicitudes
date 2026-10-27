@@ -82,7 +82,7 @@ class _PlazasPageState extends ConsumerState<PlazasPage> {
       // Espera la lista nueva (el selector de la barra solo se invalida).
       onRefresh: () {
         ref.invalidate(plazasProvider);
-        return ref.refresh(listaPlazasProvider.future);
+        return recargar(ref, listaPlazasProvider.future);
       },
       children: [
         EncabezadoPagina(

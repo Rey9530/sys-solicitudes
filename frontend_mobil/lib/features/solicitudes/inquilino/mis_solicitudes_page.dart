@@ -46,7 +46,7 @@ class _MisSolicitudesState extends ConsumerState<MisSolicitudesPage> {
     final total = datos.value?.total;
     return Scaffold(
       body: ContenidoPagina(
-        onRefresh: () async => ref.refresh(provider.future),
+        onRefresh: () => recargar(ref, provider.future),
         children: [
           EncabezadoPagina(
             titulo: 'Mis solicitudes',

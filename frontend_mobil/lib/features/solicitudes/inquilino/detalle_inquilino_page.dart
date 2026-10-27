@@ -193,7 +193,7 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
     final puedeAdjuntar = s.estado == 'borrador' || esSubsanacion;
     return VistaDetalleSolicitud(
       pendiente: _pendiente,
-      onRefresh: () async => ref.refresh(solicitudProvider(widget.id).future),
+      onRefresh: () => recargar(ref, solicitudProvider(widget.id).future),
       encabezado: EncabezadoPagina(
         titulo: s.codigo,
         rutaVolver: '/inquilino/solicitudes',

@@ -213,7 +213,7 @@ class _DetalleAdminState extends ConsumerState<DetalleAdminPage> {
     final soyCreador = s.usuarioCreadorId == miId;
     return VistaDetalleSolicitud(
       pendiente: _pendiente,
-      onRefresh: () async => ref.refresh(solicitudProvider(_id).future),
+      onRefresh: () => recargar(ref, solicitudProvider(_id).future),
       encabezado: EncabezadoPagina(
         titulo: s.codigo,
         rutaVolver: '/admin/solicitudes',

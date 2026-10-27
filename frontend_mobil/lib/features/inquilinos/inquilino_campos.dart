@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../core/widgets/pagina.dart';
 import '../contratos/catalogo_comun.dart';
 import 'inquilinos_modelos.dart';
+import '../../core/format/validaciones.dart';
 
 /// Campos del formulario de inquilino compartidos por el alta y la edición
 /// (espejo de `nuevo-inquilino-form.tsx` y `editar-inquilino-form.tsx`).

@@ -49,7 +49,7 @@ class MatrizPermisosPage extends ConsumerWidget {
     }
     final datos = ref.watch(matrizPermisosProvider);
     return ContenidoPagina(
-      onRefresh: () => ref.refresh(matrizPermisosProvider.future),
+      onRefresh: () => recargar(ref, matrizPermisosProvider.future),
       children: [
         _encabezado,
         const _Convenciones(),

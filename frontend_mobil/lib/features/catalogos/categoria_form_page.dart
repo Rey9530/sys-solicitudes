@@ -12,6 +12,7 @@ import '../../core/widgets/pagina.dart';
 import 'categorias_api.dart';
 import 'categorias_modelos.dart';
 import 'categorias_providers.dart';
+import '../../core/api/payload.dart';
 
 const _rutaListado = '/admin/categorias';
 
@@ -64,7 +65,7 @@ class CategoriaDetallePage extends ConsumerWidget {
           child: _SubcategoriasActivas(cat.subcategorias),
         );
         return ContenidoPagina(
-          onRefresh: () => ref.refresh(categoriaProvider(id).future),
+          onRefresh: () => recargar(ref, categoriaProvider(id).future),
           children: [
             EncabezadoPagina(
               titulo: cat.nombre,

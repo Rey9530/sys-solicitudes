@@ -32,7 +32,7 @@ class _TiposSolicitudPageState extends ConsumerState<TiposSolicitudPage> {
   Widget build(BuildContext context) {
     final datos = ref.watch(tiposSolicitudProvider(_filtro));
     return ContenidoPagina(
-      onRefresh: () => ref.refresh(tiposSolicitudProvider(_filtro).future),
+      onRefresh: () => recargar(ref, tiposSolicitudProvider(_filtro).future),
       children: [
         EncabezadoPagina(
           titulo: 'Tipos de solicitud',

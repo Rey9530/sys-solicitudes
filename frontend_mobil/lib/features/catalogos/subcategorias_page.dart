@@ -15,6 +15,7 @@ import 'catalogos_widgets.dart';
 import 'categorias_api.dart';
 import 'categorias_modelos.dart';
 import 'categorias_providers.dart';
+import '../../core/api/payload.dart';
 
 /// `/admin/categorias/:id/subcategorias` — crear, editar, cambiar
 /// responsable, gestionar supervisores (máx. 5) y desactivar.
@@ -152,7 +153,7 @@ class _SubcategoriasPageState extends ConsumerState<SubcategoriasPage> {
       data: (cat) => ContenidoPagina(
         onRefresh: () {
           ref.invalidate(staffElegibleProvider);
-          return ref.refresh(subcategoriasProvider(_catId).future);
+          return recargar(ref, subcategoriasProvider(_catId).future);
         },
         children: [
           EncabezadoPagina(

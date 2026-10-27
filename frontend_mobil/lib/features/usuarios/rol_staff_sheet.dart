@@ -8,6 +8,7 @@ import '../../core/widgets/avisos.dart';
 import 'usuarios_api.dart';
 import 'usuarios_modelos.dart';
 import 'usuarios_providers.dart';
+import '../../core/api/payload.dart';
 
 /// Abre el formulario de rol de staff (nuevo si [rol] es null). Al guardar
 /// muestra el aviso y recarga los listados.

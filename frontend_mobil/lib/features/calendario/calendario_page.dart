@@ -234,9 +234,10 @@ class _CalendarioPageState extends ConsumerState<CalendarioPage> {
   @override
   Widget build(BuildContext context) {
     final contenido = ContenidoPagina(
-      onRefresh: () async {
+      onRefresh: () {
+        // También los otros rangos ya pedidos.
         ref.invalidate(feedCalendarioProvider);
-        await ref.read(feedCalendarioProvider(_filtro()).future);
+        return recargar(ref, feedCalendarioProvider(_filtro()).future);
       },
       children: [
         _encabezado(),

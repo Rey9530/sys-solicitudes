@@ -13,6 +13,7 @@ import '../../core/widgets/pagina.dart';
 import 'categorias_api.dart';
 import 'categorias_modelos.dart';
 import 'categorias_providers.dart';
+import '../../core/api/payload.dart';
 
 const _rutaListado = '/admin/catalogos/tipos-solicitud';
 
@@ -34,7 +35,7 @@ class TipoSolicitudPage extends ConsumerWidget {
       value: datos,
       onRetry: () => ref.invalidate(tipoSolicitudProvider(id)),
       data: (tipo) => ContenidoPagina(
-        onRefresh: () => ref.refresh(tipoSolicitudProvider(id).future),
+        onRefresh: () => recargar(ref, tipoSolicitudProvider(id).future),
         children: [
           EncabezadoPagina(
             titulo: tipo.etiqueta,

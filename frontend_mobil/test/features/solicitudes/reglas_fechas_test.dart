@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/format/fechas.dart';
+import 'package:frontend_mobil/core/format/validaciones.dart';
 import 'package:frontend_mobil/features/solicitudes/reglas_fechas.dart';
 
 /// Casos de `frontend/src/lib/solicitud-fechas.ts` (y del superRefine del
@@ -196,8 +197,8 @@ void main() {
   });
 
   test('validaciones de contacto', () {
-    expect(emailBasicoValido('a@b.com'), isTrue);
-    expect(emailBasicoValido('a@b'), isFalse);
+    expect(esEmailValido(' a@b.com '), isTrue);
+    expect(esEmailValido('a@b'), isFalse);
     expect(telefonoBasicoValido('+503 7000 0000'), isTrue);
     expect(telefonoBasicoValido('1234567'), isFalse);
     expect(telefonoBasicoValido('7000-abcd'), isFalse);

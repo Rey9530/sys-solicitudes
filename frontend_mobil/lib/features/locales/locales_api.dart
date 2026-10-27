@@ -6,6 +6,7 @@ import '../../core/api/paginado.dart';
 import '../contratos/catalogo_comun.dart';
 import '../solicitudes/solicitudes_modelos.dart';
 import 'locales_modelos.dart';
+import '../../core/api/payload.dart';
 
 /// Llamadas al backend de locales (`/locales`, Inv §5.1).
 

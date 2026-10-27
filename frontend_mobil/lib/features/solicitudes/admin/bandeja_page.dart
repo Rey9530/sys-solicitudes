@@ -77,7 +77,7 @@ class _BandejaState extends ConsumerState<BandejaPage> {
         : 'ordenadas por fecha, más reciente primero';
     return Scaffold(
       body: ContenidoPagina(
-        onRefresh: () async => ref.refresh(provider.future),
+        onRefresh: () => recargar(ref, provider.future),
         children: [
           EncabezadoPagina(
             titulo: 'Bandeja de solicitudes',

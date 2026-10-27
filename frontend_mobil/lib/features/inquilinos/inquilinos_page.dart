@@ -14,6 +14,7 @@ import '../contratos/catalogo_comun.dart';
 import 'inquilinos_api.dart';
 import 'inquilinos_modelos.dart';
 import 'inquilinos_providers.dart';
+import '../../core/api/payload.dart';
 
 /// `/admin/inquilinos` — listado con filtros razón social / identificación
 /// (espejo de `admin/inquilinos/page.tsx`, `inquilinos-table.tsx` e
@@ -42,8 +43,7 @@ class _InquilinosPageState extends ConsumerState<InquilinosPage> {
   }
 
   void _aplicar() {
-    String? valor(TextEditingController c) =>
-        c.text.trim().isEmpty ? null : c.text.trim();
+    String? valor(TextEditingController c) => textoOpcional(c.text);
     final razon = valor(_razon);
     final ident = valor(_identificacion);
     if (razon == _filtro.razonSocial && ident == _filtro.identificacion) {

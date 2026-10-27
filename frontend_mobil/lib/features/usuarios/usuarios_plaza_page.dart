@@ -22,6 +22,7 @@ import 'usuario_plaza_dialogos.dart';
 import 'usuarios_api.dart';
 import 'usuarios_modelos.dart';
 import 'usuarios_providers.dart';
+import '../../core/api/payload.dart';
 
 /// Pestañas en el orden del web (`?tab=usuarios|roles|permisos`).
 const _pestanas = ['usuarios', 'roles', 'permisos'];
@@ -114,8 +115,8 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
     invalidarRoles(ref);
     ref.invalidate(totalPermisosProvider);
     return _tabs.index == 1
-        ? ref.read(rolesStaffProvider(_paginaRoles).future)
-        : ref.read(usuariosPlazaProvider(_filtro).future);
+        ? recargar(ref, rolesStaffProvider(_paginaRoles).future)
+        : recargar(ref, usuariosPlazaProvider(_filtro).future);
   }
 
   @override

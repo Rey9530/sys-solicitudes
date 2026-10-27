@@ -8,13 +8,6 @@ typedef FiltroCategorias = ({int pagina, bool? activo, String? buscar});
 /// Filtros del listado de tipos de solicitud (`activo` null = todos).
 typedef FiltroTipos = ({int pagina, bool? activo});
 
-/// Texto de formulario → valor del payload: recortado, `null` si queda vacío
-/// (el backend nunca recibe `''`).
-String? textoOpcional(String texto) {
-  final t = texto.trim();
-  return t.isEmpty ? null : t;
-}
-
 // ── Categorías ──────────────────────────────────────────────────────────────
 
 /// `GET /categorias` (orden por nombre).

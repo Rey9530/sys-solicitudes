@@ -9,6 +9,7 @@ import '../configuracion/widgets/selector_color.dart';
 import '../reportes/widgets/rejilla_campos.dart';
 import 'plazas_api.dart';
 import 'plazas_modelos.dart';
+import '../../core/format/validaciones.dart';
 
 /// Abre el formulario "Nueva plaza". Devuelve `true` si se creó.
 Future<bool> mostrarNuevaPlaza(BuildContext context) async {
@@ -65,13 +66,6 @@ class _NuevaPlazaSheetState extends ConsumerState<NuevaPlazaSheet> {
 
   static String? _requerido(String? v) =>
       (v ?? '').trim().isEmpty ? 'Requerido' : null;
-
-  static String? _validarEmail(String? v) {
-    final valor = (v ?? '').trim();
-    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(valor)
-        ? null
-        : 'Email inválido';
-  }
 
   static String? _validarSlug(String? v) {
     final s = (v ?? '').trim().toLowerCase();
@@ -169,8 +163,7 @@ class _NuevaPlazaSheetState extends ConsumerState<NuevaPlazaSheet> {
                     decoration: const InputDecoration(
                       labelText: 'Email de contacto',
                     ),
-                    validator: (v) =>
-                        (v ?? '').trim().isEmpty ? null : _validarEmail(v),
+                    validator: (v) => validarEmailOpcional(v),
                   ),
                   TextFormField(
                     controller: _telefono,
@@ -221,7 +214,7 @@ class _NuevaPlazaSheetState extends ConsumerState<NuevaPlazaSheet> {
                     controller: _adminEmail,
                     keyboardType: TextInputType.emailAddress,
                     decoration: const InputDecoration(labelText: 'Email'),
-                    validator: _validarEmail,
+                    validator: validarEmailObligatorio,
                   ),
                   TextFormField(
                     key: const Key('admin-password'),

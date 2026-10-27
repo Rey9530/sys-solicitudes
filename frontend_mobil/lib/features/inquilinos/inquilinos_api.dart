@@ -3,9 +3,9 @@ import 'dart:math';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/paginado.dart';
-import '../contratos/catalogo_comun.dart';
 import '../solicitudes/solicitudes_modelos.dart';
 import 'inquilinos_modelos.dart';
+import '../../core/api/payload.dart';
 
 /// Llamadas al backend de inquilinos y de sus usuarios (Inv §5.1.2, §5.1.4).
 
@@ -137,10 +137,7 @@ Future<void> editarUsuarioInquilino(
   required String telefono,
 }) => api.patch(
   '/usuarios/$usuarioId',
-  body: {
-    'nombre': nombre.trim(),
-    'telefono': telefono.trim().isEmpty ? null : telefono.trim(),
-  },
+  body: {'nombre': nombre.trim(), 'telefono': textoOpcional(telefono)},
 );
 
 /// Envía al usuario un enlace de reseteo (válido 30 min, abre el web).

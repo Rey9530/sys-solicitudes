@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/misc.dart' show Refreshable;
 import 'package:go_router/go_router.dart';
 
-import '../../core/auth/sesion_controller.dart';
 import '../../core/format/fechas.dart';
 import '../../core/format/montos.dart';
 import '../../core/theme/colores.dart';
@@ -16,39 +13,7 @@ import 'contratos_modelos.dart';
 /// Piezas compartidas por las pantallas de locales, inquilinos y contratos
 /// (payloads, validaciones y widgets pequeños).
 
-// ── Riverpod ────────────────────────────────────────────────────────────────
-
-/// ¿La sesión tiene [permiso]? (código o lista = OR). Para decidir si se pasan
-/// acciones a una lista; los botones sueltos usan `Can`.
-bool puedeHacer(WidgetRef ref, Object permiso) =>
-    ref.watch(sesionProvider).value?.puede(permiso) ?? false;
-
-/// "Tirar para actualizar": recarga [datos] y espera. Si falla, el error ya
-/// lo muestra `AsyncView`.
-Future<void> recargar<T>(WidgetRef ref, Refreshable<Future<T>> datos) async {
-  try {
-    final futuro = ref.refresh(datos);
-    await futuro;
-  } on Object {
-    // Se muestra en pantalla.
-  }
-}
-
-// ── Payloads ────────────────────────────────────────────────────────────────
-
-/// Altas: quita las claves `null` o con texto vacío (el backend rechaza `''`
-/// en campos opcionales, bug B1-R3 del web) y recorta los textos.
-Map<String, Object?> omitirVacios(Map<String, Object?> datos) => {
-  for (final MapEntry(:key, :value) in datos.entries)
-    if (value != null && !(value is String && value.trim().isEmpty))
-      key: value is String ? value.trim() : value,
-};
-
-/// Ediciones: un texto vacío va como `null` (borra el valor).
-Map<String, Object?> vaciosANull(Map<String, Object?> datos) => {
-  for (final MapEntry(:key, :value) in datos.entries)
-    key: value is String ? (value.trim().isEmpty ? null : value.trim()) : value,
-};
+// ── Números ─────────────────────────────────────────────────────────────────
 
 /// `"1.5"` o `"1,5"` → `1.5`; vacío o inválido → `null`.
 double? numeroDe(String texto) =>
@@ -65,15 +30,6 @@ String textoDe(Object? valor) => switch (valor) {
 };
 
 // ── Validaciones ────────────────────────────────────────────────────────────
-
-/// Email opcional: vacío es válido.
-String? validarEmailOpcional(String? v) {
-  final valor = (v ?? '').trim();
-  if (valor.isEmpty) return null;
-  return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(valor)
-      ? null
-      : 'Email inválido';
-}
 
 /// Número opcional dentro de un rango. Vacío es válido.
 String? validarNumero(

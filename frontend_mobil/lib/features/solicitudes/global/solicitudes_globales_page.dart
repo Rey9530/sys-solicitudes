@@ -98,7 +98,7 @@ class _SolicitudesGlobalesState extends ConsumerState<SolicitudesGlobalesPage> {
     final total = datos.value?.total;
     return Scaffold(
       body: ContenidoPagina(
-        onRefresh: () async => ref.refresh(provider.future),
+        onRefresh: () => recargar(ref, provider.future),
         children: [
           EncabezadoPagina(
             titulo: 'Solicitudes globales',

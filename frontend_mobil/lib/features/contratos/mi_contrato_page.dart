@@ -7,7 +7,6 @@ import '../../core/widgets/badges.dart';
 import '../../core/widgets/campos.dart';
 import '../../core/widgets/estados.dart';
 import '../../core/widgets/pagina.dart';
-import 'catalogo_comun.dart';
 import 'contrato_detalle_page.dart';
 import 'contratos_providers.dart';
 

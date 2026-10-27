@@ -1,5 +1,6 @@
 import '../../reglas_fechas.dart';
 import '../../solicitudes_modelos.dart';
+import '../../../../core/format/validaciones.dart';
 
 /// Datos de una persona del personal (nombre + documento).
 class AsistenteForm {
@@ -213,7 +214,7 @@ class FormularioSolicitud {
     if (empresaEmail.trim().isEmpty) {
       return 'Indica el email de la empresa ejecutante.';
     }
-    if (!emailBasicoValido(empresaEmail)) return 'Email de empresa inválido.';
+    if (!esEmailValido(empresaEmail)) return 'Email de empresa inválido.';
     if (emergenciaContacto.trim().isEmpty) {
       return 'Indica el contacto de emergencia.';
     }

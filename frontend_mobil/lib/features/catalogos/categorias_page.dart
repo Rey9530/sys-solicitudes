@@ -14,6 +14,7 @@ import 'catalogos_widgets.dart';
 import 'categorias_api.dart';
 import 'categorias_modelos.dart';
 import 'categorias_providers.dart';
+import '../../core/api/payload.dart';
 
 /// `/admin/categorias` — listado de categorías con búsqueda, estado y
 /// desactivar. Espejo de `admin/categorias/page.tsx` + `categorias-table.tsx`.
@@ -72,7 +73,7 @@ class _CategoriasPageState extends ConsumerState<CategoriasPage> {
     final datos = ref.watch(categoriasProvider(_filtro));
     final total = datos.value?.total;
     return ContenidoPagina(
-      onRefresh: () => ref.refresh(categoriasProvider(_filtro).future),
+      onRefresh: () => recargar(ref, categoriasProvider(_filtro).future),
       children: [
         EncabezadoPagina(
           titulo: 'Categorías',
