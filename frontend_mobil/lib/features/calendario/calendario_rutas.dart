@@ -1,16 +1,17 @@
 import 'package:go_router/go_router.dart';
 
-import '../../core/widgets/en_construccion_page.dart';
+import 'calendario_page.dart';
 
-/// Rutas del módulo (mismas URLs que el web). Stub: lo reemplaza la tarea
-/// del plan que implementa este módulo, sin cambiar la firma.
+/// Rutas del calendario (mismas URLs que el web). El admin necesita
+/// `calendario.ver` (se valida en la página y en el backend); el superadmin no
+/// lo usa (el backend lo excluye y el menú lo oculta).
 List<RouteBase> rutasCalendario() => [
   GoRoute(
     path: '/admin/calendario',
-    builder: (context, state) => const EnConstruccionPage(titulo: 'Calendario'),
+    builder: (context, state) => const CalendarioPage(esInquilino: false),
   ),
   GoRoute(
     path: '/inquilino/calendario',
-    builder: (context, state) => const EnConstruccionPage(titulo: 'Calendario'),
+    builder: (context, state) => const CalendarioPage(esInquilino: true),
   ),
 ];
