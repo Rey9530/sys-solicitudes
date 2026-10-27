@@ -69,6 +69,7 @@ Widget envolver(
     errorBuilder: (_, state) => Scaffold(body: Text('Ruta: ${state.uri}')),
   );
   return ProviderScope(
+    retry: politicaReintentos,
     overrides: overrides,
     child: MaterialApp.router(
       routerConfig: router,

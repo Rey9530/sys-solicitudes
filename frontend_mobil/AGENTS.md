@@ -35,6 +35,8 @@ lib/
 3. **Estado global** solo `sesionProvider` y `plazaSeleccionadaProvider`. Los filtros de una lista
    viven en el `State` de su widget.
 4. Prohibido: `riverpod_generator`, `build_runner`, `StateNotifier`, `ChangeNotifier`, BLoC.
+5. Reintentos: la app usa `ProviderScope(retry: politicaReintentos)` (solo red/5xx, máx. 2). En
+   pruebas, `envolver(...)` ya lo aplica; un `ProviderScope` nuevo debe pasarlo también.
 
 ## Reglas de código
 

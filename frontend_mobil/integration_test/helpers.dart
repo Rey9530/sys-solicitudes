@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend_mobil/core/api/api_providers.dart';
 import 'package:frontend_mobil/app.dart';
 import 'package:frontend_mobil/core/auth/token_storage.dart';
 import 'package:integration_test/integration_test.dart';
@@ -15,7 +16,9 @@ const passwordDemo = 'Plazapp2026!';
 Future<void> arrancarApp(WidgetTester tester) async {
   await initializeDateFormatting('es');
   await SecureTokenStorage().borrar();
-  await tester.pumpWidget(const ProviderScope(child: PlazappApp()));
+  await tester.pumpWidget(
+    const ProviderScope(retry: politicaReintentos, child: PlazappApp()),
+  );
   await esperar(tester, find.text('Inicia sesión'));
 }
 

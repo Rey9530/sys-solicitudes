@@ -12,6 +12,7 @@ void main() {
   testWidgets('sin sesión arranca en el login', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
+        retry: politicaReintentos,
         overrides: [
           apiClientProvider.overrideWithValue(apiFalsa({}, conSesion: false)),
         ],

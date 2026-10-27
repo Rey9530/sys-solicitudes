@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/api/api_client.dart';
 import 'package:frontend_mobil/core/api/api_error.dart';
+import 'package:frontend_mobil/core/api/api_providers.dart';
 import 'package:frontend_mobil/core/auth/token_storage.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -246,6 +247,20 @@ void main() {
       api.get('/x'),
       throwsA(isA<ApiError>().having((e) => e.code, 'code', 'SIN_CONEXION')),
     );
+  });
+
+  test('política de reintentos: solo red/5xx, máximo 2', () {
+    ApiError e(int s) => ApiError(status: s, code: 'X', mensaje: 'x');
+    expect(
+      politicaReintentos(0, ApiError.sinConexion()),
+      const Duration(seconds: 1),
+    );
+    expect(politicaReintentos(1, e(503)), const Duration(seconds: 2));
+    expect(politicaReintentos(2, e(503)), isNull);
+    expect(politicaReintentos(0, e(403)), isNull);
+    expect(politicaReintentos(0, e(404)), isNull);
+    expect(politicaReintentos(0, e(429)), isNull);
+    expect(politicaReintentos(0, StateError('bug')), isNull);
   });
 
   test('login guarda tokens y logout los borra', () async {

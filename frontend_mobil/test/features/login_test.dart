@@ -31,6 +31,7 @@ Future<void> _montar(
   final api = apiFalsa(rutas, conSesion: false);
   await tester.pumpWidget(
     ProviderScope(
+      retry: politicaReintentos,
       overrides: [apiClientProvider.overrideWithValue(api)],
       child: const PlazappApp(),
     ),

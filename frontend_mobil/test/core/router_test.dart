@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:frontend_mobil/core/api/api_providers.dart';
 import 'package:frontend_mobil/app.dart';
 import 'package:frontend_mobil/core/auth/sesion.dart';
 import 'package:frontend_mobil/core/navegacion/router.dart';
@@ -99,6 +100,7 @@ void main() {
     });
     await tester.pumpWidget(
       ProviderScope(
+        retry: politicaReintentos,
         overrides: overridesBase(api, sesion: sesionDe(Rol.superadmin)),
         child: const PlazappApp(),
       ),
@@ -130,6 +132,7 @@ void main() {
     });
     await tester.pumpWidget(
       ProviderScope(
+        retry: politicaReintentos,
         overrides: overridesBase(api, sesion: sesionDe(Rol.adminPlaza)),
         child: const PlazappApp(),
       ),
