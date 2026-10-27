@@ -139,8 +139,11 @@ class ListaResponsive<T> extends StatelessWidget {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              SizedBox(
+                              // 8 px de aire: una etiqueta que llena los
+                              // 110 px quedaba pegada al valor (Android).
+                              Container(
                                 width: 110,
+                                padding: const EdgeInsets.only(right: 8),
                                 child: Text(
                                   col.titulo.toUpperCase(),
                                   style: TextStyle(

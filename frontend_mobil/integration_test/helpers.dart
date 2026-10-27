@@ -77,10 +77,12 @@ Future<void> captura(
   WidgetTester tester,
   String nombre,
 ) async {
-  // En Android la superficie se convierte una sola vez por ejecución.
+  // En Android la superficie se convierte una vez por test: el binding la
+  // revierte en el tear-down de cada `testWidgets`.
   if (Platform.isAndroid && !_superficieConvertida) {
     await binding.convertFlutterSurfaceToImage();
     _superficieConvertida = true;
+    addTearDown(() => _superficieConvertida = false);
   }
   for (var i = 0; i < 5; i++) {
     await tester.pump(const Duration(milliseconds: 100));
