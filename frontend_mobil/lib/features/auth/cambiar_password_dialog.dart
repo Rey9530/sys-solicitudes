@@ -11,6 +11,8 @@ import 'auth_api.dart';
 Future<void> mostrarCambiarPassword(BuildContext context) {
   return showDialog<void>(
     context: context,
+    // Solo se cierra con «Cancelar» (deshabilitado mientras se guarda).
+    barrierDismissible: false,
     builder: (_) => const _CambiarPasswordDialog(),
   );
 }
@@ -51,8 +53,11 @@ class _CambiarPasswordDialogState
     });
     if (!_form.currentState!.validate()) return;
     setState(() => _enviando = true);
+    // Todo lo que se usa tras el await se toma antes (el diálogo podría
+    // cerrarse mientras tanto, p. ej. con «atrás» en Android).
     final router = GoRouter.of(context);
     final navigator = Navigator.of(context);
+    final sesion = ref.read(sesionProvider.notifier);
     try {
       await cambiarPassword(
         ref.read(apiClientProvider),
@@ -60,10 +65,11 @@ class _CambiarPasswordDialogState
         nueva: _nueva.text,
       );
       // El backend revocó todas las sesiones: cerrar la local y volver al login.
-      await ref.read(sesionProvider.notifier).cerrarSesion();
+      await sesion.cerrarSesion();
       navigator.pop();
       router.go('/login?password_changed=1');
     } on ApiError catch (e) {
+      if (!mounted) return;
       setState(() {
         switch (e.code) {
           case 'INVALID_CURRENT_PASSWORD':
