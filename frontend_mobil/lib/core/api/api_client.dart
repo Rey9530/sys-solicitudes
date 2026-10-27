@@ -123,9 +123,12 @@ class ApiClient {
   /// Revoca el refresh token en el backend (si falla, igual se cierra la
   /// sesión local) y borra los tokens guardados.
   Future<void> logout() async {
-    final t = await _tokens.leer();
-    if (t != null) {
-      try {
+    try {
+      // El refresh proactivo se hace ANTES de armar el body: si lo hiciera
+      // `_enviar`, se mandaría el refresh token viejo (ya rotado) y el
+      // vigente quedaría sin revocar.
+      final t = await _tokensVigentes();
+      if (t != null) {
         await _enviar(
           () => _requestJson('POST', _url('/auth/logout', null), {
             'refreshToken': t.refreshToken,
@@ -133,9 +136,9 @@ class ApiClient {
           autenticado: true,
           reintentar: false,
         );
-      } on ApiError {
-        // La sesión local se cierra de todos modos.
       }
+    } on ApiError {
+      // La sesión local se cierra de todos modos.
     }
     await _tokens.borrar();
   }
@@ -195,16 +198,13 @@ class ApiClient {
   }) async {
     Tokens? tokens;
     if (autenticado) {
-      tokens = await _tokens.leer();
+      tokens = await _tokensVigentes();
       if (tokens == null) {
         throw ApiError(
           status: 401,
           code: 'SIN_SESION',
           mensaje: 'Inicia sesión para continuar.',
         );
-      }
-      if (tokens.expiraEn.difference(DateTime.now()) < _margenRefresh) {
-        tokens = await _refrescar();
       }
     }
 
@@ -226,6 +226,15 @@ class ApiClient {
       );
     }
     return respuesta;
+  }
+
+  /// Tokens guardados, refrescados antes si el access vence en menos de
+  /// [_margenRefresh]. `null` = sin sesión.
+  Future<Tokens?> _tokensVigentes() async {
+    final t = await _tokens.leer();
+    if (t == null) return null;
+    final porVencer = t.expiraEn.difference(DateTime.now()) < _margenRefresh;
+    return porVencer ? _refrescar() : t;
   }
 
   Future<http.Response> _ejecutar(

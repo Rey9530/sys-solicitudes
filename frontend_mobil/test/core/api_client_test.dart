@@ -279,4 +279,36 @@ void main() {
     await api.logout();
     expect(await tokens.leer(), isNull);
   });
+
+  test('logout con el access por vencer refresca antes y revoca el refresh '
+      'token vigente', () async {
+    final tokens = await _conTokens(vida: const Duration(seconds: 10));
+    http.Request? logout;
+    final cliente = MockClient((req) async {
+      if (req.url.path.endsWith('/auth/refresh')) {
+        expect(jsonDecode(req.body), {'refreshToken': 'R1'});
+        return _json(200, _par('A2', 'R2'));
+      }
+      if (req.url.path.endsWith('/auth/logout')) {
+        logout = req;
+        return http.Response('', 204);
+      }
+      return _json(404, {});
+    });
+    final api = ApiClient(baseUrl: _base, tokens: tokens, cliente: cliente);
+    await api.logout();
+    expect(logout!.headers['Authorization'], 'Bearer A2');
+    expect(jsonDecode(logout!.body), {'refreshToken': 'R2'});
+    expect(await tokens.leer(), isNull);
+  });
+
+  test('logout sin red igual borra los tokens', () async {
+    final tokens = await _conTokens();
+    final cliente = MockClient(
+      (req) async => throw http.ClientException('sin red'),
+    );
+    final api = ApiClient(baseUrl: _base, tokens: tokens, cliente: cliente);
+    await api.logout();
+    expect(await tokens.leer(), isNull);
+  });
 }
