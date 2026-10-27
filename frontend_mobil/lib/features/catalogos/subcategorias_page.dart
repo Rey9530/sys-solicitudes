@@ -70,7 +70,9 @@ class _SubcategoriasPageState extends ConsumerState<SubcategoriasPage> {
     }
   }
 
-  Widget _acciones(Subcategoria s, List<PersonaStaff> staff) {
+  /// [staff] es `null` mientras carga: los diálogos que eligen personas se
+  /// abren cuando ya hay opciones (si no, quedarían vacíos).
+  Widget _acciones(Subcategoria s, List<PersonaStaff>? staff) {
     return Wrap(
       spacing: 4,
       runSpacing: 4,
@@ -78,11 +80,12 @@ class _SubcategoriasPageState extends ConsumerState<SubcategoriasPage> {
         Can(
           permiso: 'subcategorias.editar',
           child: TextButton(
+            // Editar no elige personas (el responsable tiene su diálogo).
             onPressed: () => _abrir(
               _SubcategoriaFormDialog(
                 categoriaId: _catId,
                 sub: s,
-                staff: staff,
+                staff: staff ?? const [],
               ),
             ),
             child: const Text('Editar'),
@@ -91,18 +94,30 @@ class _SubcategoriasPageState extends ConsumerState<SubcategoriasPage> {
         Can(
           permiso: 'subcategorias.asignar_responsable',
           child: TextButton(
-            onPressed: () => _abrir(
-              _ResponsableDialog(categoriaId: _catId, sub: s, staff: staff),
-            ),
+            onPressed: staff == null
+                ? null
+                : () => _abrir(
+                    _ResponsableDialog(
+                      categoriaId: _catId,
+                      sub: s,
+                      staff: staff,
+                    ),
+                  ),
             child: const Text('Responsable'),
           ),
         ),
         Can(
           permiso: 'subcategorias.gestionar_supervisores',
           child: TextButton(
-            onPressed: () => _abrir(
-              SupervisoresDialog(categoriaId: _catId, sub: s, staff: staff),
-            ),
+            onPressed: staff == null
+                ? null
+                : () => _abrir(
+                    SupervisoresDialog(
+                      categoriaId: _catId,
+                      sub: s,
+                      staff: staff,
+                    ),
+                  ),
             child: const Text('Supervisores'),
           ),
         ),
@@ -125,9 +140,10 @@ class _SubcategoriasPageState extends ConsumerState<SubcategoriasPage> {
   Widget build(BuildContext context) {
     final categoria = ref.watch(categoriaProvider(_catId));
     final subs = ref.watch(subcategoriasProvider(_catId));
-    // Si falla (p. ej. sin `usuarios_plaza.listar`) los selectores quedan
-    // vacíos, igual que en el web.
-    final staff = ref.watch(staffElegibleProvider).value ?? const [];
+    // `null` mientras carga. Si falla (p. ej. sin `usuarios_plaza.listar`) el
+    // provider da una lista vacía: los selectores quedan vacíos, igual que en
+    // el web.
+    final staff = ref.watch(staffElegibleProvider).value;
     final c = ColoresPlazapp.of(context);
 
     return AsyncView(
@@ -149,9 +165,14 @@ class _SubcategoriasPageState extends ConsumerState<SubcategoriasPage> {
               Can(
                 permiso: 'subcategorias.crear',
                 child: FilledButton.icon(
-                  onPressed: () => _abrir(
-                    _SubcategoriaFormDialog(categoriaId: _catId, staff: staff),
-                  ),
+                  onPressed: staff == null
+                      ? null
+                      : () => _abrir(
+                          _SubcategoriaFormDialog(
+                            categoriaId: _catId,
+                            staff: staff,
+                          ),
+                        ),
                   icon: const Icon(Icons.add),
                   label: const Text('Nueva subcategoría'),
                 ),

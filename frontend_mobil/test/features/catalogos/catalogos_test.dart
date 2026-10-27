@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/auth/sesion.dart';
 import 'package:frontend_mobil/features/catalogos/categoria_form_page.dart';
+import 'package:frontend_mobil/features/catalogos/categorias_modelos.dart';
+import 'package:frontend_mobil/features/catalogos/categorias_providers.dart';
 import 'package:frontend_mobil/features/catalogos/categorias_page.dart';
 import 'package:frontend_mobil/features/catalogos/subcategorias_page.dart';
 import 'package:frontend_mobil/features/catalogos/tipo_solicitud_page.dart';
@@ -140,6 +144,18 @@ Future<void> _elegir(WidgetTester tester, Finder campo, String opcion) async {
   await tester.tap(find.text(opcion).last);
   await tester.pumpAndSettle();
 }
+
+/// ¿Está habilitado el botón que contiene [texto]?
+bool _habilitado(WidgetTester tester, String texto) => tester
+    .widget<ButtonStyleButton>(
+      find
+          .ancestor(
+            of: find.text(texto).first,
+            matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+          )
+          .first,
+    )
+    .enabled;
 
 void main() {
   setUp(prepararPruebas);
@@ -398,6 +414,53 @@ void main() {
         expect(find.text('Subcategoría creada'), findsOneWidget);
       },
     );
+
+    testWidgets('mientras carga el staff no se abren los diálogos que eligen '
+        'personas', (tester) async {
+      final staff = Completer<List<PersonaStaff>>();
+      await tester.pumpWidget(
+        envolver(
+          () => const Scaffold(body: SubcategoriasPage(categoriaId: 'cat-1')),
+          overrides: [
+            ...overridesBase(
+              apiFalsa(rutasSubs()),
+              sesion: sesionDe(Rol.adminPlaza),
+            ),
+            staffElegibleProvider.overrideWith((ref) => staff.future),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      for (final boton in [
+        'Nueva subcategoría',
+        'Responsable',
+        'Supervisores',
+      ]) {
+        expect(_habilitado(tester, boton), isFalse, reason: boton);
+      }
+
+      staff.complete([
+        PersonaStaff.fromJson(_persona(1)),
+        PersonaStaff.fromJson(_persona(2)),
+      ]);
+      await tester.pumpAndSettle();
+      for (final boton in [
+        'Nueva subcategoría',
+        'Responsable',
+        'Supervisores',
+      ]) {
+        expect(_habilitado(tester, boton), isTrue, reason: boton);
+      }
+      // El diálogo ya muestra al responsable actual entre las opciones.
+      await _tocar(tester, find.text('Responsable').first);
+      expect(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.textContaining('Supervisora Número 1 con Apellidos'),
+        ),
+        findsOneWidget,
+      );
+    });
 
     testWidgets('los diálogos caben en teléfono y tablet', (tester) async {
       await probarEnTamanos(

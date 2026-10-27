@@ -24,7 +24,9 @@ class UsuarioPlazaPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final datos = ref.watch(usuarioPlazaProvider(id));
     // Todos los roles (también inactivos) para el selector de edición.
-    final roles = ref.watch(rolesStaffTodosProvider).value ?? const [];
+    // `null` mientras carga: "Editar" espera a tenerlos (si no, el selector
+    // del diálogo quedaría vacío).
+    final roles = ref.watch(rolesStaffTodosProvider).value;
     final c = ColoresPlazapp.of(context);
 
     return AsyncView(
@@ -42,7 +44,9 @@ class UsuarioPlazaPage extends ConsumerWidget {
                 Can(
                   permiso: 'usuarios_plaza.editar',
                   child: OutlinedButton.icon(
-                    onPressed: () => editarUsuarioPlaza(context, ref, u, roles),
+                    onPressed: roles == null
+                        ? null
+                        : () => editarUsuarioPlaza(context, ref, u, roles),
                     icon: const Icon(Icons.edit_outlined, size: 18),
                     label: const Text('Editar'),
                   ),

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,7 +8,9 @@ import 'package:frontend_mobil/core/auth/sesion_controller.dart';
 import 'package:frontend_mobil/features/usuarios/matriz_permisos_page.dart';
 import 'package:frontend_mobil/features/usuarios/usuario_plaza_page.dart';
 import 'package:frontend_mobil/features/usuarios/usuarios_api.dart';
+import 'package:frontend_mobil/features/usuarios/usuarios_modelos.dart';
 import 'package:frontend_mobil/features/usuarios/usuarios_plaza_page.dart';
+import 'package:frontend_mobil/features/usuarios/usuarios_providers.dart';
 import 'package:http/http.dart' as http;
 
 import '../../helpers/api_falsa.dart';
@@ -550,6 +554,57 @@ void main() {
           await _tocar(tester, find.text('Cancelar').last);
         },
       );
+    });
+
+    testWidgets('"Editar" espera a que carguen los roles (si no, el selector '
+        'del diálogo queda vacío)', (tester) async {
+      final todos = Completer<List<RolStaff>>();
+      final activos = Completer<List<RolStaff>>();
+      final roles = [for (final r in _roles) RolStaff.fromJson(r)];
+      final overrides = [
+        ...overridesBase(apiFalsa(_rutas()), sesion: sesionDe(Rol.adminPlaza)),
+        rolesStaffTodosProvider.overrideWith((ref) => todos.future),
+        rolesStaffActivosProvider.overrideWith((ref) => activos.future),
+      ];
+      bool editarHabilitado() => tester
+          .widget<ButtonStyleButton>(
+            find
+                .ancestor(
+                  of: find.text('Editar').first,
+                  matching: find.byWidgetPredicate(
+                    (w) => w is ButtonStyleButton,
+                  ),
+                )
+                .first,
+          )
+          .enabled;
+
+      // Detalle del usuario.
+      await tester.pumpWidget(
+        envolver(
+          () => const Scaffold(body: UsuarioPlazaPage(id: 'u-1')),
+          overrides: overrides,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(editarHabilitado(), isFalse);
+      todos.complete(roles);
+      await tester.pumpAndSettle();
+      expect(editarHabilitado(), isTrue);
+
+      // Lista de usuarios.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(
+        envolver(
+          () => const Scaffold(body: UsuariosPlazaPage()),
+          overrides: overrides,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(editarHabilitado(), isFalse);
+      activos.complete(roles.where((r) => r.activo).toList());
+      await tester.pumpAndSettle();
+      expect(editarHabilitado(), isTrue);
     });
 
     testWidgets('detalle de usuario responsive', (tester) async {

@@ -257,7 +257,7 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
                   celda: (u) => EstadoUsuarioBadge(u),
                 ),
               ],
-              acciones: (u) => _accionesUsuario(u, rolesActivos ?? const []),
+              acciones: (u) => _accionesUsuario(u, rolesActivos),
             ),
             Paginador(
               pagina: p.page,
@@ -276,7 +276,8 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
     ];
   }
 
-  Widget _accionesUsuario(UsuarioPlaza u, List<RolStaff> rolesActivos) {
+  /// [rolesActivos] es `null` mientras carga: "Editar" espera a tenerlos.
+  Widget _accionesUsuario(UsuarioPlaza u, List<RolStaff>? rolesActivos) {
     final ocupado = _pendiente == u.id;
     if (u.deshabilitado) {
       return Can(
@@ -300,7 +301,9 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
         Can(
           permiso: 'usuarios_plaza.editar',
           child: TextButton.icon(
-            onPressed: () => editarUsuarioPlaza(context, ref, u, rolesActivos),
+            onPressed: rolesActivos == null
+                ? null
+                : () => editarUsuarioPlaza(context, ref, u, rolesActivos),
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: const Text('Editar'),
           ),
