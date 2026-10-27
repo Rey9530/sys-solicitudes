@@ -41,3 +41,17 @@ List<RouteBase> rutasSolicitudesInquilino() => [
         const EnConstruccionPage(titulo: 'Editar solicitud'),
   ),
 ];
+
+/// Vista global del superadmin (cross-plaza, solo lectura).
+List<RouteBase> rutasSolicitudesGlobales() => [
+  GoRoute(
+    path: '/superadmin/solicitudes',
+    builder: (context, state) =>
+        const EnConstruccionPage(titulo: 'Solicitudes globales'),
+  ),
+  GoRoute(
+    path: '/superadmin/solicitudes/:id',
+    builder: (context, state) =>
+        const EnConstruccionPage(titulo: 'Solicitud global'),
+  ),
+];

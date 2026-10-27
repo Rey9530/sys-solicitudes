@@ -14,14 +14,4 @@ List<RouteBase> rutasSuperadmin() => [
     builder: (context, state) =>
         const EnConstruccionPage(titulo: 'Dashboard global'),
   ),
-  GoRoute(
-    path: '/superadmin/solicitudes',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Solicitudes globales'),
-  ),
-  GoRoute(
-    path: '/superadmin/solicitudes/:id',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Solicitud global'),
-  ),
 ];

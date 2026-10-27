@@ -58,11 +58,11 @@ Widget _pantallaCompleta() => Scaffold(
       ),
       ListaResponsive<_Fila>(items: _filas, columnas: _columnas),
       Paginador(pagina: 5, totalPaginas: 20, onCambiar: (_) {}),
-      KeyValueGrid([
-        ('Solicitante', const Text('María Pérez (Tienda Sol S.A. de C.V.)')),
-        ('Categoría / Subcategoría', const Text('Eventos / Evento')),
-        ('Fecha inicio', const Text('01-10-2026')),
-        ('Hora inicio', const Text('3:42 pm')),
+      const KeyValueGrid([
+        ('Solicitante', Text('María Pérez (Tienda Sol S.A. de C.V.)')),
+        ('Categoría / Subcategoría', Text('Eventos / Evento')),
+        ('Fecha inicio', Text('01-10-2026')),
+        ('Hora inicio', Text('3:42 pm')),
       ]),
       const SizedBox(height: 12),
       CampoFecha(

@@ -66,6 +66,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ...rutasDashboard(),
           ...rutasSolicitudesAdmin(),
           ...rutasSolicitudesInquilino(),
+          ...rutasSolicitudesGlobales(),
           ...rutasCalendario(),
           ...rutasLocales(),
           ...rutasInquilinos(),

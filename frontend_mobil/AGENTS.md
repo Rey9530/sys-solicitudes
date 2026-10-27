@@ -53,6 +53,42 @@ lib/
 - Responsive: probar cada pantalla con `probarEnTamanos` (360, 390, 768 y 1024 px, claro y
   oscuro). Nada de anchos fijos para texto.
 
+## Núcleo disponible (`lib/core/`) — usarlo, no reinventarlo
+
+| Necesito… | Uso |
+|---|---|
+| Llamar al backend | `ref.read(apiClientProvider)` → `get(path, query:)`, `post/patch/put/delete(path, body:)`, `bytes(path, query:)` (PDF/CSV/ICS), `subir(path, nombreArchivo:, contenido:, mimeType:)`. Devuelven JSON decodificado; fallan con `ApiError` (`code`, `mensaje`, `status`, `retryAfter`). |
+| Paginación | `Paginado.fromJson(json, Modelo.fromJson)` → `items`, `total`, `page`, `totalPages`. |
+| Sesión y permisos | `ref.watch(sesionProvider).value` → `Sesion` (`usuario`, `rol`, `permisos`, `puede('x')`). Widget `Can(permiso: 'x' / ['a','b'], child: …)`. |
+| Plaza | `plazaSeleccionadaProvider` (superadmin), `plazaActualProvider` (`PlazaResumen`). |
+| Estructura de pantalla | `ContenidoPagina(children: [...], onRefresh:)` + `EncabezadoPagina(titulo:, subtitulo:, badges:, acciones:, rutaVolver:)` + `Seccion(titulo:, child:)` (`core/widgets/pagina.dart`). |
+| Cargar datos | `AsyncView(value: ref.watch(p), data: (d) => …, onRetry: () => ref.invalidate(p))`; vacíos `EmptyState`, errores `ErrorView`. |
+| Listados | `ListaResponsive<T>(items:, columnas: [ColumnaLista(titulo:, celda:, principal:)], acciones:, onTap:)` + `Paginador(pagina:, totalPaginas:, onCambiar:)`. |
+| Badges | `EstadoSolicitudBadge`, `PrioridadBadge`, `SlaSemaforo`, `ResultadoCierreBadge`, `EstadoLocalBadge`, `EstadoContratoBadge`, `BadgePlazapp(texto, Tono.x)`. |
+| Detalle | `KeyValueGrid([('Etiqueta', Text(…)), …])`. |
+| Formularios | `TextFormField` + `CampoFecha(valorYmd:, onChanged:)` + `CampoHora(valorHhmm:, onChanged:)`; validaciones de email/contraseña en `features/auth/auth_api.dart`. |
+| Decisiones | `await confirmar(context, titulo:, mensaje:, textoConfirmar: 'Sí, …', destructiva:)`; `await pedirTexto(context, …, obligatorio:)` (`null` = cancelado → no hacer nada). |
+| Avisos | `mostrarExito(context, '…')`, `mostrarError(context, error)`, `AvisoBanner(tono:, child:)`. |
+| Adjuntos | `AdjuntosSeccion(adjuntos:, subir: (nombre, bytes, mime) => …, puedeSubir:, alCambiar:)`; modelo `Adjunto`. |
+| Descargas | `descargarYCompartir(context, descargar: () => api.bytes(...), nombreArchivo:, mimeType:)`. |
+| Formato | `core/format/fechas.dart` (`formatFecha`, `formatFechaHora`, `formatFechaDMY`, `formatHora12`, `fechaPlazaHoy`, `instanteDePlaza`, `tiempoRelativo`), `montos.dart` (`formatMonto`), `texto.dart` (`decodificarHtml`). |
+| Colores | `ColoresPlazapp.of(context)` (`text2`, `text3`, `surface2`, `tono(Tono.x)`…). Nunca colores fijos. |
+| Navegación | Menú: `context.go(ruta)`. Abrir detalle/formulario: `context.push(ruta)`. Las rutas de cada módulo viven en `features/<x>/<x>_rutas.dart` (mismas URLs que el web). |
+
+Modelos de solicitudes compartidos (`features/solicitudes/solicitudes_modelos.dart`): `SolicitudItem`,
+`SolicitudDetalle`, `Comentario`, `HistorialItem`, `UsuarioRef`, `estadosTerminales`,
+`etiquetaTipoSolicitud`.
+
+## Pruebas
+
+- Widget tests con `test/helpers/api_falsa.dart` (`apiFalsa({'GET /ruta/:id': (req) => json})`,
+  `RespuestaFalsa(status, body)`, `peticionesFalsas`, `cuerpoDe(req)`) y
+  `test/helpers/pantallas.dart` (`prepararPruebas`, `sesionDe(Rol.x, permisos:)`,
+  `overridesBase(api, sesion:)`, `envolver(...)`, `probarEnTamanos(tester, () => Pantalla(),
+  overrides:)`). **Toda pantalla nueva pasa por `probarEnTamanos`** con textos largos.
+- E2E en simulador/emulador: `integration_test/` + `test_driver/integration_test.dart`
+  (capturas en `build/capturas/<dispositivo>/`), contra el backend local.
+
 ## Antes de cada commit
 
 ```bash
