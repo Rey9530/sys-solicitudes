@@ -16,7 +16,7 @@ SDK="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
 # Simuladores/emulador usados por el equipo (cambiar aquí si se usan otros).
 IPHONE="${IPHONE_UDID:-F49D78DC-69BF-4D74-8993-AA06CC6936D9}"   # iPhone 17 Pro
 IPAD="${IPAD_UDID:-797C30DA-29F4-4C13-80D6-C9AB6D0CB71A}"       # iPad Pro 11"
-AVD="${ANDROID_AVD:-Medium_Phone_API_36.1}"
+AVD="${ANDROID_AVD:-Plazapp_E2E}"                               # AVD propio (README)
 
 case "$DISPOSITIVO" in
   ios-phone|ios-tablet)

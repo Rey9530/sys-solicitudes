@@ -83,6 +83,7 @@ leído en el código el 2026-10-27.
 | F15 | **Mensajes de error genéricos**: varias acciones leen `err.message` y el backend manda `detail` (`PLAZA_SLUG_TAKEN`, `EVENTO_CERRADO` nunca llegan al usuario) | Baja | Código | Crear plaza con slug repetido. | Leer `detail` (string o lista) en `calendario-actions`, `reportes/export`, `superadmin/plazas/actions`. |
 | F16 | "Dashboard global" del superadmin muestra **solo una plaza** si hay una seleccionada | Baja | Código | Elegir plaza y abrir Dashboard global. | No enviar `x-plaza-id` desde `/superadmin/*`. |
 | F17 | **Rate limit por IP** (100/min, login 5/min): con la app móvil, usuarios detrás de la misma red (CGNAT, Wi-Fi de la plaza) compartirán el contador | Media (antes de publicar la app) | Código | Muchos dispositivos en la misma IP. | Clave del throttler por usuario autenticado (y por email en login). |
+| F19 | En **Auditoría**, el enlace "ver entidad" de un evento de **subcategoría** abre `/admin/categorias/<id de la subcategoría>` → 404 | Baja | Código (revisión de la app móvil) | Editar una subcategoría y abrir su evento en Auditoría. | Para `entidad = subcategoria` usar el `categoriaId` del registro y enlazar a la lista de subcategorías de esa categoría (la app móvil ya lo hace). |
 
 ## 4. Mejoras funcionales propuestas
 

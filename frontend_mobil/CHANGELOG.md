@@ -33,3 +33,16 @@ calendario se dibuja con widgets propios), `provider` / `bloc` (decisión del ow
 `freezed` / `retrofit` / `riverpod_generator` / `build_runner` (sin generación de código),
 `lucide_icons` (se usan los iconos Material del SDK), `firebase_*` (no hay push en v1),
 `cupertino_icons` (no se usan iconos Cupertino).
+
+## 2026-10-27 — Módulos completos, E2E en dispositivo y revisión
+
+Sin paquetes nuevos: todas las pantallas del web (solicitudes, calendario, locales, inquilinos,
+contratos y carga inicial, catálogos, usuarios y permisos, dashboard, reportes, auditoría,
+notificaciones, configuración y superadmin) se construyeron con las dependencias de la tabla
+anterior. `integration_test` (SDK) cubre las pruebas en simulador/emulador.
+
+- 346 widget/unit tests (`flutter test`) y 4 pruebas E2E (`scripts/e2e.sh`) en verde en iPhone 17
+  Pro, iPad Pro 11" y Android 36.1.
+- Política global de reintentos de Riverpod (`politicaReintentos`): solo errores transitorios, 2
+  reintentos.
+- Widgets y helpers comunes unificados en `lib/core/` (ver `AGENTS.md`, "Núcleo disponible").

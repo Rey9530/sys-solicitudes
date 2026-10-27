@@ -69,6 +69,18 @@ Los simuladores se pueden cambiar con `IPHONE_UDID`, `IPAD_UDID` y `ANDROID_AVD`
 (`xcrun simctl list devices`, `emulator -list-avds`). Las capturas quedan en
 `build/capturas/<dispositivo>/` para revisión visual.
 
+Para Android se usa un emulador propio del proyecto, `Plazapp_E2E`, con 8 GB de datos (el APK de
+depuración pesa ~170 MB y un AVD compartido con otras apps se queda sin espacio:
+`INSTALL_FAILED_INSUFFICIENT_STORAGE`). Se crea una vez con:
+
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n Plazapp_E2E \
+  -k "system-images;android-36.1;google_apis_playstore;arm64-v8a" -d medium_phone
+sed -i '' 's/^disk.dataPartition.size=.*/disk.dataPartition.size=8G/' \
+  ~/.android/avd/Plazapp_E2E.avd/config.ini
+```
+
 | Prueba | Qué cubre |
 |---|---|
 | `humo_test.dart` | Login de admin e inquilino, shell del rol y cierre de sesión. |

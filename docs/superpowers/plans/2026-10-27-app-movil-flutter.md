@@ -268,3 +268,69 @@
 - Tasks 5–10 se ejecutan en paralelo (un agente por grupo, worktrees aislados): solicitudes (T5+T6),
   calendario (T7), locales/inquilinos/contratos (T8), catálogos/usuarios (T9), paneles/campana/
   superadmin (T10).
+
+**2026-10-27 — Tasks 5–10 (agentes en paralelo, integrados en `feat/app-movil-riverpod`)**
+
+- Merges: calendario `297ae6c` (T7), catálogos/usuarios `075f735` (T9), paneles/campana/superadmin
+  `660b09b` (T10), locales/inquilinos/contratos `981520b` + merge `dcfd426` (T8), solicitudes
+  `ac508dc` + merge `a5614d3` (T5+T6). Tras cada merge: `flutter analyze` 0 issues y `flutter test`
+  verde (319 tests al integrar el último módulo).
+- ⚠️ Hallazgo transversal de un agente: **Riverpod 3 reintenta por defecto cualquier error hasta
+  10 veces** (un 403/404 dejaba la pantalla en "cargando" ~1 min). Se fijó una política global
+  `ProviderScope(retry: politicaReintentos)` en `core/api/api_providers.dart`: solo errores
+  transitorios (sin conexión o 5xx), máximo 2 reintentos (1 s, 2 s). Los widget tests usan la misma
+  política vía `envolver`.
+- ⚠️ El dashboard global del superadmin no debe enviar `x-plaza-id` (bug web F16): se añadió
+  `sinPlaza: true` a `ApiClient.get/bytes` (`ea85ab1`) y el agente de T10 lo adoptó.
+- Desviaciones menores: el calendario dibuja Semana/Día con una rejilla propia
+  (`calendario/layout_eventos.dart`, lógica pura con tests) en lugar de un paquete; la lista
+  "Mis solicitudes" y la bandeja usan el mismo `TablaSolicitudes`; "Cerrar" envía el comentario
+  también con resultado exitoso (igual que el web).
+- Los agentes arrancaron sus worktrees desde `main`; cada uno se reubicó en `4886c71` antes de
+  trabajar (verificado en cada merge).
+
+**2026-10-27 — Task 11 (E2E en dispositivo) y revisión de toda la rama**
+
+- Pruebas E2E en `integration_test/`: `humo_test`, `login_roles_test` (credenciales inválidas,
+  redirecciones por rol, puerta de plaza del superadmin, rutas protegidas sin sesión),
+  `navegacion_completa_test` (todas las pantallas del menú de cada rol + superadmin con plaza,
+  ninguna en `ErrorView`, una captura por pantalla) y `flujo_solicitud_test` (wizard → borrador →
+  enviar → tomar → subsanación → reenviar → tomar → aprobar → cerrar, con historial). Helpers
+  comunes en `integration_test/helpers.dart`; runner `scripts/e2e.sh`; documentado en el README.
+- Defectos encontrados en dispositivo y corregidos:
+  - La marca "Plazapp" de la barra superior se truncaba a "Pl…" en teléfono → solo el logo < 600 px.
+  - ⚠️ El aviso (SnackBar flotante) tapaba la barra de acciones fija del detalle de solicitud en
+    teléfono: durante 4 s no se podía tocar "Enviar"/"Tomar" (lo detectó la E2E del flujo) →
+    margen inferior de 84 px en el tema.
+  - "Más acciones" se truncaba junto a la acción principal → "Más".
+  - El "—" del SLA quedaba suelto en su propia línea en el encabezado del detalle → sin semáforo no
+    se pinta en el encabezado (en tablas y fichas sigue el "—" como en el web).
+  - Los avisos de una sesión seguían visibles tras cerrar sesión → se limpian al cerrar sesión.
+- ⚠️ La E2E de navegación tardó 16 min en una corrida intermedia; con todos los módulos integrados
+  cada pantalla carga en ~1,1 s y la suite completa tarda ~1 min (la lentitud venía de pantallas
+  aún en construcción, ya reemplazadas).
+- Revisión independiente de `lib/` (solo lectura): sin hallazgos de severidad Alta (las ~138
+  llamadas al backend coinciden con controllers y schemas Zod); 7 de severidad Media y 9 Baja,
+  todos reproducidos y corregidos con test de regresión (merge `70e3682`). Los de Media:
+  dashboard que no recargaba al cambiar de plaza (superadmin), envío de un borrador duplicado sin
+  fechas (ahora se validan en cliente antes de enviar y reenviar, inventario §7.2 #3), sesión sin
+  refrescar al editar el propio rol, fechas de contrato topadas en año + 5, filtros de Contratos
+  sin recargar tras la carga inicial, medidores sin guion en el teclado de iPhone y errores de
+  adjuntos del wizard tapados por el aviso de éxito. ⚠️ El enlace de auditoría de una subcategoría
+  también falla en el web: registrado como F19 (pendiente) en `docs/08`.
+- Unificación en `lib/core/` (mismo merge) de los widgets que cada agente había creado por su
+  cuenta: un solo `CampoSelect` (había 3), `TarjetaFiltros` + `RejillaCampos` (había 4
+  contenedores de filtros y 3 rejillas), `Pestanas` (había 2 `Pestana` que chocaban),
+  `TextoCelda`/`BadgeActivo`, `validaciones.dart` (regex de email copiado en 5 sitios),
+  `payload.dart` y `recargar` (tirar para recargar sin errores sin capturar). `AGENTS.md` lista el
+  núcleo y pide usarlo antes de crear un widget en una feature. Diferencias visuales menores
+  aceptadas: corte a 2 columnas en 520 px (antes 560 en algunos formularios), padding de 16 px en
+  las tarjetas de filtros. Tests: 346.
+- ⚠️ Emulador: el AVD compartido `Medium_Phone_API_36.1` (6 GB, con apps de otros proyectos) se
+  quedó sin espacio para instalar el APK de depuración (168 MB, `INSUFFICIENT_STORAGE`). Se creó
+  un AVD propio del proyecto, `Plazapp_E2E` (misma imagen Android 36.1 arm64, 8 GB de datos):
+  `ANDROID_AVD=Plazapp_E2E scripts/e2e.sh android`. En Android la superficie se convierte a imagen
+  una vez por `testWidgets` (el binding la revierte en cada tear-down).
+- Corrida final sobre el merge `70e3682` (`scripts/e2e.sh` en los tres dispositivos): **4/4 en
+  iPhone 17 Pro, 4/4 en iPad Pro 11" y 4/4 en Android 36.1** (45 capturas por dispositivo,
+  revisadas). `flutter analyze` 0 issues, `flutter test` 346 en verde.
