@@ -241,6 +241,9 @@ class _MenuUsuario extends ConsumerWidget {
                 title: const Text('Cerrar sesión'),
                 onTap: () {
                   Navigator.of(hoja).pop();
+                  // Los avisos de esta sesión no deben verse en el login ni
+                  // en la sesión siguiente.
+                  ScaffoldMessenger.of(context).clearSnackBars();
                   ref.read(sesionProvider.notifier).cerrarSesion();
                 },
               ),
