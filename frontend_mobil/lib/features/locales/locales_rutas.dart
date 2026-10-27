@@ -1,22 +1,22 @@
 import 'package:go_router/go_router.dart';
 
-import '../../core/widgets/en_construccion_page.dart';
+import 'local_detalle_page.dart';
+import 'local_form_page.dart';
+import 'locales_page.dart';
 
-/// Rutas del módulo (mismas URLs que el web). Stub: lo reemplaza la tarea
-/// del plan que implementa este módulo, sin cambiar la firma.
+/// Rutas del módulo (mismas URLs que el web). `nuevo` va antes de `:id`.
 List<RouteBase> rutasLocales() => [
   GoRoute(
     path: '/admin/locales',
-    builder: (context, state) => const EnConstruccionPage(titulo: 'Locales'),
+    builder: (context, state) => const LocalesPage(),
   ),
   GoRoute(
     path: '/admin/locales/nuevo',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Nuevo local'),
+    builder: (context, state) => const LocalFormPage(),
   ),
   GoRoute(
     path: '/admin/locales/:id',
     builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Detalle de local'),
+        LocalDetallePage(id: state.pathParameters['id']!),
   ),
 ];

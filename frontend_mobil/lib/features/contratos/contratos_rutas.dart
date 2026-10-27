@@ -1,37 +1,39 @@
 import 'package:go_router/go_router.dart';
 
-import '../../core/widgets/en_construccion_page.dart';
+import 'carga_inicial_page.dart';
+import 'contrato_detalle_page.dart';
+import 'contrato_form_page.dart';
+import 'contratos_page.dart';
+import 'mi_contrato_page.dart';
+import 'mis_contratos_page.dart';
 
-/// Rutas del módulo (mismas URLs que el web). Stub: lo reemplaza la tarea
-/// del plan que implementa este módulo, sin cambiar la firma.
+/// Rutas del módulo (mismas URLs que el web). `nuevo` e `importar` van antes
+/// de `:id`.
 List<RouteBase> rutasContratos() => [
   GoRoute(
     path: '/admin/contratos',
-    builder: (context, state) => const EnConstruccionPage(titulo: 'Contratos'),
+    builder: (context, state) => const ContratosPage(),
   ),
   GoRoute(
     path: '/admin/contratos/nuevo',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Nuevo contrato'),
+    builder: (context, state) => const ContratoFormPage(),
   ),
   GoRoute(
     path: '/admin/contratos/importar',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Carga inicial desde Excel'),
+    builder: (context, state) => const CargaInicialPage(),
   ),
   GoRoute(
     path: '/admin/contratos/:id',
     builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Detalle de contrato'),
+        ContratoDetallePage(id: state.pathParameters['id']!),
   ),
   GoRoute(
     path: '/inquilino/contratos',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Mis contratos'),
+    builder: (context, state) => const MisContratosPage(),
   ),
   GoRoute(
     path: '/inquilino/contratos/:id',
     builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Mi contrato'),
+        MiContratoPage(id: state.pathParameters['id']!),
   ),
 ];
