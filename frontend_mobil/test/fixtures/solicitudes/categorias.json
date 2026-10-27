@@ -1,0 +1,44 @@
+{
+  "items": [
+    {
+      "id": "bd1f6dc6-7324-42cc-bec2-ca546ebdb3b9",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "nombre": "Eventos",
+      "descripcion": "Eventos y activaciones en áreas comunes.",
+      "activo": true,
+      "createdAt": "2026-08-11T17:45:00.063Z",
+      "updatedAt": "2026-08-11T17:45:00.063Z"
+    },
+    {
+      "id": "910521df-5536-407e-8269-776e93213f35",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "nombre": "Mantenimiento",
+      "descripcion": "Reparaciones y mantenimiento general.",
+      "activo": true,
+      "createdAt": "2026-08-11T17:45:00.059Z",
+      "updatedAt": "2026-08-11T17:45:00.059Z"
+    },
+    {
+      "id": "4363c78c-3793-4cb9-a75f-052002d827c8",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "nombre": "Otros",
+      "descripcion": "Solicitudes que no encajan en las demás.",
+      "activo": true,
+      "createdAt": "2026-08-11T17:45:00.067Z",
+      "updatedAt": "2026-08-11T17:45:00.067Z"
+    },
+    {
+      "id": "07241dab-7bce-4b1d-afad-8ba4a6fbb3cc",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "nombre": "Remodelaciones",
+      "descripcion": "Obras y remodelaciones de locales.",
+      "activo": true,
+      "createdAt": "2026-08-11T17:45:00.065Z",
+      "updatedAt": "2026-08-11T17:45:00.065Z"
+    }
+  ],
+  "total": 4,
+  "page": 1,
+  "pageSize": 100,
+  "totalPages": 1
+}

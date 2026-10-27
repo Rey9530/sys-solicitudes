@@ -1,0 +1,216 @@
+{
+  "id": "11be0400-48f8-4531-9a88-01a86239e576",
+  "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+  "localId": "238f1630-89bc-4cd1-be8a-0a0066ac7dac",
+  "inquilinoId": "00000000-0000-0000-0000-000000000001",
+  "usuarioCreadorId": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+  "adminAsignadoId": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+  "categoriaId": "bd1f6dc6-7324-42cc-bec2-ca546ebdb3b9",
+  "subcategoriaId": "e8aeb93e-1a25-4584-9566-070829418899",
+  "codigo": "SOL-DEMO-139",
+  "tipo": "mantenimiento",
+  "prioridad": "B",
+  "titulo": "E2E-FLUJO-1793130540595",
+  "descripcion": "Fuga de agua en el baño del local. Creada por la suite e2e.",
+  "estado": "cerrada",
+  "camposExtra": {
+    "asistentes": [
+      {
+        "nombre": "Técnico E2E",
+        "documento": "00000000-0"
+      }
+    ],
+    "area_afectada": "Baño del local",
+    "asistentes_estimados": 1,
+    "requiere_ingreso_a_local": false
+  },
+  "fechaEventoInicio": "2026-10-30",
+  "fechaEventoFin": "2026-10-30",
+  "horaInicio": "09:00",
+  "horaFin": "12:00",
+  "empresaNombre": "Fontanería E2E S.A.",
+  "empresaResponsable": "Responsable E2E",
+  "empresaTelefono": "+503 7000 0000",
+  "empresaEmail": "e2e@example.com",
+  "emergenciaContacto": "Contacto E2E",
+  "emergenciaTelefono": "+503 7000 0001",
+  "esEmergencia": false,
+  "enviadaAt": "2026-10-27T19:49:08.475Z",
+  "asignadaAt": "2026-10-27T19:49:09.396Z",
+  "decisionAt": "2026-10-27T19:49:09.976Z",
+  "resultadoCierre": "exitoso",
+  "cierreComentario": null,
+  "cerradaAt": "2026-10-27T19:49:10.344Z",
+  "createdAt": "2026-10-27T19:49:03.659Z",
+  "updatedAt": "2026-10-27T19:49:10.344Z",
+  "localCodigo": "L-SOL-1",
+  "categoriaNombre": "Eventos",
+  "subcategoriaNombre": "Evento",
+  "adminAsignado": {
+    "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+    "nombre": "Admin Demo",
+    "email": "admin@demo.com"
+  },
+  "slaStatus": null,
+  "inquilinoRazonSocial": "Tienda Sol S.A. de C.V.",
+  "usuarioCreador": {
+    "id": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+    "nombre": "María Pérez",
+    "email": "inquilino@demo.com"
+  },
+  "adjuntos": [],
+  "comentarios": [
+    {
+      "id": "690846a0-23a0-467b-aa46-ac9aab84479b",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "tipo": "subsanacion",
+      "cuerpo": "Adjunta una foto del daño, por favor.",
+      "createdAt": "2026-10-27T19:49:07.424Z"
+    },
+    {
+      "id": "b673e6a2-b6c4-4933-8203-49e747d7f8c7",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "tipo": "general",
+      "cuerpo": "Revisado, todo en orden.",
+      "createdAt": "2026-10-27T19:49:09.773Z"
+    }
+  ],
+  "historial": [
+    {
+      "id": "35f13f0b-1b0a-4a1d-9b1b-0bc6c7a7e2f7",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+        "nombre": "María Pérez",
+        "email": "inquilino@demo.com"
+      },
+      "evento": "creada",
+      "estadoAnterior": null,
+      "estadoNuevo": "borrador",
+      "comentario": null,
+      "createdAt": "2026-10-27T19:49:03.665Z"
+    },
+    {
+      "id": "b26ce05d-20c7-489a-8f2a-c27143f61e07",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+        "nombre": "María Pérez",
+        "email": "inquilino@demo.com"
+      },
+      "evento": "enviada",
+      "estadoAnterior": "borrador",
+      "estadoNuevo": "enviada",
+      "comentario": null,
+      "createdAt": "2026-10-27T19:49:05.869Z"
+    },
+    {
+      "id": "da647313-4a45-4331-ad96-df1377d062cc",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "evento": "tomada",
+      "estadoAnterior": "enviada",
+      "estadoNuevo": "en_revision",
+      "comentario": null,
+      "createdAt": "2026-10-27T19:49:06.989Z"
+    },
+    {
+      "id": "1afe36db-544e-4dfc-b481-4ab5de470fb9",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "evento": "subsanada",
+      "estadoAnterior": "en_revision",
+      "estadoNuevo": "requerida_subsanacion",
+      "comentario": "Adjunta una foto del daño, por favor.",
+      "createdAt": "2026-10-27T19:49:07.422Z"
+    },
+    {
+      "id": "900565e7-0371-47e6-a210-dc45449ab5cb",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+        "nombre": "María Pérez",
+        "email": "inquilino@demo.com"
+      },
+      "evento": "enviada",
+      "estadoAnterior": "requerida_subsanacion",
+      "estadoNuevo": "enviada",
+      "comentario": "Reenviada tras subsanación",
+      "createdAt": "2026-10-27T19:49:08.477Z"
+    },
+    {
+      "id": "a89429dc-4ea1-4215-ba82-3950889d1d82",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "evento": "tomada",
+      "estadoAnterior": "enviada",
+      "estadoNuevo": "en_revision",
+      "comentario": null,
+      "createdAt": "2026-10-27T19:49:09.397Z"
+    },
+    {
+      "id": "a93a7aa9-d1e8-40f8-910d-372e153b618f",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "evento": "comentario",
+      "estadoAnterior": null,
+      "estadoNuevo": null,
+      "comentario": "Revisado, todo en orden.",
+      "createdAt": "2026-10-27T19:49:09.774Z"
+    },
+    {
+      "id": "605e0512-93bd-4d8a-8788-62da1d1e195c",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "evento": "aprobada",
+      "estadoAnterior": "en_revision",
+      "estadoNuevo": "aprobada",
+      "comentario": null,
+      "createdAt": "2026-10-27T19:49:09.977Z"
+    },
+    {
+      "id": "354e590e-3ff2-4b05-9741-336c5438fe63",
+      "solicitudId": "11be0400-48f8-4531-9a88-01a86239e576",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "evento": "cerrada",
+      "estadoAnterior": "aprobada",
+      "estadoNuevo": "cerrada",
+      "comentario": "Cerrada con éxito",
+      "createdAt": "2026-10-27T19:49:10.346Z"
+    }
+  ]
+}

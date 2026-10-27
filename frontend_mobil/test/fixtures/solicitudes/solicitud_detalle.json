@@ -1,0 +1,130 @@
+{
+  "id": "79ab5c1b-cc59-49bc-a53a-dcefdbd5ecb4",
+  "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+  "localId": "238f1630-89bc-4cd1-be8a-0a0066ac7dac",
+  "inquilinoId": "00000000-0000-0000-0000-000000000001",
+  "usuarioCreadorId": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+  "adminAsignadoId": null,
+  "categoriaId": "bd1f6dc6-7324-42cc-bec2-ca546ebdb3b9",
+  "subcategoriaId": "e8aeb93e-1a25-4584-9566-070829418899",
+  "codigo": "SOL-DEMO-112",
+  "tipo": "mantenimiento",
+  "prioridad": "B",
+  "titulo": "E2E-FLUJO-1793127243011",
+  "descripcion": "Fuga de agua en el baño del local. Creada por la suite e2e.",
+  "estado": "requerida_subsanacion",
+  "camposExtra": {
+    "asistentes": [
+      {
+        "nombre": "Técnico E2E",
+        "documento": "00000000-0"
+      }
+    ],
+    "area_afectada": "Baño del local",
+    "asistentes_estimados": 1,
+    "requiere_ingreso_a_local": false
+  },
+  "fechaEventoInicio": "2026-10-30",
+  "fechaEventoFin": "2026-10-30",
+  "horaInicio": "09:00",
+  "horaFin": "12:00",
+  "empresaNombre": "Fontanería E2E S.A.",
+  "empresaResponsable": "Responsable E2E",
+  "empresaTelefono": "+503 7000 0000",
+  "empresaEmail": "e2e@example.com",
+  "emergenciaContacto": "Contacto E2E",
+  "emergenciaTelefono": "+503 7000 0001",
+  "esEmergencia": false,
+  "enviadaAt": "2026-10-27T18:54:08.073Z",
+  "asignadaAt": "2026-10-27T18:54:09.028Z",
+  "decisionAt": null,
+  "resultadoCierre": null,
+  "cierreComentario": null,
+  "cerradaAt": null,
+  "createdAt": "2026-10-27T18:54:06.202Z",
+  "updatedAt": "2026-10-27T18:54:09.471Z",
+  "localCodigo": "L-SOL-1",
+  "categoriaNombre": "Eventos",
+  "subcategoriaNombre": "Evento",
+  "adminAsignado": null,
+  "slaStatus": null,
+  "inquilinoRazonSocial": "Tienda Sol S.A. de C.V.",
+  "usuarioCreador": {
+    "id": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+    "nombre": "María Pérez",
+    "email": "inquilino@demo.com"
+  },
+  "adjuntos": [],
+  "comentarios": [
+    {
+      "id": "8d7bede1-866d-4a58-8832-5f477cb39948",
+      "solicitudId": "79ab5c1b-cc59-49bc-a53a-dcefdbd5ecb4",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "tipo": "subsanacion",
+      "cuerpo": "Adjunta una foto del daño, por favor.",
+      "createdAt": "2026-10-27T18:54:09.474Z"
+    }
+  ],
+  "historial": [
+    {
+      "id": "b37a674a-9a62-4bf7-88c6-2f0e78ea4a3b",
+      "solicitudId": "79ab5c1b-cc59-49bc-a53a-dcefdbd5ecb4",
+      "usuario": {
+        "id": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+        "nombre": "María Pérez",
+        "email": "inquilino@demo.com"
+      },
+      "evento": "creada",
+      "estadoAnterior": null,
+      "estadoNuevo": "borrador",
+      "comentario": null,
+      "createdAt": "2026-10-27T18:54:06.208Z"
+    },
+    {
+      "id": "b88e138a-be11-4c8b-9590-2ecc7cdae58e",
+      "solicitudId": "79ab5c1b-cc59-49bc-a53a-dcefdbd5ecb4",
+      "usuario": {
+        "id": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+        "nombre": "María Pérez",
+        "email": "inquilino@demo.com"
+      },
+      "evento": "enviada",
+      "estadoAnterior": "borrador",
+      "estadoNuevo": "enviada",
+      "comentario": null,
+      "createdAt": "2026-10-27T18:54:08.076Z"
+    },
+    {
+      "id": "53fa9fd1-eda1-4987-9f9d-917565924b75",
+      "solicitudId": "79ab5c1b-cc59-49bc-a53a-dcefdbd5ecb4",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "evento": "tomada",
+      "estadoAnterior": "enviada",
+      "estadoNuevo": "en_revision",
+      "comentario": null,
+      "createdAt": "2026-10-27T18:54:09.030Z"
+    },
+    {
+      "id": "7949e4f6-5f2c-4982-9dce-7739c72d5e9b",
+      "solicitudId": "79ab5c1b-cc59-49bc-a53a-dcefdbd5ecb4",
+      "usuario": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "evento": "subsanada",
+      "estadoAnterior": "en_revision",
+      "estadoNuevo": "requerida_subsanacion",
+      "comentario": "Adjunta una foto del daño, por favor.",
+      "createdAt": "2026-10-27T18:54:09.473Z"
+    }
+  ]
+}
