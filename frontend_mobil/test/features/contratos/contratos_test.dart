@@ -753,6 +753,43 @@ void main() {
     });
   });
 
+  testWidgets('el inquilino solo ve "Eliminar" en los PDF que él subió; el '
+      'admin en todos', (tester) async {
+    Map<String, Object?> pdf(String id, String subio) => {
+      'id': id,
+      'nombreOriginal': '$id.pdf',
+      'mimeType': 'application/pdf',
+      'tamanoBytes': 1024,
+      'usuarioSubioId': subio,
+      'createdAt': '2026-10-01T10:00:00Z',
+    };
+    final rutas = _rutas()
+      ..['GET /contratos/:id/adjuntos'] = (_) => [
+        pdf('mio', 'u-inquilino'),
+        pdf('del-admin', 'u-admin_plaza'),
+      ];
+
+    await _montar(
+      tester,
+      const MiContratoPage(id: 'con-1'),
+      rutas: rutas,
+      sesion: sesionDe(Rol.inquilino),
+    );
+    expect(find.byTooltip('Eliminar mio.pdf'), findsOneWidget);
+    expect(find.byTooltip('Eliminar del-admin.pdf'), findsNothing);
+    expect(find.byTooltip('Descargar del-admin.pdf'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await _montar(tester, const ContratoDetallePage(id: 'con-1'), rutas: rutas);
+    await tester.scrollUntilVisible(
+      find.byTooltip('Eliminar del-admin.pdf'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.byTooltip('Eliminar mio.pdf'), findsOneWidget);
+    expect(find.byTooltip('Eliminar del-admin.pdf'), findsOneWidget);
+  });
+
   test('modelos y cuerpos', () {
     expect(montoCalculado(area: 50, canon: 20, cam: 4.5), 1225.0);
     expect(montoCalculado(area: 33.33, canon: 1.1, cam: 0), 36.66);

@@ -23,6 +23,7 @@ class AdjuntosSeccion extends ConsumerStatefulWidget {
     required this.puedeSubir,
     this.eliminar,
     this.puedeEliminar = true,
+    this.eliminable,
     this.maximo = maxAdjuntosSolicitud,
     this.soloExtensiones,
     this.alCambiar,
@@ -38,6 +39,10 @@ class AdjuntosSeccion extends ConsumerStatefulWidget {
   /// Si es null, se usa `DELETE /adjuntos/:id`.
   final Future<void> Function(Adjunto adjunto)? eliminar;
   final bool puedeEliminar;
+
+  /// Criterio por adjunto, además de [puedeEliminar] (p. ej. el inquilino solo
+  /// borra lo que él subió). Si es null, todos se pueden eliminar.
+  final bool Function(Adjunto adjunto)? eliminable;
   final int maximo;
 
   /// Restringe los tipos (p. ej. [extensionesImagen] para locales).
@@ -61,16 +66,22 @@ class _AdjuntosSeccionState extends ConsumerState<AdjuntosSeccion> {
     }
     setState(() => _subiendo = archivos.length);
     var huboCambios = false;
+    // Si la sección se desmonta a mitad (p. ej. se cambia de pestaña), el
+    // bucle sigue: los archivos elegidos se suben igual, solo se omiten los
+    // avisos y el contador.
     for (final a in archivos) {
       final mime = mimeParaArchivo(
         a.nombre,
         soloExtensiones: widget.soloExtensiones,
       );
-      if (!mounted) return;
       if (mime == null) {
-        mostrarError(context, 'Tipo de archivo no permitido: ${a.nombre}');
+        if (mounted) {
+          mostrarError(context, 'Tipo de archivo no permitido: ${a.nombre}');
+        }
       } else if (a.bytes.length > tamanoMaxAdjuntoBytes) {
-        mostrarError(context, 'El archivo supera el máximo de 50 MB.');
+        if (mounted) {
+          mostrarError(context, 'El archivo supera el máximo de 50 MB.');
+        }
       } else {
         try {
           await widget.subir(a.nombre, a.bytes, mime);
@@ -85,7 +96,18 @@ class _AdjuntosSeccionState extends ConsumerState<AdjuntosSeccion> {
       if (mounted) setState(() => _subiendo--);
     }
     if (mounted) setState(() => _subiendo = 0);
-    if (huboCambios) widget.alCambiar?.call();
+    if (huboCambios) _avisarCambio();
+  }
+
+  /// Llama a [AdjuntosSeccion.alCambiar] aunque la sección ya no esté en
+  /// pantalla (la página que la contiene sí lo está y debe recargar).
+  void _avisarCambio() {
+    try {
+      widget.alCambiar?.call();
+    } on StateError {
+      // También se cerró la página que la contenía (su `ref` ya no sirve):
+      // no hay nada que recargar.
+    }
   }
 
   Future<void> _elegirArchivos() async {
@@ -219,7 +241,8 @@ class _AdjuntosSeccionState extends ConsumerState<AdjuntosSeccion> {
                     icon: const Icon(Icons.download_outlined),
                     onPressed: () => _descargar(a),
                   ),
-                  if (widget.puedeEliminar)
+                  if (widget.puedeEliminar &&
+                      (widget.eliminable?.call(a) ?? true))
                     IconButton(
                       tooltip: 'Eliminar ${a.nombreOriginal}',
                       icon: Icon(

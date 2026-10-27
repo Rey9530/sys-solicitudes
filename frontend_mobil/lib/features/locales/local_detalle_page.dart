@@ -273,6 +273,8 @@ class _AdjuntosLocal extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final adjuntos = ref.watch(adjuntosLocalProvider(id));
+    // Fuera de los callbacks: la subida sigue aunque esta pestaña se desmonte.
+    final api = ref.watch(apiClientProvider);
     return AsyncView(
       value: adjuntos,
       onRetry: () => ref.invalidate(adjuntosLocalProvider(id)),
@@ -283,13 +285,8 @@ class _AdjuntosLocal extends ConsumerWidget {
         soloExtensiones: extensionesImagen,
         puedeSubir: puedeHacer(ref, 'locales.adjuntos.subir'),
         puedeEliminar: puedeHacer(ref, 'locales.adjuntos.eliminar'),
-        subir: (nombre, bytes, mime) => subirAdjuntoLocal(
-          ref.read(apiClientProvider),
-          id,
-          nombre,
-          bytes,
-          mime,
-        ),
+        subir: (nombre, bytes, mime) =>
+            subirAdjuntoLocal(api, id, nombre, bytes, mime),
         alCambiar: () => ref.invalidate(adjuntosLocalProvider(id)),
       ),
     );
