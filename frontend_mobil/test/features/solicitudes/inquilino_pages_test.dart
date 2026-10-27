@@ -750,6 +750,42 @@ void main() {
       );
     });
 
+    testWidgets('adjuntos que fallan se avisan juntos al final (no los tapa '
+        'el aviso de éxito)', (tester) async {
+      await montar(tester, () => WizardSolicitudPage(prefill: prefill), [
+        ...overridesBase(
+          apiFalsa({
+            ...rutas(),
+            'POST /solicitudes/:id/adjuntos': (_) =>
+                const RespuestaFalsa(500, {'code': 'INTERNAL_ERROR'}),
+          }),
+          sesion: _sesion,
+        ),
+        selectorArchivosProvider.overrideWithValue(
+          _SelectorFalso([
+            ArchivoElegido('foto.png', Uint8List(10)),
+            ArchivoElegido('plano.pdf', Uint8List(10)),
+          ]),
+        ),
+      ]);
+      await llenar(tester);
+      await tester.tap(find.byKey(const Key('wz-adjuntos-subir')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard-guardar')));
+      await tester.pumpAndSettle();
+      // Se intentó subir cada archivo (una vez).
+      expect(peticiones('POST', '/solicitudes/nueva-1/adjuntos'), hasLength(2));
+      expect(
+        find.text(
+          'Borrador SOL-DEMO-300 guardado, pero no se subieron: foto.png, '
+          'plano.pdf',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Borrador SOL-DEMO-300 guardado'), findsNothing);
+      expect(find.text('Ruta: /inquilino/solicitudes/nueva-1'), findsOneWidget);
+    });
+
     testWidgets('edición de remodelación manda tipo, camposExtra y '
         'esEmergencia', (tester) async {
       // Emergencia: inicio dentro de 24 h.

@@ -143,6 +143,9 @@ class _WizardState extends ConsumerState<_Wizard> {
     final payload = _form.payload();
     String id;
     String codigo;
+    // Adjuntos que no se pudieron subir: se avisan juntos al final (cada
+    // aviso tapa al anterior).
+    final fallidos = <String>[];
     try {
       if (_edicion) {
         id = widget.solicitud!.id;
@@ -155,8 +158,8 @@ class _WizardState extends ConsumerState<_Wizard> {
         for (final a in _archivos) {
           try {
             await subirAdjuntoSolicitud(api, id, a.nombre, a.bytes, a.mime);
-          } on Object catch (e) {
-            if (mounted) mostrarError(context, 'Adjunto "${a.nombre}": $e');
+          } on Object {
+            fallidos.add(a.nombre);
           }
         }
       }
@@ -175,9 +178,12 @@ class _WizardState extends ConsumerState<_Wizard> {
         _invalidar(id);
         if (!mounted) return;
         setState(() => _enviando = false);
+        final sinSubir = fallidos.isEmpty
+            ? ''
+            : '\nTampoco se subieron: ${fallidos.join(', ')}';
         mostrarError(
           context,
-          'Guardada como borrador, pero no se pudo enviar: $e',
+          'Guardada como borrador, pero no se pudo enviar: $e$sinSubir',
         );
         _irAlDetalle(id);
         return;
@@ -187,12 +193,20 @@ class _WizardState extends ConsumerState<_Wizard> {
     if (!mounted) return;
     setState(() => _enviando = false);
     final numero = codigo.isEmpty ? '' : ' $codigo';
-    mostrarExito(
-      context,
-      enviarAhora
-          ? 'Solicitud$numero enviada: quedó en cola de asignación'
-          : 'Borrador$numero guardado',
-    );
+    final hecho = enviarAhora
+        ? 'Solicitud$numero enviada'
+        : 'Borrador$numero guardado';
+    if (fallidos.isEmpty) {
+      mostrarExito(
+        context,
+        enviarAhora ? '$hecho: quedó en cola de asignación' : hecho,
+      );
+    } else {
+      mostrarError(
+        context,
+        '$hecho, pero no se subieron: ${fallidos.join(', ')}',
+      );
+    }
     _irAlDetalle(id);
   }
 
