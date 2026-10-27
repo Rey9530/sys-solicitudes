@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show mapEquals;
+
 import '../../core/adjuntos/adjuntos.dart';
 import '../../core/format/texto.dart';
 
@@ -79,6 +81,7 @@ class SolicitudItem {
     this.adminAsignado,
     this.slaStatus,
     this.plazaNombre,
+    this.plazaSlug,
   });
 
   factory SolicitudItem.fromJson(Map<String, dynamic> j) => SolicitudItem(
@@ -124,6 +127,7 @@ class SolicitudItem {
     plazaNombre: _textoONull(
       (j['plaza'] as Map<String, dynamic>?)?['nombreComercial'],
     ),
+    plazaSlug: (j['plaza'] as Map<String, dynamic>?)?['slug'] as String?,
   );
 
   final String id;
@@ -184,6 +188,9 @@ class SolicitudItem {
 
   /// Solo en la vista global del superadmin (`plaza.nombreComercial`).
   final String? plazaNombre;
+
+  /// Solo en la vista global del superadmin (`plaza.slug`).
+  final String? plazaSlug;
 
   bool get esTerminal => estadosTerminales.contains(estado);
 }
@@ -278,6 +285,297 @@ class SolicitudDetalle {
 
   /// Más antiguo primero.
   final List<HistorialItem> historial;
+}
+
+// ── Catálogos y textos (iguales al web) ─────────────────────────────────────
+
+/// Prioridades reales del backend (no existe `E`).
+const prioridadesSolicitud = ['A', 'B', 'C', 'D', 'F'];
+
+/// Etiquetas del historial (`EVENTO_LABEL` del web).
+const etiquetaEventoHistorial = <String, String>{
+  'creada': 'Creada',
+  'enviada': 'Enviada',
+  'asignada': 'Auto-asignada',
+  'tomada': 'Tomada en revisión',
+  'aprobada': 'Aprobada',
+  'cerrada': 'Cerrada',
+  'rechazada': 'Rechazada',
+  'subsanada': 'Subsanación solicitada',
+  'reasignada': 'Reasignada',
+  'cancelada': 'Cancelada',
+  'comentario': 'Comentario',
+  'adjunto_agregado': 'Adjunto agregado',
+  'prioridad_cambiada': 'Prioridad cambiada',
+  'pausada': 'Pausada',
+  'reanudada': 'Reanudada',
+};
+
+/// Etiquetas de las claves de `camposExtra` (`CAMPOS_EXTRA_LABEL` del web).
+const etiquetaCampoExtra = <String, String>{
+  'area_afectada': 'Área afectada',
+  'requiere_ingreso_a_local': 'Requiere ingreso al local',
+  'asistentes_estimados': 'Asistentes estimados',
+  'asistentes': 'Asistentes',
+  'requiere_aprobacion_especial': 'Requiere aprobación especial',
+  'fecha_inicio_estimada': 'Fecha de inicio estimada',
+  'duracion_dias': 'Duración (días)',
+  'empresa_constructora': 'Empresa constructora',
+  'monto_presupuesto': 'Monto presupuesto',
+};
+
+/// Opciones del diálogo "Cerrar solicitud".
+const opcionesResultadoCierre = <String, String>{
+  'exitoso': 'Cerrada con éxito',
+  'parcial': 'Cerrada parcialmente',
+  'fallido': 'Cerrada sin éxito',
+  'no_realizado': 'No realizada',
+};
+
+// ── Opciones del wizard y de los diálogos ───────────────────────────────────
+
+/// Tipo de solicitud activo de la plaza (`GET /solicitudes/tipos`).
+class TipoSolicitudOpcion {
+  const TipoSolicitudOpcion({required this.codigo, required this.etiqueta});
+
+  factory TipoSolicitudOpcion.fromJson(Map<String, dynamic> j) =>
+      TipoSolicitudOpcion(
+        codigo: j['codigo'] as String,
+        etiqueta: decodificarHtml(j['etiqueta'] as String?),
+      );
+
+  /// `mantenimiento | evento | remodelacion | otro`
+  final String codigo;
+  final String etiqueta;
+}
+
+/// Subcategoría activa (el wizard muestra "nombre (prioridad X)").
+class SubcategoriaOpcion {
+  const SubcategoriaOpcion({
+    required this.id,
+    required this.nombre,
+    required this.prioridad,
+  });
+
+  factory SubcategoriaOpcion.fromJson(Map<String, dynamic> j) =>
+      SubcategoriaOpcion(
+        id: j['id'] as String,
+        nombre: decodificarHtml(j['nombre'] as String?),
+        prioridad: j['prioridad'] as String? ?? 'B',
+      );
+
+  final String id;
+  final String nombre;
+  final String prioridad;
+}
+
+/// Categoría con sus subcategorías activas (`GET /categorias/:id`).
+class CategoriaOpcion {
+  const CategoriaOpcion({
+    required this.id,
+    required this.nombre,
+    required this.subcategorias,
+  });
+
+  factory CategoriaOpcion.fromJson(Map<String, dynamic> j) => CategoriaOpcion(
+    id: j['id'] as String,
+    nombre: decodificarHtml(j['nombre'] as String?),
+    subcategorias: _lista(j['subcategorias'], SubcategoriaOpcion.fromJson),
+  );
+
+  final String id;
+  final String nombre;
+  final List<SubcategoriaOpcion> subcategorias;
+}
+
+/// Local del inquilino (sale de sus contratos vigentes).
+class LocalOpcion {
+  const LocalOpcion({required this.id, required this.codigo});
+
+  final String id;
+  final String codigo;
+}
+
+/// Catálogos que necesita el wizard (se cargan en paralelo).
+class DatosWizard {
+  const DatosWizard({
+    required this.tipos,
+    required this.categorias,
+    required this.locales,
+  });
+
+  final List<TipoSolicitudOpcion> tipos;
+  final List<CategoriaOpcion> categorias;
+  final List<LocalOpcion> locales;
+}
+
+/// Admin de plaza candidato a reasignación (`GET /usuarios?rol=admin_plaza`).
+class AdminOpcion {
+  const AdminOpcion({
+    required this.id,
+    required this.nombre,
+    required this.email,
+    required this.rolStaffActivo,
+  });
+
+  factory AdminOpcion.fromJson(Map<String, dynamic> j) => AdminOpcion(
+    id: j['id'] as String,
+    nombre: decodificarHtml(j['nombre'] as String?),
+    email: j['email'] as String? ?? '',
+    rolStaffActivo: j['rolStaffActivo'] == true,
+  );
+
+  final String id;
+  final String nombre;
+  final String email;
+  final bool rolStaffActivo;
+}
+
+// ── Filtros de los listados (valor = su query; sirven de clave de family) ───
+
+/// Base de los filtros: dos filtros son iguales si generan la misma query.
+abstract class FiltroConsulta {
+  const FiltroConsulta();
+
+  Map<String, Object?> get query;
+
+  @override
+  bool operator ==(Object other) =>
+      other.runtimeType == runtimeType &&
+      mapEquals((other as FiltroConsulta).query, query);
+
+  @override
+  int get hashCode => Object.hashAll(query.values);
+}
+
+/// Filtros de "Mis solicitudes" (`GET /solicitudes`).
+class FiltroSolicitudes extends FiltroConsulta {
+  const FiltroSolicitudes({
+    this.page = 1,
+    this.estado,
+    this.tipo,
+    this.fechaDesde,
+    this.fechaHasta,
+  });
+
+  final int page;
+  final String? estado;
+  final String? tipo;
+  final String? fechaDesde;
+  final String? fechaHasta;
+
+  @override
+  Map<String, Object?> get query => {
+    'page': page,
+    'pageSize': 20,
+    'estado': estado,
+    'tipo': tipo,
+    'fechaDesde': fechaDesde,
+    'fechaHasta': fechaHasta,
+  };
+
+  FiltroSolicitudes conPagina(int p) => FiltroSolicitudes(
+    page: p,
+    estado: estado,
+    tipo: tipo,
+    fechaDesde: fechaDesde,
+    fechaHasta: fechaHasta,
+  );
+}
+
+/// Filtros de la bandeja del admin (`GET /solicitudes/bandeja`).
+class FiltroBandeja extends FiltroConsulta {
+  const FiltroBandeja({
+    this.page = 1,
+    this.estado,
+    this.tipo,
+    this.prioridad,
+    this.orden = 'fecha',
+    this.asignadasAMi = true,
+  });
+
+  final int page;
+  final String? estado;
+  final String? tipo;
+  final String? prioridad;
+
+  /// `fecha | prioridad`
+  final String orden;
+
+  /// Por defecto `true` (igual que el backend y el web).
+  final bool asignadasAMi;
+
+  @override
+  Map<String, Object?> get query => {
+    'page': page,
+    'pageSize': 20,
+    'estado': estado,
+    'tipo': tipo,
+    'prioridad': prioridad,
+    'orden': orden,
+    'asignadasAMi': asignadasAMi,
+  };
+
+  FiltroBandeja copiar({int? page, bool? asignadasAMi}) => FiltroBandeja(
+    page: page ?? this.page,
+    estado: estado,
+    tipo: tipo,
+    prioridad: prioridad,
+    orden: orden,
+    asignadasAMi: asignadasAMi ?? this.asignadasAMi,
+  );
+}
+
+/// Filtros de la vista global del superadmin (`GET /admin/solicitudes`).
+class FiltroGlobal extends FiltroConsulta {
+  const FiltroGlobal({
+    this.page = 1,
+    this.search,
+    this.estado,
+    this.tipo,
+    this.prioridad,
+    this.plazaId,
+    this.fechaDesde,
+    this.fechaHasta,
+  });
+
+  final int page;
+  final String? search;
+  final String? estado;
+  final String? tipo;
+  final String? prioridad;
+  final String? plazaId;
+  final String? fechaDesde;
+  final String? fechaHasta;
+
+  /// Mismos filtros sin paginación (para `export.csv`).
+  Map<String, Object?> get queryExportar => {
+    'plazaId': plazaId,
+    'search': search,
+    'estado': estado,
+    'tipo': tipo,
+    'prioridad': prioridad,
+    'fechaDesde': fechaDesde,
+    'fechaHasta': fechaHasta,
+  };
+
+  @override
+  Map<String, Object?> get query => {
+    'page': page,
+    'pageSize': 20,
+    ...queryExportar,
+  };
+
+  FiltroGlobal conPagina(int p) => FiltroGlobal(
+    page: p,
+    search: search,
+    estado: estado,
+    tipo: tipo,
+    prioridad: prioridad,
+    plazaId: plazaId,
+    fechaDesde: fechaDesde,
+    fechaHasta: fechaHasta,
+  );
 }
 
 String? _textoONull(Object? v) => v is String ? decodificarHtml(v) : null;

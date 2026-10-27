@@ -1,44 +1,52 @@
 import 'package:go_router/go_router.dart';
 
-import '../../core/widgets/en_construccion_page.dart';
+import 'admin/bandeja_page.dart';
+import 'admin/detalle_admin_page.dart';
+import 'global/solicitud_global_page.dart';
+import 'global/solicitudes_globales_page.dart';
+import 'inquilino/detalle_inquilino_page.dart';
+import 'inquilino/mis_solicitudes_page.dart';
+import 'inquilino/wizard/formulario_solicitud.dart';
+import 'inquilino/wizard_page.dart';
 
-/// Rutas del módulo (mismas URLs que el web). Stub: lo reemplaza la tarea
-/// del plan que implementa este módulo, sin cambiar la firma.
+/// Rutas del módulo (mismas URLs que el web). Los detalles y formularios se
+/// abren con `context.push` para que "atrás" vuelva al listado.
+
+/// Admin de plaza (y superadmin con plaza elegida).
 List<RouteBase> rutasSolicitudesAdmin() => [
   GoRoute(
     path: '/admin/solicitudes',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Bandeja de solicitudes'),
+    builder: (context, state) => const BandejaPage(),
   ),
   GoRoute(
     path: '/admin/solicitudes/:id',
     builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Detalle de solicitud'),
+        DetalleAdminPage(id: state.pathParameters['id']!),
   ),
 ];
 
-/// Rutas del módulo (mismas URLs que el web). Stub: lo reemplaza la tarea
-/// del plan que implementa este módulo, sin cambiar la firma.
+/// Inquilino. `nueva` va antes de `:id` y acepta el prefill del calendario
+/// (`?tipo=evento&fecha=YYYY-MM-DD&hora=HH:mm`).
 List<RouteBase> rutasSolicitudesInquilino() => [
   GoRoute(
     path: '/inquilino/solicitudes',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Mis solicitudes'),
+    builder: (context, state) => const MisSolicitudesPage(),
   ),
   GoRoute(
     path: '/inquilino/solicitudes/nueva',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Nueva solicitud'),
+    builder: (context, state) => WizardSolicitudPage(
+      prefill: PrefillWizard.desdeQuery(state.uri.queryParameters),
+    ),
   ),
   GoRoute(
     path: '/inquilino/solicitudes/:id',
     builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Detalle de solicitud'),
+        DetalleInquilinoPage(id: state.pathParameters['id']!),
   ),
   GoRoute(
     path: '/inquilino/solicitudes/:id/editar',
     builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Editar solicitud'),
+        WizardSolicitudPage(solicitudId: state.pathParameters['id']),
   ),
 ];
 
@@ -46,12 +54,11 @@ List<RouteBase> rutasSolicitudesInquilino() => [
 List<RouteBase> rutasSolicitudesGlobales() => [
   GoRoute(
     path: '/superadmin/solicitudes',
-    builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Solicitudes globales'),
+    builder: (context, state) => const SolicitudesGlobalesPage(),
   ),
   GoRoute(
     path: '/superadmin/solicitudes/:id',
     builder: (context, state) =>
-        const EnConstruccionPage(titulo: 'Solicitud global'),
+        SolicitudGlobalPage(id: state.pathParameters['id']!),
   ),
 ];
