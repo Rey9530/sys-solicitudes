@@ -52,11 +52,20 @@ class AvisoBanner extends StatelessWidget {
   }
 }
 
+/// Ancho del aviso: en teléfono ocupa el ancho (con el margen del tema); en
+/// tablet y escritorio va centrado y angosto para no tapar el menú lateral.
+double? _anchoAviso(BuildContext context) {
+  final ancho = MediaQuery.sizeOf(context).width;
+  return ancho >= 600 ? 440 : null; // 600 = `anchoRail` del shell
+}
+
 /// Mensaje efímero de éxito (los toasts de `sonner` del web).
 void mostrarExito(BuildContext context, String mensaje) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(mensaje)));
+    ..showSnackBar(
+      SnackBar(width: _anchoAviso(context), content: Text(mensaje)),
+    );
 }
 
 /// Mensaje efímero de error. Muestra `ApiError.mensaje` (el `detail` del backend).
@@ -66,6 +75,7 @@ void mostrarError(BuildContext context, Object error) {
     ..hideCurrentSnackBar()
     ..showSnackBar(
       SnackBar(
+        width: _anchoAviso(context),
         backgroundColor: Theme.of(context).colorScheme.error,
         content: Text(mensaje, style: const TextStyle(color: Colors.white)),
       ),

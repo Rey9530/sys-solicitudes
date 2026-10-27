@@ -57,14 +57,14 @@ void main() {
     await buscarConScroll(tester, find.byKey(const Key('wizard-guardar')));
     await captura(binding, tester, 'flujo-03-wizard-revision');
     await tocar(tester, find.byKey(const Key('wizard-guardar')));
-    await esperar(tester, find.text('Borrador'));
+    await esperarEstado(tester, 'Borrador');
     final ruta = rutaActual(tester);
     final id = ruta.split('/').last;
     expect(ruta, '/inquilino/solicitudes/$id');
     await captura(binding, tester, 'flujo-04-borrador');
 
     await tocarAccion(tester, 'enviar');
-    await esperar(tester, find.text('Enviada'));
+    await esperarEstado(tester, 'Enviada');
     await cerrarSesion(tester);
 
     // ── Admin: tomar y pedir subsanación ─────────────────────────────────
@@ -72,10 +72,10 @@ void main() {
     await irA(tester, '/admin/solicitudes/$id');
     await esperar(tester, find.textContaining(titulo));
     await tocarAccion(tester, 'tomar');
-    await esperar(tester, find.text('En revisión'));
+    await esperarEstado(tester, 'En revisión');
     await tocarAccion(tester, 'subsanacion');
     await responderDialogo(tester, 'Adjunta una foto del daño, por favor.');
-    await esperar(tester, find.text('Requiere subsanación'));
+    await esperarEstado(tester, 'Requiere subsanación');
     await captura(binding, tester, 'flujo-05-admin-subsanacion');
     await cerrarSesion(tester);
 
@@ -86,7 +86,7 @@ void main() {
     expect(find.textContaining('Adjunta una foto del daño'), findsWidgets);
     await captura(binding, tester, 'flujo-06-inquilino-aviso');
     await tocarAccion(tester, 'reenviar');
-    await esperar(tester, find.text('Enviada'));
+    await esperarEstado(tester, 'Enviada');
     await cerrarSesion(tester);
 
     // ── Admin: tomar, aprobar y cerrar ───────────────────────────────────
@@ -94,10 +94,10 @@ void main() {
     await irA(tester, '/admin/solicitudes/$id');
     await esperar(tester, find.textContaining(titulo));
     await tocarAccion(tester, 'tomar');
-    await esperar(tester, find.text('En revisión'));
+    await esperarEstado(tester, 'En revisión');
     await tocarAccion(tester, 'aprobar');
     await responderDialogo(tester, 'Todo en orden.');
-    await esperar(tester, find.text('Aprobada'));
+    await esperarEstado(tester, 'Aprobada');
     await tocarAccion(tester, 'cerrar');
     await esperar(tester, find.byKey(const Key('cierre-resultado')));
     await elegir(tester, const Key('cierre-resultado'), 'Cerrada con éxito');
@@ -106,7 +106,7 @@ void main() {
       'Trabajo terminado.',
     );
     await tocar(tester, find.byKey(const Key('cierre-confirmar')));
-    await esperar(tester, find.text('Cerrada'));
+    await esperarEstado(tester, 'Cerrada');
     await captura(binding, tester, 'flujo-07-cerrada');
 
     // Historial con las transiciones.
@@ -220,13 +220,48 @@ Future<void> buscarConScroll(WidgetTester tester, Finder f) async {
   for (var i = 0; i < 10 && f.evaluate().isEmpty; i++) {
     await tester.pump(const Duration(milliseconds: 300));
   }
-  final scroll = find.byWidgetPredicate(
-    (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
-  );
   for (var i = 0; i < 25 && f.evaluate().isEmpty; i++) {
-    if (scroll.evaluate().isEmpty) break;
-    await tester.drag(scroll.first, const Offset(0, -300));
+    final scroll = scrollPrincipal();
+    if (scroll == null) break;
+    await tester.drag(scroll, const Offset(0, -300));
     await tester.pump(const Duration(milliseconds: 300));
   }
   await esperar(tester, f);
+}
+
+/// El scroll vertical más grande de la pantalla: el contenido de la página
+/// (en tablet el menú lateral también tiene scroll y aparece primero).
+Finder? scrollPrincipal() {
+  double area(Element e) {
+    final box = e.renderObject;
+    return box is RenderBox && box.hasSize
+        ? box.size.width * box.size.height
+        : 0;
+  }
+
+  final candidatos = find
+      .byWidgetPredicate(
+        (w) => w is Scrollable && w.axisDirection == AxisDirection.down,
+      )
+      .evaluate()
+      .toList();
+  if (candidatos.isEmpty) return null;
+  candidatos.sort((a, b) => area(b).compareTo(area(a)));
+  final mayor = candidatos.first;
+  return find.byElementPredicate((e) => e == mayor);
+}
+
+/// Espera el badge de estado [etiqueta] del encabezado. En tablet el panel de
+/// decisión va dentro de la lista y el encabezado puede quedar fuera (lista
+/// perezosa): se vuelve arriba mientras tanto.
+Future<void> esperarEstado(WidgetTester tester, String etiqueta) async {
+  final f = find.text(etiqueta);
+  final inicio = DateTime.now();
+  while (DateTime.now().difference(inicio) < const Duration(seconds: 20)) {
+    await tester.pump(const Duration(milliseconds: 300));
+    if (f.evaluate().isNotEmpty) return;
+    final scroll = scrollPrincipal();
+    if (scroll != null) await tester.drag(scroll, const Offset(0, 600));
+  }
+  expect(f, findsWidgets, reason: 'El estado no llegó a "$etiqueta"');
 }
