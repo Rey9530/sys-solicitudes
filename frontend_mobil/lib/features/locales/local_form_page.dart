@@ -15,6 +15,10 @@ import 'locales_providers.dart';
 /// Medidores: dígitos y guiones (`18-622259-1`).
 final _regexMedidor = RegExp(r'^[0-9]+(-[0-9]+)*$');
 
+/// Filtro de los campos de medidor: solo dígitos y guiones. Van con teclado
+/// de texto porque el numérico del iPhone no tiene guion.
+final formatoMedidor = [FilteringTextInputFormatter.allow(RegExp('[0-9-]'))];
+
 String? validarMedidor(String? v) {
   final texto = (v ?? '').trim();
   if (texto.isEmpty) return null;
@@ -164,7 +168,8 @@ class _LocalFormPageState extends ConsumerState<LocalFormPage> {
                     TextFormField(
                       key: const Key('local-energia'),
                       controller: _energia,
-                      keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.text,
+                      inputFormatters: formatoMedidor,
                       validator: validarMedidor,
                       decoration: const InputDecoration(
                         labelText: 'Medidor energía',
@@ -174,7 +179,8 @@ class _LocalFormPageState extends ConsumerState<LocalFormPage> {
                     TextFormField(
                       key: const Key('local-agua'),
                       controller: _agua,
-                      keyboardType: TextInputType.number,
+                      keyboardType: TextInputType.text,
+                      inputFormatters: formatoMedidor,
                       validator: validarMedidor,
                       decoration: const InputDecoration(
                         labelText: 'Medidor agua',

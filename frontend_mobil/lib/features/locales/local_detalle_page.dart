@@ -229,7 +229,8 @@ class _EditarLocalFormState extends ConsumerState<_EditarLocalForm> {
                 TextFormField(
                   key: const Key('editar-local-energia'),
                   controller: _energia,
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.text,
+                  inputFormatters: formatoMedidor,
                   validator: validarMedidor,
                   decoration: const InputDecoration(
                     labelText: 'Medidor energía',
@@ -238,7 +239,8 @@ class _EditarLocalFormState extends ConsumerState<_EditarLocalForm> {
                 TextFormField(
                   key: const Key('editar-local-agua'),
                   controller: _agua,
-                  keyboardType: TextInputType.number,
+                  keyboardType: TextInputType.text,
+                  inputFormatters: formatoMedidor,
                   validator: validarMedidor,
                   decoration: const InputDecoration(labelText: 'Medidor agua'),
                 ),
