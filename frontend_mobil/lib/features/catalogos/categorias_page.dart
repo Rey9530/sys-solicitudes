@@ -6,6 +6,7 @@ import '../../core/api/api_providers.dart';
 import '../../core/api/payload.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/celdas.dart';
 import '../../core/widgets/dialogos.dart';
@@ -106,15 +107,11 @@ class _CategoriasPageState extends ConsumerState<CategoriasPage> {
                 prefixIcon: Icon(Icons.search),
               ),
             ),
-            DropdownButtonFormField<bool?>(
-              initialValue: _estado,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Estado'),
-              items: const [
-                DropdownMenuItem(child: Text('Todas')),
-                DropdownMenuItem(value: true, child: Text('Activas')),
-                DropdownMenuItem(value: false, child: Text('Inactivas')),
-              ],
+            CampoSelect<bool>(
+              label: 'Estado',
+              valor: _estado,
+              opcionVacia: 'Todas',
+              opciones: const [(true, 'Activas'), (false, 'Inactivas')],
               onChanged: (v) => _estado = v,
             ),
           ],

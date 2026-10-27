@@ -11,6 +11,7 @@ import '../../core/format/fechas.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/celdas.dart';
 import '../../core/widgets/dialogos.dart';
@@ -173,15 +174,11 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
               prefixIcon: Icon(Icons.search),
             ),
           ),
-          DropdownButtonFormField<bool>(
+          CampoSelect<bool>(
             key: const Key('usuarios-estado'),
-            initialValue: _filtro.deshabilitados,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Estado'),
-            items: const [
-              DropdownMenuItem(value: false, child: Text('Activos')),
-              DropdownMenuItem(value: true, child: Text('Deshabilitados')),
-            ],
+            label: 'Estado',
+            valor: _filtro.deshabilitados,
+            opciones: const [(false, 'Activos'), (true, 'Deshabilitados')],
             onChanged: (v) => _filtrar(
               buscar: textoOpcional(_buscar.text),
               deshabilitados: v ?? false,
