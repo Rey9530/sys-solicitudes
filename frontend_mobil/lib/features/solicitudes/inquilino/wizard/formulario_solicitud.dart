@@ -1,6 +1,6 @@
+import '../../../../core/format/validaciones.dart';
 import '../../reglas_fechas.dart';
 import '../../solicitudes_modelos.dart';
-import '../../../../core/format/validaciones.dart';
 
 /// Datos de una persona del personal (nombre + documento).
 class AsistenteForm {

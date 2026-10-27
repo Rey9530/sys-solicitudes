@@ -6,6 +6,7 @@ import '../../core/format/fechas.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/campos.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/dialogos.dart';
@@ -161,8 +162,9 @@ class _LogEmailsPageState extends ConsumerState<LogEmailsPage> {
               children: [
                 RejillaCampos(
                   children: [
-                    SelectorFiltro<String>(
-                      etiqueta: 'Estado',
+                    CampoSelect<String>(
+                      label: 'Estado',
+                      opcionVacia: 'Todos',
                       valor: _estado,
                       opciones: [for (final e in estadosEmailLog) (e, e)],
                       onChanged: (v) => setState(() {
@@ -170,9 +172,9 @@ class _LogEmailsPageState extends ConsumerState<LogEmailsPage> {
                         _pagina = 1;
                       }),
                     ),
-                    SelectorFiltro<String>(
-                      etiqueta: 'Plantilla',
-                      textoTodos: 'Todas',
+                    CampoSelect<String>(
+                      label: 'Plantilla',
+                      opcionVacia: 'Todas',
                       valor: _plantilla,
                       opciones: [for (final p in plantillasEmail) (p, p)],
                       onChanged: (v) => setState(() {

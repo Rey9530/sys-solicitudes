@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
 import '../../core/api/paginado.dart';
+import '../../core/api/payload.dart';
 import '../../core/format/fechas.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
@@ -22,7 +23,6 @@ import 'usuario_plaza_dialogos.dart';
 import 'usuarios_api.dart';
 import 'usuarios_modelos.dart';
 import 'usuarios_providers.dart';
-import '../../core/api/payload.dart';
 
 /// Pestañas en el orden del web (`?tab=usuarios|roles|permisos`).
 const _pestanas = ['usuarios', 'roles', 'permisos'];

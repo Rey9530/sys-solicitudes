@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../comun/filtros.dart';
+import '../../../../core/widgets/campo_select.dart';
 import '../../solicitudes_modelos.dart';
 import 'formulario_solicitud.dart';
 
@@ -53,10 +53,8 @@ class PasoTipo extends StatelessWidget {
           key: const Key('wz-categoria'),
           label: 'Categoría *',
           valor: form.categoriaId,
-          opciones: [
-            (null, 'Selecciona…'),
-            for (final c in datos.categorias) (c.id, c.nombre),
-          ],
+          opcionVacia: 'Selecciona…',
+          opciones: [for (final c in datos.categorias) (c.id, c.nombre)],
           onChanged: (v) {
             form.cambiarCategoria(v);
             onCambio();
@@ -68,8 +66,8 @@ class PasoTipo extends StatelessWidget {
           label: 'Subcategoría *',
           valor: form.subcategoriaId,
           enabled: form.categoriaId != null,
+          opcionVacia: 'Selecciona…',
           opciones: [
-            (null, 'Selecciona…'),
             for (final s in subcategorias)
               (s.id, '${s.nombre} (prioridad ${s.prioridad})'),
           ],

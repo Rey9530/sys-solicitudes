@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
@@ -15,7 +17,6 @@ import '../contratos/catalogo_comun.dart';
 import 'locales_api.dart';
 import 'locales_modelos.dart';
 import 'locales_providers.dart';
-import '../../core/api/payload.dart';
 
 /// `/admin/locales` — listado con filtros estado/módulo/nivel (espejo de
 /// `admin/locales/page.tsx` + `locales-table.tsx` + `locales-filtros.tsx`).
@@ -112,12 +113,12 @@ class _LocalesPageState extends ConsumerState<LocalesPage> {
         PanelFiltros(
           children: [
             CampoFiltro(
-              child: CampoSeleccion<String>(
+              child: CampoSelect<String>(
                 key: const Key('locales-filtro-estado'),
-                etiqueta: 'Estado',
+                label: 'Estado',
                 valor: _filtro.estado,
+                opcionVacia: 'Todos',
                 opciones: [
-                  (null, 'Todos'),
                   for (final e in estadosLocal) (e, estadoLocalCrudo(e)),
                 ],
                 onChanged: (v) => setState(

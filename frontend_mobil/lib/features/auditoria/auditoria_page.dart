@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import '../../core/format/fechas.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/campos.dart';
 import '../../core/widgets/estados.dart';
 import '../../core/widgets/lista_responsive.dart';
@@ -135,8 +136,9 @@ class _AuditoriaPageState extends ConsumerState<AuditoriaPage> {
                       ),
                       onSubmitted: (_) => _filtrar(),
                     ),
-                    SelectorFiltro<String>(
-                      etiqueta: 'Tipo de entidad',
+                    CampoSelect<String>(
+                      label: 'Tipo de entidad',
+                      opcionVacia: 'Todos',
                       valor: _entidadTipo,
                       opciones: [for (final t in tiposEntidadAuditoria) (t, t)],
                       onChanged: (v) => setState(() => _entidadTipo = v),

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/fechas.dart';
+import '../../core/format/validaciones.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
@@ -16,7 +17,6 @@ import '../contratos/catalogo_comun.dart';
 import 'inquilinos_api.dart';
 import 'inquilinos_modelos.dart';
 import 'inquilinos_providers.dart';
-import '../../core/format/validaciones.dart';
 
 /// Pestaña "Usuarios" del detalle de inquilino (espejo de
 /// `usuarios-inquilino-table.tsx`). A diferencia del web, cada acción se

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../core/format/fechas.dart';
 import '../../core/format/montos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/estados.dart';
 import '../../core/widgets/lista_responsive.dart';
@@ -89,14 +90,12 @@ class _ContratosPageState extends ConsumerState<ContratosPage> {
         PanelFiltros(
           children: [
             CampoFiltro(
-              child: CampoSeleccion<String>(
+              child: CampoSelect<String>(
                 key: const Key('contratos-filtro-local'),
-                etiqueta: 'Local',
+                label: 'Local',
                 valor: f.localId,
-                opciones: [
-                  (null, 'Todos'),
-                  for (final l in locales) (l.id, l.codigo),
-                ],
+                opcionVacia: 'Todos',
+                opciones: [for (final l in locales) (l.id, l.codigo)],
                 onChanged: (v) => _filtrar(
                   localId: v,
                   inquilinoId: f.inquilinoId,
@@ -106,14 +105,12 @@ class _ContratosPageState extends ConsumerState<ContratosPage> {
             ),
             CampoFiltro(
               ancho: 260,
-              child: CampoSeleccion<String>(
+              child: CampoSelect<String>(
                 key: const Key('contratos-filtro-inquilino'),
-                etiqueta: 'Inquilino',
+                label: 'Inquilino',
                 valor: f.inquilinoId,
-                opciones: [
-                  (null, 'Todos'),
-                  for (final i in inquilinos) (i.id, i.razonSocial),
-                ],
+                opcionVacia: 'Todos',
+                opciones: [for (final i in inquilinos) (i.id, i.razonSocial)],
                 onChanged: (v) => _filtrar(
                   localId: f.localId,
                   inquilinoId: v,
@@ -123,14 +120,12 @@ class _ContratosPageState extends ConsumerState<ContratosPage> {
             ),
             CampoFiltro(
               ancho: 180,
-              child: CampoSeleccion<String>(
+              child: CampoSelect<String>(
                 key: const Key('contratos-filtro-estado'),
-                etiqueta: 'Estado',
+                label: 'Estado',
                 valor: f.estado,
-                opciones: [
-                  (null, 'Todos'),
-                  for (final e in estadosContrato) (e, e),
-                ],
+                opcionVacia: 'Todos',
+                opciones: [for (final e in estadosContrato) (e, e)],
                 onChanged: (v) => _filtrar(
                   localId: f.localId,
                   inquilinoId: f.inquilinoId,

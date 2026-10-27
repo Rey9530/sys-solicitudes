@@ -135,53 +135,6 @@ class PanelFiltros extends StatelessWidget {
   }
 }
 
-/// Lista desplegable (equivalente a `<select>`). Un valor `null` es una opción
-/// válida ("Todos", "— Sin clasificar —").
-class CampoSeleccion<T> extends StatelessWidget {
-  const CampoSeleccion({
-    super.key,
-    required this.etiqueta,
-    required this.valor,
-    required this.opciones,
-    required this.onChanged,
-    this.hint,
-    this.validator,
-    this.ayuda,
-  });
-
-  final String etiqueta;
-  final T? valor;
-
-  /// Pares (valor, texto visible).
-  final List<(T?, String)> opciones;
-
-  /// `null` = deshabilitado.
-  final ValueChanged<T?>? onChanged;
-  final String? hint;
-  final FormFieldValidator<T>? validator;
-  final String? ayuda;
-
-  @override
-  Widget build(BuildContext context) {
-    final existe = opciones.any((o) => o.$1 == valor);
-    return DropdownButtonFormField<T>(
-      initialValue: existe ? valor : null,
-      isExpanded: true,
-      hint: hint == null ? null : Text(hint!, overflow: TextOverflow.ellipsis),
-      decoration: InputDecoration(labelText: etiqueta, helperText: ayuda),
-      validator: validator,
-      items: [
-        for (final (v, texto) in opciones)
-          DropdownMenuItem<T>(
-            value: v,
-            child: Text(texto, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-      ],
-      onChanged: onChanged,
-    );
-  }
-}
-
 /// Una pestaña de [PestanasInline].
 class Pestana {
   const Pestana(this.etiqueta, this.contenido, {this.contador});

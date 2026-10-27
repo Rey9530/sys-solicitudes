@@ -3,9 +3,9 @@ import 'dart:typed_data';
 import '../../core/adjuntos/adjuntos.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/paginado.dart';
+import '../../core/api/payload.dart';
 import 'catalogo_comun.dart';
 import 'contratos_modelos.dart';
-import '../../core/api/payload.dart';
 
 /// Llamadas al backend de contratos y de la carga inicial (Inv §5.1).
 

@@ -9,6 +9,7 @@ import '../../core/format/fechas.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/estados.dart';
 import '../../core/widgets/pagina.dart';
@@ -190,18 +191,20 @@ class _EditarLocalFormState extends ConsumerState<_EditarLocalForm> {
                   ),
                 ),
                 if (_conVigente)
-                  const CampoSeleccion<String>(
-                    key: Key('editar-local-estado'),
-                    etiqueta: 'Estado',
+                  CampoSelect<String>(
+                    key: const Key('editar-local-estado'),
+                    label: 'Estado',
                     valor: 'alquilado',
-                    opciones: [('alquilado', 'alquilado')],
-                    onChanged: null,
+                    opciones: const [('alquilado', 'alquilado')],
+                    // Solo lectura.
+                    enabled: false,
+                    onChanged: (_) {},
                     ayuda: 'Con contrato vigente el estado se gestiona desde contratos.',
                   )
                 else
-                  CampoSeleccion<String>(
+                  CampoSelect<String>(
                     key: const Key('editar-local-estado'),
-                    etiqueta: 'Estado',
+                    label: 'Estado',
                     valor: _estado,
                     opciones: [
                       for (final e in estadosLocalSinContrato)

@@ -3,9 +3,9 @@ import 'dart:math';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/paginado.dart';
+import '../../core/api/payload.dart';
 import '../solicitudes/solicitudes_modelos.dart';
 import 'inquilinos_modelos.dart';
-import '../../core/api/payload.dart';
 
 /// Llamadas al backend de inquilinos y de sus usuarios (Inv §5.1.2, §5.1.4).
 

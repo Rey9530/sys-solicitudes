@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
@@ -15,7 +16,6 @@ import 'catalogos_widgets.dart';
 import 'categorias_api.dart';
 import 'categorias_modelos.dart';
 import 'categorias_providers.dart';
-import '../../core/api/payload.dart';
 
 /// `/admin/categorias/:id/subcategorias` — crear, editar, cambiar
 /// responsable, gestionar supervisores (máx. 5) y desactivar.

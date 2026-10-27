@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_providers.dart';
+import '../../core/format/validaciones.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
+import '../../core/widgets/campo_select.dart';
 import '../auth/auth_api.dart';
 import '../configuracion/widgets/selector_color.dart';
 import '../reportes/widgets/rejilla_campos.dart';
 import 'plazas_api.dart';
 import 'plazas_modelos.dart';
-import '../../core/format/validaciones.dart';
 
 /// Abre el formulario "Nueva plaza". Devuelve `true` si se creó.
 Future<bool> mostrarNuevaPlaza(BuildContext context) async {
@@ -202,9 +203,8 @@ class _NuevaPlazaSheetState extends ConsumerState<NuevaPlazaSheet> {
                     ),
                     validator: _requerido,
                   ),
-                  SelectorFiltro<String>(
-                    etiqueta: 'Rol de staff',
-                    textoTodos: null,
+                  CampoSelect<String>(
+                    label: 'Rol de staff',
                     valor: _rol,
                     opciones: rolesAdminInicial,
                     onChanged: (v) => setState(() => _rol = v ?? 'admin'),

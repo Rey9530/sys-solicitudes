@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/dialogos.dart';
@@ -14,7 +15,6 @@ import '../contratos/catalogo_comun.dart';
 import 'inquilinos_api.dart';
 import 'inquilinos_modelos.dart';
 import 'inquilinos_providers.dart';
-import '../../core/api/payload.dart';
 
 /// `/admin/inquilinos` — listado con filtros razón social / identificación
 /// (espejo de `admin/inquilinos/page.tsx`, `inquilinos-table.tsx` e

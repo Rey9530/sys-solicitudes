@@ -3,10 +3,10 @@ import 'dart:typed_data';
 import '../../core/adjuntos/adjuntos.dart';
 import '../../core/api/api_client.dart';
 import '../../core/api/paginado.dart';
+import '../../core/api/payload.dart';
 import '../contratos/catalogo_comun.dart';
 import '../solicitudes/solicitudes_modelos.dart';
 import 'locales_modelos.dart';
-import '../../core/api/payload.dart';
 
 /// Llamadas al backend de locales (`/locales`, Inv §5.1).
 

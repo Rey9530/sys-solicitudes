@@ -8,6 +8,7 @@ import '../../../core/api/api_providers.dart';
 import '../../../core/descargas/descargar_y_compartir.dart';
 import '../../../core/format/fechas.dart';
 import '../../../core/plaza/plaza_seleccionada.dart';
+import '../../../core/widgets/campo_select.dart';
 import '../../../core/widgets/campos.dart';
 import '../../../core/widgets/estados.dart';
 import '../../../core/widgets/pagina.dart';
@@ -135,13 +136,15 @@ class _SolicitudesGlobalesState extends ConsumerState<SolicitudesGlobalesPage> {
                 key: const Key('filtro-estado'),
                 label: 'Estado',
                 valor: _estado,
-                opciones: opcionesEstado('Todos los estados'),
+                opcionVacia: 'Todos los estados',
+                opciones: opcionesEstado(),
                 onChanged: (v) => setState(() => _estado = v),
               ),
               CampoSelect<String>(
                 key: const Key('filtro-tipo'),
                 label: 'Tipo',
                 valor: _tipo,
+                opcionVacia: 'Todos',
                 opciones: opcionesTipo(),
                 onChanged: (v) => setState(() => _tipo = v),
               ),
@@ -149,6 +152,7 @@ class _SolicitudesGlobalesState extends ConsumerState<SolicitudesGlobalesPage> {
                 key: const Key('filtro-prioridad'),
                 label: 'Prioridad',
                 valor: _prioridad,
+                opcionVacia: 'Toda',
                 opciones: opcionesPrioridad(),
                 onChanged: (v) => setState(() => _prioridad = v),
               ),
@@ -156,10 +160,8 @@ class _SolicitudesGlobalesState extends ConsumerState<SolicitudesGlobalesPage> {
                 key: const Key('filtro-plaza'),
                 label: 'Plaza',
                 valor: _plazaId,
-                opciones: [
-                  (null, 'Todas las plazas'),
-                  for (final p in plazas) (p.id, p.nombreComercial),
-                ],
+                opcionVacia: 'Todas las plazas',
+                opciones: [for (final p in plazas) (p.id, p.nombreComercial)],
                 onChanged: (v) => setState(() => _plazaId = v),
               ),
               CampoFecha(

@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
 import '../../core/auth/sesion_controller.dart';
+import '../../core/format/validaciones.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
@@ -12,8 +14,6 @@ import '../../core/widgets/dialogos.dart';
 import 'usuarios_api.dart';
 import 'usuarios_modelos.dart';
 import 'usuarios_providers.dart';
-import '../../core/api/payload.dart';
-import '../../core/format/validaciones.dart';
 
 /// Códigos de error del backend que se muestran bajo el selector de rol.
 const _erroresDeRol = {

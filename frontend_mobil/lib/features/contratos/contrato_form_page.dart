@@ -8,6 +8,7 @@ import '../../core/api/api_providers.dart';
 import '../../core/format/montos.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/campos.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/pagina.dart';
@@ -211,9 +212,9 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    CampoSeleccion<String>(
+                    CampoSelect<String>(
                       key: const Key('contrato-localId'),
-                      etiqueta: 'Local (solo disponibles) *',
+                      label: 'Local (solo disponibles) *',
                       hint: 'Selecciona un local…',
                       valor: _localId,
                       opciones: [
@@ -239,9 +240,9 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
                         ),
                       ),
                     const SizedBox(height: 12),
-                    CampoSeleccion<String>(
+                    CampoSelect<String>(
                       key: const Key('contrato-inquilinoId'),
-                      etiqueta: 'Inquilino *',
+                      label: 'Inquilino *',
                       hint: 'Selecciona un inquilino…',
                       valor: _inquilinoId,
                       opciones: [

@@ -4,66 +4,18 @@ import '../../../core/theme/colores.dart';
 import '../../../core/widgets/badges.dart';
 import '../solicitudes_modelos.dart';
 
-/// Select controlado (equivale a `<select>` del web). `null` es la opción
-/// vacía ("Todos", "Selecciona…"). Si [valor] no está entre las opciones se
-/// muestra vacío.
-class CampoSelect<T> extends StatelessWidget {
-  const CampoSelect({
-    super.key,
-    required this.label,
-    required this.valor,
-    required this.opciones,
-    required this.onChanged,
-    this.enabled = true,
-  });
-
-  final String label;
-  final T? valor;
-
-  /// Pares (valor, texto). Incluir `(null, 'Todos')` para la opción vacía.
-  final List<(T?, String)> opciones;
-  final ValueChanged<T?> onChanged;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final existe = opciones.any((o) => o.$1 == valor);
-    return InputDecorator(
-      decoration: InputDecoration(labelText: label, enabled: enabled),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<T?>(
-          value: existe ? valor : null,
-          isExpanded: true,
-          isDense: true,
-          onChanged: enabled ? onChanged : null,
-          items: [
-            for (final (v, texto) in opciones)
-              DropdownMenuItem<T?>(
-                value: v,
-                child: Text(texto, overflow: TextOverflow.ellipsis),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// Opciones de estado en el orden canónico del web.
-List<(String?, String)> opcionesEstado(String vacio) => [
-  (null, vacio),
+List<(String, String)> opcionesEstado() => [
   for (final e in etiquetaEstadoSolicitud.entries) (e.key, e.value),
 ];
 
 /// Opciones de tipo (etiquetas base del web).
-List<(String?, String)> opcionesTipo() => [
-  (null, 'Todos'),
+List<(String, String)> opcionesTipo() => [
   for (final e in etiquetaTipoSolicitud.entries) (e.key, e.value),
 ];
 
 /// Opciones de prioridad.
-List<(String?, String)> opcionesPrioridad() => [
-  (null, 'Toda'),
+List<(String, String)> opcionesPrioridad() => [
   for (final p in prioridadesSolicitud) (p, p),
 ];
 

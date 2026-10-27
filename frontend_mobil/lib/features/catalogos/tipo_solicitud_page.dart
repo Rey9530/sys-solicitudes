@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
 import '../../core/auth/sesion_controller.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
@@ -13,7 +14,6 @@ import '../../core/widgets/pagina.dart';
 import 'categorias_api.dart';
 import 'categorias_modelos.dart';
 import 'categorias_providers.dart';
-import '../../core/api/payload.dart';
 
 const _rutaListado = '/admin/catalogos/tipos-solicitud';
 

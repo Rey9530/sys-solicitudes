@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/format/validaciones.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/pagina.dart';
 import '../contratos/catalogo_comun.dart';
 import 'inquilinos_modelos.dart';
-import '../../core/format/validaciones.dart';
 
 /// Campos del formulario de inquilino compartidos por el alta y la edición
 /// (espejo de `nuevo-inquilino-form.tsx` y `editar-inquilino-form.tsx`).
@@ -216,14 +217,12 @@ class SeccionesInquilino extends StatelessWidget {
             children: [
               FilaCampos(
                 children: [
-                  CampoSeleccion<String>(
+                  CampoSelect<String>(
                     key: const Key('inquilino-tipoCliente'),
-                    etiqueta: 'Tipo de cliente',
+                    label: 'Tipo de cliente',
                     valor: tipoCliente,
-                    opciones: const [
-                      (null, '— Sin clasificar —'),
-                      ...tiposCliente,
-                    ],
+                    opcionVacia: '— Sin clasificar —',
+                    opciones: const [...tiposCliente],
                     onChanged: onTipoCliente,
                   ),
                   CampoTextoInquilino(

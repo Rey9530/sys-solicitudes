@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/colores.dart';
+import '../../../../core/widgets/campo_select.dart';
 import '../../../../core/widgets/campos.dart';
 import '../../../../core/widgets/dialogos.dart';
-import '../../comun/filtros.dart';
 import '../../reglas_fechas.dart';
 import '../../solicitudes_modelos.dart';
 import 'formulario_solicitud.dart';
@@ -96,10 +96,8 @@ class PasoDetalles extends StatelessWidget {
           key: const Key('wz-local'),
           label: 'Local *',
           valor: form.localId,
-          opciones: [
-            (null, 'Selecciona…'),
-            for (final l in datos.locales) (l.id, l.codigo),
-          ],
+          opcionVacia: 'Selecciona…',
+          opciones: [for (final l in datos.locales) (l.id, l.codigo)],
           onChanged: (v) {
             form.localId = v;
             onCambio();
