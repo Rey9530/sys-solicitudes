@@ -25,8 +25,13 @@ void main() {
     final conPlaza = container.read(plazaSeleccionadaProvider) != null;
     final router = container.read(routerProvider);
     for (final item in menuPara(sesion, conPlaza: conPlaza)) {
+      final inicio = DateTime.now();
       router.go(item.ruta);
       await esperarCarga(tester);
+      debugPrint(
+        'navegacion: ${item.ruta} cargó en '
+        '${DateTime.now().difference(inicio).inMilliseconds} ms',
+      );
       expect(
         find.byType(ErrorView),
         findsNothing,

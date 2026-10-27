@@ -90,7 +90,12 @@ ThemeData _tema(Brightness brillo, Color primario, ColoresPlazapp c) {
       side: BorderSide(color: c.border),
       labelStyle: TextStyle(color: c.text2, fontSize: 12.5),
     ),
-    snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+    // Flotan por encima de las barras de acciones fijas abajo (detalle de
+    // solicitud en teléfono): sin este margen el aviso tapaba los botones.
+    snackBarTheme: const SnackBarThemeData(
+      behavior: SnackBarBehavior.floating,
+      insetPadding: EdgeInsets.fromLTRB(16, 5, 16, 84),
+    ),
   );
 }
 

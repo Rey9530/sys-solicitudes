@@ -131,8 +131,13 @@ class _Marca extends StatelessWidget {
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
           ),
         ),
-        const SizedBox(width: 10),
-        const Flexible(child: Text('Plazapp', overflow: TextOverflow.ellipsis)),
+        // En teléfono solo el logo: el nombre no cabe junto a las acciones.
+        if (MediaQuery.sizeOf(context).width >= anchoRail) ...[
+          const SizedBox(width: 10),
+          const Flexible(
+            child: Text('Plazapp', overflow: TextOverflow.ellipsis),
+          ),
+        ],
       ],
     );
   }
