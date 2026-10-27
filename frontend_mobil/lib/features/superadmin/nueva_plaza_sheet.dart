@@ -7,8 +7,8 @@ import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/filtros.dart';
+import '../../core/widgets/selector_color.dart';
 import '../auth/auth_api.dart';
-import '../configuracion/widgets/selector_color.dart';
 import 'plazas_api.dart';
 import 'plazas_modelos.dart';
 

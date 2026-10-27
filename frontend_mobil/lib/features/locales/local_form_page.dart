@@ -5,11 +5,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/format/validaciones.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
-import '../contratos/catalogo_comun.dart';
 import 'locales_api.dart';
 import 'locales_providers.dart';
 

@@ -7,6 +7,7 @@ import '../../core/format/montos.dart';
 import '../../core/widgets/badges.dart';
 import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/celdas.dart';
 import '../../core/widgets/estados.dart';
 import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
@@ -14,7 +15,6 @@ import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
 import '../inquilinos/inquilinos_providers.dart';
 import '../locales/locales_providers.dart';
-import 'catalogo_comun.dart';
 import 'contratos_modelos.dart';
 import 'contratos_providers.dart';
 

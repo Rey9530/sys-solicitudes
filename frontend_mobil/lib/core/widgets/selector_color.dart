@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/colores.dart';
+import '../theme/colores.dart';
 
 /// Paleta predefinida (Flutter no trae selector de color y no se agrega un
 /// paquete, decisión del spec §4.7). El primero es el color por defecto de

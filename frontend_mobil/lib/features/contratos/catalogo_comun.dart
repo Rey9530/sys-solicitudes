@@ -5,51 +5,14 @@ import '../../core/format/fechas.dart';
 import '../../core/format/montos.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/celdas.dart';
 import '../../core/widgets/estados.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../solicitudes/solicitudes_modelos.dart';
 import 'contratos_modelos.dart';
 
-/// Piezas compartidas por las pantallas de locales, inquilinos y contratos
-/// (payloads, validaciones y widgets pequeños).
-
-// ── Números ─────────────────────────────────────────────────────────────────
-
-/// `"1.5"` o `"1,5"` → `1.5`; vacío o inválido → `null`.
-double? numeroDe(String texto) =>
-    double.tryParse(texto.trim().replaceAll(',', '.'));
-
-/// `"12"` → `12`; vacío o inválido → `null`.
-int? enteroDe(String texto) => int.tryParse(texto.trim());
-
-/// Texto que llega del backend → texto del campo (`null` → vacío).
-String textoDe(Object? valor) => switch (valor) {
-  null => '',
-  final double d when d == d.roundToDouble() => d.toStringAsFixed(0),
-  _ => '$valor',
-};
-
-// ── Validaciones ────────────────────────────────────────────────────────────
-
-/// Número opcional dentro de un rango. Vacío es válido.
-String? validarNumero(
-  String? v, {
-  double min = 0,
-  required double max,
-  bool entero = false,
-  bool positivo = false,
-}) {
-  final texto = (v ?? '').trim();
-  if (texto.isEmpty) return null;
-  final n = numeroDe(texto);
-  if (n == null) return 'Número inválido';
-  if (entero && n != n.roundToDouble()) return 'Debe ser un número entero';
-  if (positivo && n <= 0) return 'Debe ser mayor que 0';
-  if (n < min || n > max) {
-    return 'Debe estar entre ${textoDe(min)} y ${textoDe(max)}';
-  }
-  return null;
-}
+/// Widgets de contratos y solicitudes que también muestran los detalles de
+/// locales e inquilinos.
 
 // ── Widgets ─────────────────────────────────────────────────────────────────
 
@@ -102,29 +65,6 @@ class ContratosMini extends StatelessWidget {
             ),
           ),
       ],
-    );
-  }
-}
-
-/// Texto secundario de una celda (máximo 2 líneas: en tabla la fila mide
-/// como máximo 72 px).
-class TextoCelda extends StatelessWidget {
-  const TextoCelda(this.texto, {super.key, this.mono = false});
-
-  final String? texto;
-  final bool mono;
-
-  @override
-  Widget build(BuildContext context) {
-    final vacio = texto == null || texto!.isEmpty;
-    return Text(
-      vacio ? '—' : texto!,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        color: ColoresPlazapp.of(context).text2,
-        fontFamily: mono ? 'monospace' : null,
-      ),
     );
   }
 }
