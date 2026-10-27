@@ -344,8 +344,9 @@ class BarraAccionesTelefono extends StatelessWidget {
       key: const Key('barra-mas-acciones'),
       onPressed: () => _masAcciones(context, barra),
       icon: const Icon(Icons.more_horiz),
-      label: const Text(
-        'Más acciones',
+      // Junto a la acción principal solo cabe "Más" (se truncaba).
+      label: Text(
+        barra == null ? 'Más acciones' : 'Más',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),

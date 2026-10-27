@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/api/api_providers.dart';
 import 'package:frontend_mobil/app.dart';
 import 'package:frontend_mobil/core/auth/token_storage.dart';
+import 'package:frontend_mobil/core/navegacion/router.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
@@ -93,4 +94,21 @@ Future<void> cerrarSesion(WidgetTester tester) async {
   await tester.pumpAndSettle();
   await tester.tap(find.byKey(const Key('cerrar-sesion')));
   await esperar(tester, find.text('Inicia sesión'));
+}
+
+/// Ruta actual del router (incluye las abiertas con push/pushReplacement).
+String rutaActual(WidgetTester tester) {
+  final container = ProviderScope.containerOf(
+    tester.element(find.byType(PlazappApp)),
+  );
+  return container.read(routerProvider).state.uri.path;
+}
+
+/// Navega a [ruta] como un enlace profundo.
+Future<void> irA(WidgetTester tester, String ruta) async {
+  final container = ProviderScope.containerOf(
+    tester.element(find.byType(PlazappApp)),
+  );
+  container.read(routerProvider).go(ruta);
+  await tester.pump(const Duration(milliseconds: 500));
 }

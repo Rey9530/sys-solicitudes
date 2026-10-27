@@ -45,5 +45,36 @@ flutter analyze
 flutter test                      # unitarias + widget tests (incluye barrido responsive)
 ```
 
-Las pruebas E2E en simulador/emulador (`integration_test`) se documentan en la sección
-"Pruebas E2E" cuando se agregan (tarea 11 del plan).
+Los widget tests corren sin dispositivo ni backend: la API se simula con `apiFalsa`
+(`test/helpers/api_falsa.dart`) y `probarEnTamanos` (`test/helpers/pantallas.dart`) pinta
+cada pantalla a 360, 390, 768 y 1024 px, en claro y oscuro, y falla si algo se desborda.
+
+## Pruebas E2E (simulador / emulador)
+
+Playwright no maneja emuladores; el equivalente oficial de Flutter es
+[`integration_test`](https://docs.flutter.dev/testing/integration-tests): la app real corre
+en el simulador/emulador contra el **backend local** y la prueba toca la UI como un usuario.
+
+Requisitos: stack local levantado (`docker compose up -d` y `npm run start:dev` en `backend/`,
+API en `:4000`) con el seed de desarrollo.
+
+```bash
+scripts/e2e.sh ios-phone                     # todas, iPhone 17 Pro
+scripts/e2e.sh ios-tablet                    # todas, iPad Pro 11"
+scripts/e2e.sh android                       # todas, emulador Android (lo arranca si hace falta)
+scripts/e2e.sh ios-phone integration_test/flujo_solicitud_test.dart   # una sola
+```
+
+Los simuladores se pueden cambiar con `IPHONE_UDID`, `IPAD_UDID` y `ANDROID_AVD`
+(`xcrun simctl list devices`, `emulator -list-avds`). Las capturas quedan en
+`build/capturas/<dispositivo>/` para revisión visual.
+
+| Prueba | Qué cubre |
+|---|---|
+| `humo_test.dart` | Login de admin e inquilino, shell del rol y cierre de sesión. |
+| `login_roles_test.dart` | Credenciales inválidas, inicio de cada rol, rutas de otro rol que redirigen, puerta de plaza del superadmin, rutas protegidas sin sesión. |
+| `navegacion_completa_test.dart` | Todas las pantallas del menú de cada rol (y del superadmin con plaza): ninguna termina en error; una captura por pantalla. |
+| `flujo_solicitud_test.dart` | Ciclo completo: wizard → borrador → enviar → tomar → subsanación → reenviar → tomar → aprobar → cerrar, con historial. Crea una solicitud `E2E-MOVIL-…` en la plaza demo. |
+
+> El login está limitado a 5 intentos/min por IP: `iniciarSesion` (`integration_test/helpers.dart`)
+> espera el `Retry-After` y reintenta, así que una corrida completa puede pausar ~1 min.

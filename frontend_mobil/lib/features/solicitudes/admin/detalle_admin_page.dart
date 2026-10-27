@@ -220,7 +220,7 @@ class _DetalleAdminState extends ConsumerState<DetalleAdminPage> {
         badges: [
           EstadoSolicitudBadge(s.estado),
           PrioridadBadge(s.prioridad),
-          SlaSemaforo(s.slaStatus),
+          if (s.slaStatus != null) SlaSemaforo(s.slaStatus),
         ],
         subtitulo:
             '${s.titulo} · Local ${s.localCodigo ?? '—'} · '
