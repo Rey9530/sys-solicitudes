@@ -40,7 +40,9 @@ class ConfiguracionPage extends ConsumerWidget {
     }
     final datos = ref.watch(configuracionProvider(plazaId));
     return ContenidoPagina(
-      onRefresh: () async => ref.invalidate(configuracionProvider(plazaId)),
+      // Espera los datos nuevos (si solo invalidara, el indicador se iría
+      // antes de tenerlos).
+      onRefresh: () => ref.refresh(configuracionProvider(plazaId).future),
       children: [
         EncabezadoPagina(
           titulo: 'Configuración',

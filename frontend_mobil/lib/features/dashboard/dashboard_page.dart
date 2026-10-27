@@ -115,7 +115,14 @@ class _VistaDashboardState extends ConsumerState<VistaDashboard> {
     }
 
     return ContenidoPagina(
-      onRefresh: conPermiso ? () async => _recargar() : null,
+      // Espera los datos nuevos (si solo invalidara, el indicador se iría
+      // antes de tenerlos).
+      onRefresh: conPermiso
+          ? () => ref.refresh(
+              (widget.global ? dashboardGlobalProvider : dashboardProvider)
+                  .future,
+            )
+          : null,
       children: [
         EncabezadoPagina(
           titulo: widget.titulo,

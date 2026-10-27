@@ -12,6 +12,7 @@ import 'package:frontend_mobil/features/superadmin/dashboard_global_page.dart';
 import 'package:frontend_mobil/features/superadmin/nueva_plaza_sheet.dart';
 import 'package:frontend_mobil/features/superadmin/plazas_api.dart';
 import 'package:frontend_mobil/features/superadmin/plazas_page.dart';
+import 'package:frontend_mobil/features/superadmin/plazas_providers.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -181,6 +182,39 @@ void main() {
     expect(contenedor.read(plazaSeleccionadaProvider), isNull);
     final prefs = await SharedPreferences.getInstance();
     expect(prefs.getString('sa_plaza'), isNull);
+  });
+
+  testWidgets('tirar para recargar termina con la lista nueva', (tester) async {
+    var nombre = 'Plaza antes';
+    await tester.pumpWidget(
+      envolver(
+        _plazas,
+        overrides: overridesBase(
+          apiFalsa({
+            'GET /plazas': (_) => {
+              'items': [_plaza('p-1', nombre)],
+              'total': 1,
+              'page': 1,
+              'pageSize': 50,
+              'totalPages': 1,
+            },
+          }),
+          sesion: sesionDe(Rol.superadmin),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final contenedor = ProviderScope.containerOf(
+      tester.element(find.byType(PlazasPage)),
+    );
+
+    nombre = 'Plaza después';
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    final lista = contenedor.read(listaPlazasProvider);
+    expect(lista.isLoading, isFalse);
+    expect(lista.value!.single.nombreComercial, 'Plaza después');
   });
 
   testWidgets('vacío muestra el texto del web', (tester) async {

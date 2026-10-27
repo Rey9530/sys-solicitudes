@@ -79,7 +79,11 @@ class _PlazasPageState extends ConsumerState<PlazasPage> {
   Widget build(BuildContext context) {
     final c = ColoresPlazapp.of(context);
     return ContenidoPagina(
-      onRefresh: () async => _recargar(),
+      // Espera la lista nueva (el selector de la barra solo se invalida).
+      onRefresh: () {
+        ref.invalidate(plazasProvider);
+        return ref.refresh(listaPlazasProvider.future);
+      },
       children: [
         EncabezadoPagina(
           titulo: 'Plazas',

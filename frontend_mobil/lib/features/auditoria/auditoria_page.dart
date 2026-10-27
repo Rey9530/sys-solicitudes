@@ -109,7 +109,9 @@ class _AuditoriaPageState extends ConsumerState<AuditoriaPage> {
     final c = ColoresPlazapp.of(context);
     final total = lista.value?.total;
     return ContenidoPagina(
-      onRefresh: () async => ref.invalidate(auditoriaProvider),
+      // Espera la página nueva (si solo invalidara, el indicador se iría
+      // antes de tenerla).
+      onRefresh: () => ref.refresh(auditoriaProvider(_f).future),
       children: [
         EncabezadoPagina(
           titulo: 'Auditoría',
