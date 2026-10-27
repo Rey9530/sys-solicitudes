@@ -57,7 +57,7 @@ lib/
 
 | Necesito… | Uso |
 |---|---|
-| Llamar al backend | `ref.read(apiClientProvider)` → `get(path, query:)`, `post/patch/put/delete(path, body:)`, `bytes(path, query:)` (PDF/CSV/ICS), `subir(path, nombreArchivo:, contenido:, mimeType:)`. Devuelven JSON decodificado; fallan con `ApiError` (`code`, `mensaje`, `status`, `retryAfter`). |
+| Llamar al backend | `ref.read(apiClientProvider)` → `get(path, query:, sinPlaza:)` (`sinPlaza: true` = sin `x-plaza-id`, para vistas globales del superadmin), `post/patch/put/delete(path, body:)`, `bytes(path, query:)` (PDF/CSV/ICS), `subir(path, nombreArchivo:, contenido:, mimeType:)`. Devuelven JSON decodificado; fallan con `ApiError` (`code`, `mensaje`, `status`, `retryAfter`). |
 | Paginación | `Paginado.fromJson(json, Modelo.fromJson)` → `items`, `total`, `page`, `totalPages`. |
 | Sesión y permisos | `ref.watch(sesionProvider).value` → `Sesion` (`usuario`, `rol`, `permisos`, `puede('x')`). Widget `Can(permiso: 'x' / ['a','b'], child: …)`. |
 | Plaza | `plazaSeleccionadaProvider` (superadmin), `plazaActualProvider` (`PlazaResumen`). |

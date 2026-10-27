@@ -53,6 +53,8 @@ void main() {
     expect(headers[0]['Authorization'], 'Bearer A1');
     expect(headers[0].containsKey('x-plaza-id'), isFalse);
     expect(headers[1]['x-plaza-id'], 'p-123');
+    await api.get('/x', sinPlaza: true);
+    expect(headers[2].containsKey('x-plaza-id'), isFalse);
   });
 
   test('401 TOKEN_EXPIRED → refresca una vez y reintenta', () async {
