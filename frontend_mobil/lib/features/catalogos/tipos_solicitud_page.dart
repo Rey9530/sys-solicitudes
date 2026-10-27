@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
+import '../../core/widgets/celdas.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
-import 'catalogos_widgets.dart';
 import 'categorias_api.dart';
 import 'categorias_modelos.dart';
 import 'categorias_providers.dart';
@@ -32,7 +35,7 @@ class _TiposSolicitudPageState extends ConsumerState<TiposSolicitudPage> {
   Widget build(BuildContext context) {
     final datos = ref.watch(tiposSolicitudProvider(_filtro));
     return ContenidoPagina(
-      onRefresh: () => ref.refresh(tiposSolicitudProvider(_filtro).future),
+      onRefresh: () => recargar(ref, tiposSolicitudProvider(_filtro).future),
       children: [
         EncabezadoPagina(
           titulo: 'Tipos de solicitud',
@@ -40,27 +43,19 @@ class _TiposSolicitudPageState extends ConsumerState<TiposSolicitudPage> {
               '${datos.value?.total ?? '…'} tipos · controla la etiqueta visible '
               'y si se ofrecen a los inquilinos.',
         ),
-        BarraFiltros(
+        TarjetaFiltros(
+          enLinea: true,
           campos: [
-            DropdownButtonFormField<bool?>(
-              initialValue: _estado,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Estado'),
-              items: const [
-                DropdownMenuItem(child: Text('Todos')),
-                DropdownMenuItem(value: true, child: Text('Activos')),
-                DropdownMenuItem(value: false, child: Text('Inactivos')),
-              ],
+            CampoSelect<bool>(
+              label: 'Estado',
+              valor: _estado,
+              opcionVacia: 'Todos',
+              opciones: const [(true, 'Activos'), (false, 'Inactivos')],
               onChanged: (v) => _estado = v,
             ),
           ],
-          botones: [
-            OutlinedButton(
-              onPressed: () =>
-                  setState(() => _filtro = (pagina: 1, activo: _estado)),
-              child: const Text('Filtrar'),
-            ),
-          ],
+          onFiltrar: () =>
+              setState(() => _filtro = (pagina: 1, activo: _estado)),
         ),
         AsyncView(
           value: datos,

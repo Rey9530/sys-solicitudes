@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/colores.dart';
+import '../../../../core/widgets/campo_select.dart';
 import '../../../../core/widgets/campos.dart';
 import '../../../../core/widgets/dialogos.dart';
-import '../../comun/filtros.dart';
+import '../../../../core/widgets/filtros.dart';
 import '../../reglas_fechas.dart';
 import '../../solicitudes_modelos.dart';
 import 'formulario_solicitud.dart';
@@ -96,10 +97,8 @@ class PasoDetalles extends StatelessWidget {
           key: const Key('wz-local'),
           label: 'Local *',
           valor: form.localId,
-          opciones: [
-            (null, 'Selecciona…'),
-            for (final l in datos.locales) (l.id, l.codigo),
-          ],
+          opcionVacia: 'Selecciona…',
+          opciones: [for (final l in datos.locales) (l.id, l.codigo)],
           onChanged: (v) {
             form.localId = v;
             onCambio();
@@ -372,7 +371,8 @@ class PasoDetalles extends StatelessWidget {
                     border: Border.all(color: c.border),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: _Rejilla(
+                  child: RejillaCampos(
+                    maxColumnas: 2,
                     children: [
                       texto(
                         'asistente-$i-nombre',
@@ -432,35 +432,10 @@ class _Bloque extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w600),
               ),
             ),
-          _Rejilla(children: campos),
+          RejillaCampos(maxColumnas: 2, children: campos),
           if (pie.isNotEmpty) ...[const SizedBox(height: 8), ...pie],
         ],
       ),
-    );
-  }
-}
-
-/// Campos en 2 columnas cuando hay espacio, 1 en teléfono.
-class _Rejilla extends StatelessWidget {
-  const _Rejilla({required this.children});
-
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, c) {
-        final cols = c.maxWidth >= 520 ? 2 : 1;
-        const gap = 12.0;
-        final ancho = (c.maxWidth - gap * (cols - 1)) / cols;
-        return Wrap(
-          spacing: gap,
-          runSpacing: 12,
-          children: [
-            for (final w in children) SizedBox(width: ancho, child: w),
-          ],
-        );
-      },
     );
   }
 }

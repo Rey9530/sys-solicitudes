@@ -38,7 +38,7 @@ class SolicitudGlobalPage extends ConsumerWidget {
     Widget t(String? v) => Text(o(v));
     final plaza = s.plazaNombre ?? s.plazaId;
     return ContenidoPagina(
-      onRefresh: () async => ref.refresh(solicitudGlobalProvider(id).future),
+      onRefresh: () => recargar(ref, solicitudGlobalProvider(id).future),
       children: [
         EncabezadoPagina(
           titulo: s.codigo,

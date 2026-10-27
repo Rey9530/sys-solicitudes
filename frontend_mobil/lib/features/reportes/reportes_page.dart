@@ -8,12 +8,13 @@ import '../../core/format/fechas.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/campos.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
 import 'reportes_api.dart';
 import 'reportes_providers.dart';
-import 'widgets/rejilla_campos.dart';
 
 /// `/admin/reportes`: generador de reportes con filtros por entidad,
 /// previsualización (primeras 10 filas) y exportación CSV/XLSX/PDF
@@ -118,9 +119,8 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
               children: [
                 RejillaCampos(
                   children: [
-                    SelectorFiltro<String>(
-                      etiqueta: 'Entidad',
-                      textoTodos: null,
+                    CampoSelect<String>(
+                      label: 'Entidad',
                       valor: _entidad,
                       opciones: entidadesReporte,
                       onChanged: (v) {
@@ -128,9 +128,8 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
                       },
                     ),
                     ..._camposEntidad(opciones),
-                    SelectorFiltro<String>(
-                      etiqueta: 'Formato',
-                      textoTodos: null,
+                    CampoSelect<String>(
+                      label: 'Formato',
                       valor: _formato,
                       opciones: [
                         for (final f in formatosReporte.keys)
@@ -192,28 +191,32 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
     switch (_entidad) {
       case 'solicitudes':
         return [
-          SelectorFiltro<String>(
-            etiqueta: 'Estado',
+          CampoSelect<String>(
+            label: 'Estado',
+            opcionVacia: 'Todos',
             valor: _filtros['estado'],
             opciones: etiquetaEstadoSolicitud.entries
                 .map((e) => (e.key, e.value))
                 .toList(),
             onChanged: (v) => _setFiltro('estado', v),
           ),
-          SelectorFiltro<String>(
-            etiqueta: 'Tipo',
+          CampoSelect<String>(
+            label: 'Tipo',
+            opcionVacia: 'Todos',
             valor: _filtros['tipo'],
             opciones: o?.tipos ?? const [],
             onChanged: (v) => _setFiltro('tipo', v),
           ),
-          SelectorFiltro<String>(
-            etiqueta: 'Local',
+          CampoSelect<String>(
+            label: 'Local',
+            opcionVacia: 'Todos',
             valor: _filtros['localId'],
             opciones: o?.locales ?? const [],
             onChanged: (v) => _setFiltro('localId', v),
           ),
-          SelectorFiltro<String>(
-            etiqueta: 'Inquilino',
+          CampoSelect<String>(
+            label: 'Inquilino',
+            opcionVacia: 'Todos',
             valor: _filtros['inquilinoId'],
             opciones: o?.inquilinos ?? const [],
             onChanged: (v) => _setFiltro('inquilinoId', v),
@@ -233,8 +236,9 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
         ];
       case 'locales':
         return [
-          SelectorFiltro<String>(
-            etiqueta: 'Estado',
+          CampoSelect<String>(
+            label: 'Estado',
+            opcionVacia: 'Todos',
             valor: _filtros['estado'],
             opciones: etiquetaEstadoLocal.entries
                 .map((e) => (e.key, e.value))

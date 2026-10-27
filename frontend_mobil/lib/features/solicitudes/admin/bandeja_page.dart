@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/widgets/campo_select.dart';
 import '../../../core/widgets/estados.dart';
+import '../../../core/widgets/filtros.dart';
 import '../../../core/widgets/pagina.dart';
 import '../../../core/widgets/paginador.dart';
 import '../comun/filtros.dart';
@@ -77,7 +79,7 @@ class _BandejaState extends ConsumerState<BandejaPage> {
         : 'ordenadas por fecha, más reciente primero';
     return Scaffold(
       body: ContenidoPagina(
-        onRefresh: () async => ref.refresh(provider.future),
+        onRefresh: () => recargar(ref, provider.future),
         children: [
           EncabezadoPagina(
             titulo: 'Bandeja de solicitudes',
@@ -102,19 +104,22 @@ class _BandejaState extends ConsumerState<BandejaPage> {
             ],
           ),
           TarjetaFiltros(
+            plegable: true,
             onFiltrar: _filtrar,
             campos: [
               CampoSelect<String>(
                 key: const Key('filtro-estado'),
                 label: 'Estado',
                 valor: _estado,
-                opciones: opcionesEstado('Todos los estados'),
+                opcionVacia: 'Todos los estados',
+                opciones: opcionesEstado(),
                 onChanged: (v) => setState(() => _estado = v),
               ),
               CampoSelect<String>(
                 key: const Key('filtro-tipo'),
                 label: 'Tipo',
                 valor: _tipo,
+                opcionVacia: 'Todos',
                 opciones: opcionesTipo(),
                 onChanged: (v) => setState(() => _tipo = v),
               ),
@@ -122,6 +127,7 @@ class _BandejaState extends ConsumerState<BandejaPage> {
                 key: const Key('filtro-prioridad'),
                 label: 'Prioridad',
                 valor: _prioridad,
+                opcionVacia: 'Toda',
                 opciones: opcionesPrioridad(),
                 onChanged: (v) => setState(() => _prioridad = v),
               ),

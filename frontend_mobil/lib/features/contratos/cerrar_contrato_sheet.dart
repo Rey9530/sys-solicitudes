@@ -7,8 +7,8 @@ import '../../core/api/api_providers.dart';
 import '../../core/format/fechas.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/campos.dart';
-import 'catalogo_comun.dart';
 import 'contrato_form_page.dart';
 import 'contratos_api.dart';
 import 'contratos_modelos.dart';
@@ -100,9 +100,9 @@ class _CerrarContratoSheetState extends ConsumerState<_CerrarContratoSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            CampoSeleccion<String>(
+            CampoSelect<String>(
               key: const Key('cerrar-estado'),
-              etiqueta: 'Tipo de cierre',
+              label: 'Tipo de cierre',
               valor: _estado,
               opciones: const [
                 ('finalizado', 'Finalizado (fin normal)'),
@@ -125,6 +125,7 @@ class _CerrarContratoSheetState extends ConsumerState<_CerrarContratoSheet> {
               label: 'Fecha de fin efectiva (default: hoy)',
               valorYmd: _fechaFinEfectiva,
               primera: primeraFechaContrato,
+              ultima: ultimaFechaContrato,
               permitirVacio: true,
               errorText: _errorFecha,
               onChanged: (v) => setState(() => _fechaFinEfectiva = v),

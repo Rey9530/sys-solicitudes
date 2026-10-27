@@ -3,15 +3,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
+import '../../core/format/validaciones.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/celdas.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
-import '../contratos/catalogo_comun.dart';
 import 'locales_api.dart';
 import 'locales_modelos.dart';
 import 'locales_providers.dart';
@@ -39,8 +43,7 @@ class _LocalesPageState extends ConsumerState<LocalesPage> {
 
   /// Módulo y nivel se aplican con Enter o al salir del campo (como el web).
   void _aplicarTextos() {
-    String? valor(TextEditingController c) =>
-        c.text.trim().isEmpty ? null : c.text.trim();
+    String? valor(TextEditingController c) => textoOpcional(c.text);
     if (valor(_modulo) == _filtro.modulo && valor(_nivel) == _filtro.nivel) {
       return;
     }
@@ -109,15 +112,17 @@ class _LocalesPageState extends ConsumerState<LocalesPage> {
             ),
           ],
         ),
-        PanelFiltros(
-          children: [
+        TarjetaFiltros(
+          enLinea: true,
+          campos: [
             CampoFiltro(
-              child: CampoSeleccion<String>(
+              ancho: 220,
+              child: CampoSelect<String>(
                 key: const Key('locales-filtro-estado'),
-                etiqueta: 'Estado',
+                label: 'Estado',
                 valor: _filtro.estado,
+                opcionVacia: 'Todos',
                 opciones: [
-                  (null, 'Todos'),
                   for (final e in estadosLocal) (e, estadoLocalCrudo(e)),
                 ],
                 onChanged: (v) => setState(
@@ -160,6 +165,8 @@ class _LocalesPageState extends ConsumerState<LocalesPage> {
                 ),
               ),
             ),
+          ],
+          acciones: [
             if (hayFiltros)
               TextButton(
                 onPressed: _limpiar,

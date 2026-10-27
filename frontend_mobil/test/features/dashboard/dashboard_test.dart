@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/auth/sesion.dart';
+import 'package:frontend_mobil/core/plaza/plaza_seleccionada.dart';
 import 'package:frontend_mobil/features/dashboard/dashboard_page.dart';
 
 import '../../helpers/api_falsa.dart';
@@ -162,6 +164,34 @@ void main() {
         .length;
     expect(kpis(), 1);
     await tester.pump(const Duration(minutes: 5));
+    await tester.pumpAndSettle();
+    expect(kpis(), 2);
+  });
+
+  testWidgets('superadmin: elegir otra plaza estando en el dashboard vuelve '
+      'a pedir los KPIs', (tester) async {
+    await tester.pumpWidget(
+      envolver(
+        () => const Scaffold(body: DashboardPage()),
+        overrides: overridesBase(
+          apiFalsa(rutasDashboard()),
+          sesion: sesionDe(Rol.superadmin),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    int kpis() => peticionesFalsas
+        .where((r) => r.url.path.endsWith('/reportes/kpis'))
+        .length;
+    expect(kpis(), 1);
+
+    // El selector de plaza no cambia de ruta: la pantalla sigue montada.
+    final contenedor = ProviderScope.containerOf(
+      tester.element(find.byType(DashboardPage)),
+    );
+    await contenedor
+        .read(plazaSeleccionadaProvider.notifier)
+        .seleccionar('plaza-b');
     await tester.pumpAndSettle();
     expect(kpis(), 2);
   });

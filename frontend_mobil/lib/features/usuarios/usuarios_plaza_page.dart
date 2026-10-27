@@ -6,17 +6,20 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
 import '../../core/api/paginado.dart';
+import '../../core/api/payload.dart';
 import '../../core/format/fechas.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/celdas.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
-import '../catalogos/catalogos_widgets.dart';
 import 'rol_staff_sheet.dart';
 import 'usuario_plaza_dialogos.dart';
 import 'usuarios_api.dart';
@@ -114,8 +117,8 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
     invalidarRoles(ref);
     ref.invalidate(totalPermisosProvider);
     return _tabs.index == 1
-        ? ref.read(rolesStaffProvider(_paginaRoles).future)
-        : ref.read(usuariosPlazaProvider(_filtro).future);
+        ? recargar(ref, rolesStaffProvider(_paginaRoles).future)
+        : recargar(ref, usuariosPlazaProvider(_filtro).future);
   }
 
   @override
@@ -158,7 +161,8 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
   List<Widget> _pestanaUsuarios(AsyncValue<Paginado<UsuarioPlaza>> datos) {
     final rolesActivos = ref.watch(rolesStaffActivosProvider).value;
     return [
-      BarraFiltros(
+      TarjetaFiltros(
+        enLinea: true,
         campos: [
           TextField(
             key: const Key('usuarios-buscar'),
@@ -170,22 +174,18 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
               prefixIcon: Icon(Icons.search),
             ),
           ),
-          DropdownButtonFormField<bool>(
+          CampoSelect<bool>(
             key: const Key('usuarios-estado'),
-            initialValue: _filtro.deshabilitados,
-            isExpanded: true,
-            decoration: const InputDecoration(labelText: 'Estado'),
-            items: const [
-              DropdownMenuItem(value: false, child: Text('Activos')),
-              DropdownMenuItem(value: true, child: Text('Deshabilitados')),
-            ],
+            label: 'Estado',
+            valor: _filtro.deshabilitados,
+            opciones: const [(false, 'Activos'), (true, 'Deshabilitados')],
             onChanged: (v) => _filtrar(
               buscar: textoOpcional(_buscar.text),
               deshabilitados: v ?? false,
             ),
           ),
         ],
-        botones: [
+        acciones: [
           OutlinedButton(
             onPressed: () => _filtrar(buscar: textoOpcional(_buscar.text)),
             child: const Text('Buscar'),
@@ -257,7 +257,7 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
                   celda: (u) => EstadoUsuarioBadge(u),
                 ),
               ],
-              acciones: (u) => _accionesUsuario(u, rolesActivos ?? const []),
+              acciones: (u) => _accionesUsuario(u, rolesActivos),
             ),
             Paginador(
               pagina: p.page,
@@ -276,7 +276,8 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
     ];
   }
 
-  Widget _accionesUsuario(UsuarioPlaza u, List<RolStaff> rolesActivos) {
+  /// [rolesActivos] es `null` mientras carga: "Editar" espera a tenerlos.
+  Widget _accionesUsuario(UsuarioPlaza u, List<RolStaff>? rolesActivos) {
     final ocupado = _pendiente == u.id;
     if (u.deshabilitado) {
       return Can(
@@ -300,7 +301,9 @@ class _UsuariosPlazaPageState extends ConsumerState<UsuariosPlazaPage>
         Can(
           permiso: 'usuarios_plaza.editar',
           child: TextButton.icon(
-            onPressed: () => editarUsuarioPlaza(context, ref, u, rolesActivos),
+            onPressed: rolesActivos == null
+                ? null
+                : () => editarUsuarioPlaza(context, ref, u, rolesActivos),
             icon: const Icon(Icons.edit_outlined, size: 18),
             label: const Text('Editar'),
           ),

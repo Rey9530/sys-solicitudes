@@ -3,14 +3,18 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
 import '../../core/widgets/avisos.dart';
+import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/celdas.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
-import 'catalogos_widgets.dart';
 import 'categorias_api.dart';
 import 'categorias_modelos.dart';
 import 'categorias_providers.dart';
@@ -72,7 +76,7 @@ class _CategoriasPageState extends ConsumerState<CategoriasPage> {
     final datos = ref.watch(categoriasProvider(_filtro));
     final total = datos.value?.total;
     return ContenidoPagina(
-      onRefresh: () => ref.refresh(categoriasProvider(_filtro).future),
+      onRefresh: () => recargar(ref, categoriasProvider(_filtro).future),
       children: [
         EncabezadoPagina(
           titulo: 'Categorías',
@@ -89,7 +93,8 @@ class _CategoriasPageState extends ConsumerState<CategoriasPage> {
             ),
           ],
         ),
-        BarraFiltros(
+        TarjetaFiltros(
+          enLinea: true,
           campos: [
             TextField(
               key: const Key('categorias-buscar'),
@@ -102,21 +107,15 @@ class _CategoriasPageState extends ConsumerState<CategoriasPage> {
                 prefixIcon: Icon(Icons.search),
               ),
             ),
-            DropdownButtonFormField<bool?>(
-              initialValue: _estado,
-              isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Estado'),
-              items: const [
-                DropdownMenuItem(child: Text('Todas')),
-                DropdownMenuItem(value: true, child: Text('Activas')),
-                DropdownMenuItem(value: false, child: Text('Inactivas')),
-              ],
+            CampoSelect<bool>(
+              label: 'Estado',
+              valor: _estado,
+              opcionVacia: 'Todas',
+              opciones: const [(true, 'Activas'), (false, 'Inactivas')],
               onChanged: (v) => _estado = v,
             ),
           ],
-          botones: [
-            OutlinedButton(onPressed: _filtrar, child: const Text('Filtrar')),
-          ],
+          onFiltrar: _filtrar,
         ),
         AsyncView(
           value: datos,

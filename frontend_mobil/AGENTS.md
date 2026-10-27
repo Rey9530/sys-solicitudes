@@ -45,8 +45,9 @@ lib/
   consultarlo antes con el owner.
 - Todo HTTP pasa por `ApiClient` (`core/api/api_client.dart`). Nunca `http.get` directo.
 - Errores: mostrar `ApiError.mensaje`; decidir por `ApiError.code`, nunca por el status.
-- Payloads: campos opcionales vacíos se omiten o van `null`, nunca `''`. El PATCH de solicitud
-  siempre lleva `esEmergencia`. Textos recibidos → `decodificarHtml` antes de mostrarlos.
+- Payloads: campos opcionales vacíos se omiten o van `null`, nunca `''` (usar
+  `core/api/payload.dart`). El PATCH de solicitud siempre lleva `esEmergencia`. Textos
+  recibidos → `decodificarHtml` antes de mostrarlos.
 - Fechas: hora de la plaza = UTC−6 fijo. Horas en 12 h (`2:00 pm`), fechas civiles `DD-MM-YYYY`,
   instantes `dd/MM/yyyy`. Usar siempre `core/format/fechas.dart`.
 - Diálogos de decisión: `confirmar()` / `pedirTexto()`. Cerrar el diálogo = no hacer nada.
@@ -54,6 +55,9 @@ lib/
 - Iconos `Icons.*` de Material. Colores siempre desde el tema (`ColoresPlazapp`), nunca fijos.
 - Responsive: probar cada pantalla con `probarEnTamanos` (360, 390, 768 y 1024 px, claro y
   oscuro). Nada de anchos fijos para texto.
+- Antes de crear en una feature un widget de filtros, select, rejilla de campos, pestañas o
+  celda, usar el de `core/widgets/` (tabla de abajo). Si le falta algo, se parametriza el de
+  core; no se copia. Una feature no importa widgets genéricos de otra feature.
 
 ## Núcleo disponible (`lib/core/`) — usarlo, no reinventarlo
 
@@ -61,17 +65,25 @@ lib/
 |---|---|
 | Llamar al backend | `ref.read(apiClientProvider)` → `get(path, query:, sinPlaza:)` (`sinPlaza: true` = sin `x-plaza-id`, para vistas globales del superadmin), `post/patch/put/delete(path, body:)`, `bytes(path, query:)` (PDF/CSV/ICS), `subir(path, nombreArchivo:, contenido:, mimeType:)`. Devuelven JSON decodificado; fallan con `ApiError` (`code`, `mensaje`, `status`, `retryAfter`). |
 | Paginación | `Paginado.fromJson(json, Modelo.fromJson)` → `items`, `total`, `page`, `totalPages`. |
-| Sesión y permisos | `ref.watch(sesionProvider).value` → `Sesion` (`usuario`, `rol`, `permisos`, `puede('x')`). Widget `Can(permiso: 'x' / ['a','b'], child: …)`. |
+| Sesión y permisos | `ref.watch(sesionProvider).value` → `Sesion` (`usuario`, `rol`, `permisos`, `puede('x')`). Widget `Can(permiso: 'x' / ['a','b'], child: …)`; `puedeHacer(ref, 'x')` para decidir en código (`core/widgets/can.dart`). |
 | Plaza | `plazaSeleccionadaProvider` (superadmin), `plazaActualProvider` (`PlazaResumen`). |
 | Estructura de pantalla | `ContenidoPagina(children: [...], onRefresh:)` + `EncabezadoPagina(titulo:, subtitulo:, badges:, acciones:, rutaVolver:)` + `Seccion(titulo:, child:)` (`core/widgets/pagina.dart`). |
+| Tirar para recargar | `onRefresh: () => recargar(ref, p.future)` (`pagina.dart`): espera los datos nuevos y no lanza si falla (el error lo pinta `AsyncView`). Siempre este, nunca `ref.invalidate` solo. |
 | Cargar datos | `AsyncView(value: ref.watch(p), data: (d) => …, onRetry: () => ref.invalidate(p))`; vacíos `EmptyState`, errores `ErrorView`. |
 | Listados | `ListaResponsive<T>(items:, columnas: [ColumnaLista(titulo:, celda:, principal:)], acciones:, onTap:)` + `Paginador(pagina:, totalPaginas:, onCambiar:)`. |
-| Badges | `EstadoSolicitudBadge`, `PrioridadBadge`, `SlaSemaforo`, `ResultadoCierreBadge`, `EstadoLocalBadge`, `EstadoContratoBadge`, `BadgePlazapp(texto, Tono.x)`. |
+| Celdas | `TextoCelda(texto, mono:)` (`core/widgets/celdas.dart`): texto secundario de una celda, `—` si está vacío, máx. 2 líneas. |
+| Filtros de un listado | `TarjetaFiltros(campos:, onFiltrar:, acciones:, plegable:, enLinea:)` (`core/widgets/filtros.dart`): en rejilla con «Filtrar» abajo (key `filtros-aplicar`; `plegable` = plegada en teléfono) o `enLinea` con los botones a continuación; `CampoFiltro(ancho:, child:)` cambia el ancho de un campo en línea. |
+| Pestañas | `Pestanas(pestanas: [Pestana('Etiqueta', () => contenido, contador: n)])` (`core/widgets/pestanas.dart`): solo construye la activa, va dentro del scroll de la página. |
+| Badges | `EstadoSolicitudBadge`, `PrioridadBadge`, `SlaSemaforo`, `ResultadoCierreBadge`, `EstadoLocalBadge`, `EstadoContratoBadge`, `BadgeActivo(activo, femenino:)`, `BadgePlazapp(texto, Tono.x)`. |
 | Detalle | `KeyValueGrid([('Etiqueta', Text(…)), …])`. |
-| Formularios | `TextFormField` + `CampoFecha(valorYmd:, onChanged:)` + `CampoHora(valorHhmm:, onChanged:)`; validaciones de email/contraseña en `features/auth/auth_api.dart`. |
+| Formularios | `TextFormField` + `CampoFecha(valorYmd:, onChanged:)` + `CampoHora(valorHhmm:, onChanged:)` (`core/widgets/campos.dart`); color de marca `SelectorColor` (`core/widgets/selector_color.dart`). |
+| Select (`<select>`) | `CampoSelect<T>(label:, valor:, opciones: [(valor, 'Texto')], onChanged:, opcionVacia: 'Todos', hint:, ayuda:, validator:, enabled:)` (`core/widgets/campo_select.dart`), en filtros y formularios. |
+| Campos en columnas | `RejillaCampos(maxColumnas:, children:)` (`core/widgets/filtros.dart`): 1 columna en teléfono, 2 en tablet, `maxColumnas` (3 por defecto) desde 860 px. |
+| Validaciones | `core/format/validaciones.dart`: `esEmailValido`, `validarEmailObligatorio`, `validarEmailOpcional` (texto «Email inválido»), `validarNumero(v, max:, entero:, positivo:)`, `numeroDe` / `enteroDe` (texto → número) y `textoDe` (número → texto). Login, reset y configuración usan `validarEmail` y la contraseña `validarPasswordNueva` (`features/auth/auth_api.dart`, con sus textos). |
+| Payloads | `core/api/payload.dart`: `textoOpcional(texto)` (recorta; vacío → `null`), `omitirVacios({...})` para altas y `vaciosANull({...})` para ediciones. |
 | Decisiones | `await confirmar(context, titulo:, mensaje:, textoConfirmar: 'Sí, …', destructiva:)`; `await pedirTexto(context, …, obligatorio:)` (`null` = cancelado → no hacer nada). |
 | Avisos | `mostrarExito(context, '…')`, `mostrarError(context, error)`, `AvisoBanner(tono:, child:)`. |
-| Adjuntos | `AdjuntosSeccion(adjuntos:, subir: (nombre, bytes, mime) => …, puedeSubir:, alCambiar:)`; modelo `Adjunto`. |
+| Adjuntos | `AdjuntosSeccion(adjuntos:, subir: (nombre, bytes, mime) => …, puedeSubir:, eliminable: (a) => …, alCambiar:)`; modelo `Adjunto`. |
 | Descargas | `descargarYCompartir(context, descargar: () => api.bytes(...), nombreArchivo:, mimeType:)`. |
 | Formato | `core/format/fechas.dart` (`formatFecha`, `formatFechaHora`, `formatFechaDMY`, `formatHora12`, `fechaPlazaHoy`, `instanteDePlaza`, `tiempoRelativo`), `montos.dart` (`formatMonto`), `texto.dart` (`decodificarHtml`). |
 | Colores | `ColoresPlazapp.of(context)` (`text2`, `text3`, `surface2`, `tono(Tono.x)`…). Nunca colores fijos. |

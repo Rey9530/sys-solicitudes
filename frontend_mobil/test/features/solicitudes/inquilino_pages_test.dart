@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -51,6 +52,15 @@ Future<void> _pestana(WidgetTester tester, String texto) async {
   await tester.tap(find.text(texto));
   await tester.pumpAndSettle();
 }
+
+/// Fechas válidas en modo estándar (inicio dentro de 3 días).
+Map<String, Object?> _fechasValidas() => {
+  'fechaEventoInicio': diaPlaza(3),
+  'fechaEventoFin': diaPlaza(3),
+  'horaInicio': '08:00',
+  'horaFin': '09:00',
+  'esEmergencia': false,
+};
 
 Map<String, String> _query(String metodo, String ruta) =>
     peticiones(metodo, ruta).last.url.queryParameters;
@@ -203,7 +213,7 @@ void main() {
     testWidgets('requerida_subsanacion: aviso con el motivo y acciones', (
       tester,
     ) async {
-      await abrir(tester, detalle());
+      await abrir(tester, detalle(cambios: _fechasValidas()));
       expect(
         find.text('La administración pidió correcciones.'),
         findsOneWidget,
@@ -321,7 +331,10 @@ void main() {
     });
 
     testWidgets('enviar, duplicar, editar y PDF', (tester) async {
-      await abrir(tester, detalle(estado: 'borrador'));
+      await abrir(
+        tester,
+        detalle(estado: 'borrador', cambios: _fechasValidas()),
+      );
       await tester.tap(boton('enviar'));
       await tester.pumpAndSettle();
       expect(
@@ -341,6 +354,61 @@ void main() {
 
       await tester.tap(boton('editar'));
       await tester.pumpAndSettle();
+      expect(
+        find.text('Ruta: /inquilino/solicitudes/$idSolicitud/editar'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('borrador sin fechas (duplicado): "Enviar" avisa y abre la '
+        'edición sin llamar a la API', (tester) async {
+      await abrir(
+        tester,
+        detalle(
+          estado: 'borrador',
+          cambios: {
+            'fechaEventoInicio': null,
+            'fechaEventoFin': null,
+            'horaInicio': null,
+            'horaFin': null,
+          },
+        ),
+      );
+      await tester.tap(boton('enviar'));
+      await tester.pumpAndSettle();
+      expect(peticiones('POST', '/solicitudes/$idSolicitud/enviar'), isEmpty);
+      expect(
+        find.text('Indica fecha y hora de inicio y fin del permiso.'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Ruta: /inquilino/solicitudes/$idSolicitud/editar'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('subsanación con fechas ya vencidas: "Reenviar" avisa y abre '
+        'la edición', (tester) async {
+      await abrir(
+        tester,
+        detalle(
+          cambios: {
+            ..._fechasValidas(),
+            'fechaEventoInicio': diaPlaza(-2),
+            'fechaEventoFin': diaPlaza(-2),
+          },
+        ),
+      );
+      await tester.tap(boton('reenviar'));
+      await tester.pumpAndSettle();
+      expect(peticiones('POST', '/solicitudes/$idSolicitud/subsanar'), isEmpty);
+      expect(
+        find.text(
+          'La fecha de inicio debe ser al menos 48 horas después de este '
+          'momento.',
+        ),
+        findsOneWidget,
+      );
       expect(
         find.text('Ruta: /inquilino/solicitudes/$idSolicitud/editar'),
         findsOneWidget,
@@ -382,6 +450,33 @@ void main() {
         {'cuerpo': 'Ya subí la foto'},
       );
       expect(find.text('Comentario agregado'), findsOneWidget);
+    });
+
+    testWidgets('adjuntos: el inquilino solo ve "Eliminar" en lo que él '
+        'subió', (tester) async {
+      Map<String, Object?> adjunto(String id, String subio) => {
+        'id': id,
+        'nombreOriginal': '$id.pdf',
+        'mimeType': 'application/pdf',
+        'tamanoBytes': 1024,
+        'usuarioSubioId': subio,
+        'createdAt': ahoraPrueba,
+      };
+      await abrir(
+        tester,
+        detalle(
+          cambios: {
+            'adjuntos': [
+              adjunto('mio', _sesion.usuario.id),
+              adjunto('del-admin', 'u-admin'),
+            ],
+          },
+        ),
+      );
+      await _pestana(tester, 'Adjuntos (2)');
+      expect(find.byTooltip('Eliminar mio.pdf'), findsOneWidget);
+      expect(find.byTooltip('Eliminar del-admin.pdf'), findsNothing);
+      expect(find.byTooltip('Descargar del-admin.pdf'), findsOneWidget);
     });
 
     testWidgets('adjuntos: solo se suben en borrador o subsanación', (
@@ -476,15 +571,6 @@ void main() {
       'PATCH /solicitudes/:id': (_) => solicitud,
     };
 
-    /// Fechas válidas en modo estándar (inicio dentro de 3 días).
-    Map<String, Object?> fechasValidas() => {
-      'fechaEventoInicio': diaPlaza(3),
-      'fechaEventoFin': diaPlaza(3),
-      'horaInicio': '08:00',
-      'horaFin': '09:00',
-      'esEmergencia': false,
-    };
-
     Future<void> siguiente(WidgetTester tester) async {
       await tester.tap(find.byKey(const Key('wizard-siguiente')));
       await tester.pumpAndSettle();
@@ -496,7 +582,7 @@ void main() {
       final json = detalle(
         estado: 'borrador',
         largos: true,
-        cambios: {...fechasValidas(), 'adminAsignado': null},
+        cambios: {..._fechasValidas(), 'adminAsignado': null},
       );
       await probarEnTamanos(
         tester,
@@ -606,6 +692,36 @@ void main() {
       hora: '08:00',
     );
 
+    testWidgets('salir del wizard mientras guarda no rompe', (tester) async {
+      final respuesta = Completer<Object?>();
+      final visible = ValueNotifier(true);
+      addTearDown(visible.dispose);
+      await montar(
+        tester,
+        () => ValueListenableBuilder<bool>(
+          valueListenable: visible,
+          builder: (_, ver, _) => ver
+              ? WizardSolicitudPage(prefill: prefill)
+              : const Text('Otra pantalla'),
+        ),
+        overridesBase(
+          apiFalsa({...rutas(), 'POST /solicitudes': (_) => respuesta.future}),
+          sesion: _sesion,
+        ),
+      );
+      await llenar(tester);
+      await tester.tap(find.byKey(const Key('wizard-guardar')));
+      await tester.pump();
+
+      // Se sale con el POST en vuelo; luego el backend responde.
+      visible.value = false;
+      await tester.pumpAndSettle();
+      respuesta.complete(creada());
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(peticiones('POST', '/solicitudes'), hasLength(1));
+    });
+
     testWidgets('"Guardar borrador" crea con el payload completo', (
       tester,
     ) async {
@@ -690,6 +806,42 @@ void main() {
         ),
         findsOneWidget,
       );
+    });
+
+    testWidgets('adjuntos que fallan se avisan juntos al final (no los tapa '
+        'el aviso de éxito)', (tester) async {
+      await montar(tester, () => WizardSolicitudPage(prefill: prefill), [
+        ...overridesBase(
+          apiFalsa({
+            ...rutas(),
+            'POST /solicitudes/:id/adjuntos': (_) =>
+                const RespuestaFalsa(500, {'code': 'INTERNAL_ERROR'}),
+          }),
+          sesion: _sesion,
+        ),
+        selectorArchivosProvider.overrideWithValue(
+          _SelectorFalso([
+            ArchivoElegido('foto.png', Uint8List(10)),
+            ArchivoElegido('plano.pdf', Uint8List(10)),
+          ]),
+        ),
+      ]);
+      await llenar(tester);
+      await tester.tap(find.byKey(const Key('wz-adjuntos-subir')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('wizard-guardar')));
+      await tester.pumpAndSettle();
+      // Se intentó subir cada archivo (una vez).
+      expect(peticiones('POST', '/solicitudes/nueva-1/adjuntos'), hasLength(2));
+      expect(
+        find.text(
+          'Borrador SOL-DEMO-300 guardado, pero no se subieron: foto.png, '
+          'plano.pdf',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Borrador SOL-DEMO-300 guardado'), findsNothing);
+      expect(find.text('Ruta: /inquilino/solicitudes/nueva-1'), findsOneWidget);
     });
 
     testWidgets('edición de remodelación manda tipo, camposExtra y '

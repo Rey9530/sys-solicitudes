@@ -11,13 +11,13 @@ Duration? _sinReintentos(int intento, Object error) => null;
 /// Notificaciones sin leer (badge). La campana lo invalida cada 45 s
 /// mientras la app está en primer plano.
 final conteoNoLeidasProvider = FutureProvider.autoDispose<int>(
-  (ref) => conteoNoLeidas(ref.read(apiClientProvider)),
+  (ref) => conteoNoLeidas(ref.watch(apiClientProvider)),
   retry: _sinReintentos,
 );
 
 /// Las 20 más recientes. Se vuelve a pedir cada vez que se abre la hoja.
 final bandejaNotificacionesProvider =
     FutureProvider.autoDispose<BandejaNotificaciones>(
-      (ref) => bandejaNotificaciones(ref.read(apiClientProvider)),
+      (ref) => bandejaNotificaciones(ref.watch(apiClientProvider)),
       retry: _sinReintentos,
     );

@@ -5,5 +5,5 @@ import 'reportes_api.dart';
 
 /// Locales, inquilinos y tipos para los filtros del generador.
 final opcionesReporteProvider = FutureProvider.autoDispose<OpcionesReporte>(
-  (ref) => cargarOpcionesReporte(ref.read(apiClientProvider)),
+  (ref) => cargarOpcionesReporte(ref.watch(apiClientProvider)),
 );

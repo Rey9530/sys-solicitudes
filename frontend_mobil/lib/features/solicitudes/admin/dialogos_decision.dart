@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/theme/colores.dart';
-import '../comun/filtros.dart';
+import '../../../core/widgets/campo_select.dart';
 import '../solicitudes_modelos.dart';
 
 /// Diálogos del panel de decisión que no son un simple `pedirTexto`.
@@ -57,8 +57,8 @@ class _DialogoCierreState extends State<_DialogoCierre> {
               key: const Key('cierre-resultado'),
               label: 'Resultado',
               valor: _resultado,
+              opcionVacia: 'Selecciona resultado…',
               opciones: [
-                (null, 'Selecciona resultado…'),
                 for (final e in opcionesResultadoCierre.entries)
                   (e.key, e.value),
               ],
@@ -158,8 +158,8 @@ class _DialogoReasignarState extends State<_DialogoReasignar> {
               key: const Key('reasignar-admin'),
               label: 'Administrador',
               valor: _seleccion,
+              opcionVacia: 'Selecciona administrador…',
               opciones: [
-                (null, 'Selecciona administrador…'),
                 for (final a in widget.admins)
                   (a.id, '${a.nombre} (${a.email})'),
               ],

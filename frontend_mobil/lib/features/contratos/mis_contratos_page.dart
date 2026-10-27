@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/widgets/estados.dart';
 import '../../core/widgets/pagina.dart';
-import 'catalogo_comun.dart';
 import 'contratos_page.dart';
 import 'contratos_providers.dart';
 

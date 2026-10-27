@@ -6,12 +6,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/adjuntos/adjuntos_seccion.dart';
 import '../../../core/api/api_providers.dart';
+import '../../../core/auth/sesion_controller.dart';
 import '../../../core/theme/colores.dart';
 import '../../../core/widgets/avisos.dart';
 import '../../../core/widgets/badges.dart';
 import '../../../core/widgets/dialogos.dart';
 import '../../../core/widgets/estados.dart';
 import '../../../core/widgets/pagina.dart';
+import '../../../core/widgets/pestanas.dart';
 import '../comun/comentarios_tab.dart';
 import '../comun/detalle_campos.dart';
 import '../comun/detalle_layout.dart';
@@ -19,6 +21,7 @@ import '../comun/historial_tab.dart';
 import '../solicitudes_api.dart';
 import '../solicitudes_modelos.dart';
 import '../solicitudes_providers.dart';
+import 'wizard/formulario_solicitud.dart';
 
 /// Detalle de solicitud del inquilino. Espejo de
 /// `frontend/src/components/client/solicitud-detail-inquilino.tsx`.
@@ -72,6 +75,24 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
     }
   }
 
+  /// Enviar / reenviar: antes se revisan las fechas del permiso con las
+  /// reglas del wizard (el backend no las valida al enviar y un borrador
+  /// duplicado no trae fechas). Si fallan, se avisa y se abre la edición.
+  void _enviarSiFechasValidas(
+    SolicitudItem s,
+    Future<void> Function() accion,
+    String exito,
+  ) {
+    final error = FormularioSolicitud.desdeSolicitud(s)
+        .validarFechas(DateTime.now());
+    if (error != null) {
+      mostrarError(context, error);
+      unawaited(context.push('/inquilino/solicitudes/${s.id}/editar'));
+      return;
+    }
+    unawaited(_ejecutar(accion, exito));
+  }
+
   Future<void> _cancelar() async {
     final motivo = await pedirTexto(
       context,
@@ -109,7 +130,8 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
             etiqueta: 'Enviar',
             estilo: EstiloAccion.principal,
             principal: true,
-            onPressed: () => _ejecutar(
+            onPressed: () => _enviarSiFechasValidas(
+              s,
               () => enviar(api, s.id),
               'Enviada: quedó en cola de asignación',
             ),
@@ -122,7 +144,8 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
             etiqueta: 'Reenviar subsanada',
             estilo: EstiloAccion.principal,
             principal: true,
-            onPressed: () => _ejecutar(
+            onPressed: () => _enviarSiFechasValidas(
+              s,
               () => subsanar(api, s.id),
               'Reenviada: volvió a la cola de asignación',
             ),
@@ -167,12 +190,13 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
   Widget _vista(SolicitudDetalle d) {
     final s = d.solicitud;
     final api = ref.read(apiClientProvider);
+    final usuarioId = ref.watch(sesionProvider).value?.usuario.id;
     final esSubsanacion = s.estado == 'requerida_subsanacion';
     final esPausada = s.estado == 'pausada';
     final puedeAdjuntar = s.estado == 'borrador' || esSubsanacion;
     return VistaDetalleSolicitud(
       pendiente: _pendiente,
-      onRefresh: () async => ref.refresh(solicitudProvider(widget.id).future),
+      onRefresh: () => recargar(ref, solicitudProvider(widget.id).future),
       encabezado: EncabezadoPagina(
         titulo: s.codigo,
         rutaVolver: '/inquilino/solicitudes',
@@ -225,6 +249,9 @@ class _DetalleInquilinoState extends ConsumerState<DetalleInquilinoPage> {
             // El backend solo acepta subir en borrador o requerida_subsanacion.
             puedeSubir: puedeAdjuntar,
             puedeEliminar: puedeAdjuntar,
+            // El backend solo deja borrar al admin o a quien subió el archivo.
+            eliminable: (a) =>
+                a.usuarioSubioId != null && a.usuarioSubioId == usuarioId,
             subir: (nombre, bytes, mime) =>
                 subirAdjuntoSolicitud(api, s.id, nombre, bytes, mime),
             alCambiar: () => ref.invalidate(solicitudProvider(widget.id)),

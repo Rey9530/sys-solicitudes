@@ -9,7 +9,7 @@ import 'calendario_modelos.dart';
 final feedCalendarioProvider = FutureProvider.autoDispose
     .family<List<EventoCalendario>, FiltroCalendario>((ref, filtro) {
       return feedCalendario(
-        ref.read(apiClientProvider),
+        ref.watch(apiClientProvider),
         desde: filtro.desde,
         hasta: filtro.hasta,
         locales: filtro.locales,
@@ -22,6 +22,6 @@ final feedCalendarioProvider = FutureProvider.autoDispose
 /// sus contratos) y `false` para el admin (locales, inquilinos y config).
 final opcionesCalendarioProvider = FutureProvider.autoDispose
     .family<OpcionesCalendario, bool>((ref, esInquilino) {
-      final api = ref.read(apiClientProvider);
+      final api = ref.watch(apiClientProvider);
       return esInquilino ? opcionesInquilino(api) : opcionesAdmin(api);
     });

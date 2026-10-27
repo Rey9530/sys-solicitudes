@@ -1,3 +1,4 @@
+import '../../../../core/format/validaciones.dart';
 import '../../reglas_fechas.dart';
 import '../../solicitudes_modelos.dart';
 
@@ -169,19 +170,17 @@ class FormularioSolicitud {
     return null;
   }
 
-  /// Validación del paso 2 en el orden del web. [momento] = momento de
-  /// elaboración (congelado al abrir el wizard).
-  String? validarPaso2(DateTime momento) {
-    if (localId == null) return 'Selecciona un local.';
-    if (titulo.trim().isEmpty) return 'El título es obligatorio.';
-    if (descripcion.trim().isEmpty) return 'La descripción es obligatoria.';
+  /// Fechas y horas del permiso: obligatorias y dentro de las ventanas de
+  /// [validarFechasSolicitud]. También se usa antes de enviar un borrador
+  /// desde el detalle (un duplicado no trae fechas).
+  String? validarFechas(DateTime momento) {
     if (fechaInicio == null ||
         fechaFin == null ||
         horaInicio == null ||
         horaFin == null) {
       return 'Indica fecha y hora de inicio y fin del permiso.';
     }
-    final errFechas = validarFechasSolicitud(
+    return validarFechasSolicitud(
       ahora: momento,
       inicio: fechaInicio,
       fin: fechaFin,
@@ -189,6 +188,15 @@ class FormularioSolicitud {
       horaFin: horaFin,
       emergencia: esEmergencia,
     );
+  }
+
+  /// Validación del paso 2 en el orden del web. [momento] = momento de
+  /// elaboración (congelado al abrir el wizard).
+  String? validarPaso2(DateTime momento) {
+    if (localId == null) return 'Selecciona un local.';
+    if (titulo.trim().isEmpty) return 'El título es obligatorio.';
+    if (descripcion.trim().isEmpty) return 'La descripción es obligatoria.';
+    final errFechas = validarFechas(momento);
     if (errFechas != null) return errFechas;
 
     if (empresaNombre.trim().isEmpty) {
@@ -206,7 +214,7 @@ class FormularioSolicitud {
     if (empresaEmail.trim().isEmpty) {
       return 'Indica el email de la empresa ejecutante.';
     }
-    if (!emailBasicoValido(empresaEmail)) return 'Email de empresa inválido.';
+    if (!esEmailValido(empresaEmail)) return 'Email de empresa inválido.';
     if (emergenciaContacto.trim().isEmpty) {
       return 'Indica el contacto de emergencia.';
     }

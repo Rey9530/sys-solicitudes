@@ -16,9 +16,9 @@ import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
+import '../../core/widgets/pestanas.dart';
 import '../inquilinos/inquilinos_providers.dart';
 import '../locales/locales_providers.dart';
-import 'catalogo_comun.dart';
 import 'contratos_api.dart';
 import 'contratos_modelos.dart';
 import 'contratos_providers.dart';
@@ -153,6 +153,9 @@ class _ImportadorState extends ConsumerState<_Importador> {
       ref.invalidate(contratosProvider);
       ref.invalidate(localesProvider);
       ref.invalidate(inquilinosProvider);
+      // Filtros de Contratos (la lista sigue montada debajo de esta página).
+      ref.invalidate(opcionesLocalesProvider);
+      ref.invalidate(opcionesInquilinosProvider);
     } on Object catch (e) {
       if (mounted) mostrarError(context, e);
     } finally {
@@ -474,21 +477,24 @@ class _ResultadoCarga extends StatelessWidget {
             ),
           ),
         const SizedBox(height: 6),
-        PestanasInline(
+        Pestanas(
           pestanas: [
             Pestana(
               'Todas',
-              _TablaFilas(filas: resultado.filas, ejecutado: ejecutado),
+              () => _TablaFilas(filas: resultado.filas, ejecutado: ejecutado),
               contador: t.filas,
             ),
             Pestana(
               'Con advertencia',
-              _TablaFilas(filas: filas('advertencia'), ejecutado: ejecutado),
+              () => _TablaFilas(
+                filas: filas('advertencia'),
+                ejecutado: ejecutado,
+              ),
               contador: t.filasConAdvertencia,
             ),
             Pestana(
               'Con error',
-              _TablaFilas(filas: filas('error'), ejecutado: ejecutado),
+              () => _TablaFilas(filas: filas('error'), ejecutado: ejecutado),
               contador: t.filasConError,
             ),
           ],

@@ -15,7 +15,8 @@ class RespuestaFalsa {
 }
 
 /// Manejador de una ruta falsa: devuelve el JSON a responder (200) o una
-/// [RespuestaFalsa].
+/// [RespuestaFalsa]. Puede devolver un `Future` (p. ej. de un `Completer`)
+/// para simular una respuesta que tarda.
 typedef ManejadorFalso = Object? Function(http.Request req);
 
 /// Peticiones recibidas por la última [apiFalsa] (para verificar payloads).
@@ -42,7 +43,8 @@ ApiClient apiFalsa(
     for (final entrada in rutas.entries) {
       final partes = entrada.key.split(' ');
       if (partes[0] != req.method || !_coincide(partes[1], ruta)) continue;
-      final r = entrada.value(req);
+      var r = entrada.value(req);
+      if (r is Future<Object?>) r = await r;
       if (r is RespuestaFalsa) {
         return http.Response(
           r.body == null ? '' : jsonEncode(r.body),

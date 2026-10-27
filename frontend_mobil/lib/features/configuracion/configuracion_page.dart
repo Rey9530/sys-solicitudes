@@ -9,12 +9,12 @@ import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/pagina.dart';
+import '../../core/widgets/selector_color.dart';
 import '../auth/auth_api.dart';
 import '../solicitudes/solicitudes_modelos.dart';
 import 'configuracion_api.dart';
 import 'configuracion_modelos.dart';
 import 'configuracion_providers.dart';
-import 'widgets/selector_color.dart';
 
 /// `/admin/configuracion`: datos generales, branding (color y logo), SLA,
 /// adjuntos y calendario de la plaza (`components/client/configuracion-form.tsx`).
@@ -40,7 +40,7 @@ class ConfiguracionPage extends ConsumerWidget {
     }
     final datos = ref.watch(configuracionProvider(plazaId));
     return ContenidoPagina(
-      onRefresh: () async => ref.invalidate(configuracionProvider(plazaId)),
+      onRefresh: () => recargar(ref, configuracionProvider(plazaId).future),
       children: [
         EncabezadoPagina(
           titulo: 'Configuración',

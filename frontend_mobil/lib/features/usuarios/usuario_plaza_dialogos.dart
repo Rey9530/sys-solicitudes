@@ -4,6 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
+import '../../core/auth/sesion_controller.dart';
+import '../../core/format/validaciones.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
@@ -62,14 +65,6 @@ class EstadoUsuarioBadge extends StatelessWidget {
 /// Opción de rol en los selectores: `Nombre (codigo)` y ` — inactivo`.
 String etiquetaRol(RolStaff r) =>
     '${r.nombre} (${r.codigo})${r.activo ? '' : ' — inactivo'}';
-
-/// Validación de email del formulario de alta (mismo texto que el web).
-String? _validarEmail(String? v) {
-  final valor = (v ?? '').trim();
-  return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(valor)
-      ? null
-      : 'Email inválido';
-}
 
 String? _requerido(String? v) => (v ?? '').trim().isEmpty ? 'Requerido' : null;
 
@@ -283,7 +278,7 @@ class _AltaUsuarioPlazaDialogState
               labelText: 'Email',
               errorText: _errorEmail,
             ),
-            validator: _validarEmail,
+            validator: validarEmailObligatorio,
           ),
           const SizedBox(height: 12),
           TextFormField(
@@ -331,7 +326,8 @@ class _AltaUsuarioPlazaDialogState
 // ── Edición ─────────────────────────────────────────────────────────────────
 
 /// Edita nombre, teléfono y rol de staff. Muestra "Usuario actualizado" e
-/// invalida las listas si se guardó.
+/// invalida las listas si se guardó. Si el editado es el usuario de la
+/// sesión, también relee su sesión (nombre, rol de staff y permisos).
 Future<void> editarUsuarioPlaza(
   BuildContext context,
   WidgetRef ref,
@@ -345,6 +341,9 @@ Future<void> editarUsuarioPlaza(
   if (guardado != true || !context.mounted) return;
   mostrarExito(context, 'Usuario actualizado');
   invalidarUsuarios(ref);
+  if (ref.read(sesionProvider).value?.usuario.id == usuario.id) {
+    await ref.read(sesionProvider.notifier).recargar();
+  }
 }
 
 /// Espejo de `editar-usuario-plaza-dialog.tsx`. El cambio de rol lo aplica el

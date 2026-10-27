@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/adjuntos/adjuntos.dart';
 import 'package:frontend_mobil/core/auth/sesion.dart';
@@ -12,6 +13,8 @@ import 'package:frontend_mobil/features/contratos/contratos_modelos.dart';
 import 'package:frontend_mobil/features/contratos/contratos_page.dart';
 import 'package:frontend_mobil/features/contratos/mi_contrato_page.dart';
 import 'package:frontend_mobil/features/contratos/mis_contratos_page.dart';
+import 'package:frontend_mobil/features/inquilinos/inquilinos_providers.dart';
+import 'package:frontend_mobil/features/locales/locales_providers.dart';
 
 import '../../helpers/api_falsa.dart';
 import '../../helpers/pantallas.dart';
@@ -119,6 +122,12 @@ Future<String> _elegirDia(WidgetTester tester, Finder campo, int dia) async {
   final hoy = ahoraEnPlaza();
   return ymd(DateTime.utc(hoy.year, hoy.month, dia));
 }
+
+/// Año de la última fecha que permite el selector de fecha abierto.
+int _ultimoAnioDelSelector(WidgetTester tester) => tester
+    .widget<DatePickerDialog>(find.byType(DatePickerDialog))
+    .lastDate
+    .year;
 
 Future<void> _elegirOpcion(
   WidgetTester tester,
@@ -291,6 +300,22 @@ void main() {
         'cuotaCam': 4.5,
       });
       expect(find.text('Ruta: /admin/contratos'), findsOneWidget);
+    });
+
+    testWidgets('las fechas admiten años lejanos (sin el tope de +5 años)', (
+      tester,
+    ) async {
+      await _montar(tester, const ContratoFormPage());
+      for (final campo in [
+        'contrato-fechaInicio',
+        'contrato-fechaFin',
+        'contrato-avisoTerminacion',
+      ]) {
+        await _tocar(tester, find.byKey(Key(campo)));
+        expect(_ultimoAnioDelSelector(tester), 2100, reason: campo);
+        await tester.tap(find.text('Cancelar').last);
+        await tester.pumpAndSettle();
+      }
     });
 
     testWidgets('CONTRATO_OVERLAP se muestra en un aviso', (tester) async {
@@ -479,6 +504,17 @@ void main() {
     });
   });
 
+  testWidgets('renovar admite fechas en años lejanos', (tester) async {
+    await _montar(tester, const ContratoDetallePage(id: 'con-1'));
+    await _tocar(tester, find.byKey(const Key('contrato-renovar')));
+    for (final campo in ['renovar-inicio', 'renovar-fin']) {
+      await _tocar(tester, find.byKey(Key(campo)));
+      expect(_ultimoAnioDelSelector(tester), 2100, reason: campo);
+      await tester.tap(find.text('Cancelar').last);
+      await tester.pumpAndSettle();
+    }
+  });
+
   group('Carga inicial', () {
     testWidgets('responsive, también con la vista previa', (tester) async {
       await probarEnTamanos(
@@ -586,6 +622,38 @@ void main() {
       expect(find.text('Ver contratos'), findsOneWidget);
     });
 
+    testWidgets('importar recarga las opciones de los filtros de Contratos', (
+      tester,
+    ) async {
+      // La lista de Contratos queda montada debajo con sus filtros vivos.
+      await _montar(
+        tester,
+        Column(
+          children: [
+            Consumer(
+              builder: (_, ref, _) {
+                ref.watch(opcionesLocalesProvider(false));
+                ref.watch(opcionesInquilinosProvider);
+                return const SizedBox.shrink();
+              },
+            ),
+            const Expanded(child: CargaInicialPage()),
+          ],
+        ),
+        selector: _xlsx,
+      );
+      int gets(String ruta) => peticionesFalsas
+          .where((r) => r.method == 'GET' && r.url.path.endsWith(ruta))
+          .length;
+      expect((gets('/locales'), gets('/inquilinos')), (1, 1));
+
+      await _tocar(tester, find.byKey(const Key('carga-elegir')));
+      await _tocar(tester, find.byKey(const Key('carga-importar')));
+      await tester.tap(find.text('Sí, importar'));
+      await tester.pumpAndSettle();
+      expect((gets('/locales'), gets('/inquilinos')), (2, 2));
+    });
+
     testWidgets('fila con varios mensajes: tocarla los muestra todos', (
       tester,
     ) async {
@@ -683,6 +751,43 @@ void main() {
         },
       );
     });
+  });
+
+  testWidgets('el inquilino solo ve "Eliminar" en los PDF que él subió; el '
+      'admin en todos', (tester) async {
+    Map<String, Object?> pdf(String id, String subio) => {
+      'id': id,
+      'nombreOriginal': '$id.pdf',
+      'mimeType': 'application/pdf',
+      'tamanoBytes': 1024,
+      'usuarioSubioId': subio,
+      'createdAt': '2026-10-01T10:00:00Z',
+    };
+    final rutas = _rutas()
+      ..['GET /contratos/:id/adjuntos'] = (_) => [
+        pdf('mio', 'u-inquilino'),
+        pdf('del-admin', 'u-admin_plaza'),
+      ];
+
+    await _montar(
+      tester,
+      const MiContratoPage(id: 'con-1'),
+      rutas: rutas,
+      sesion: sesionDe(Rol.inquilino),
+    );
+    expect(find.byTooltip('Eliminar mio.pdf'), findsOneWidget);
+    expect(find.byTooltip('Eliminar del-admin.pdf'), findsNothing);
+    expect(find.byTooltip('Descargar del-admin.pdf'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await _montar(tester, const ContratoDetallePage(id: 'con-1'), rutas: rutas);
+    await tester.scrollUntilVisible(
+      find.byTooltip('Eliminar del-admin.pdf'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(find.byTooltip('Eliminar mio.pdf'), findsOneWidget);
+    expect(find.byTooltip('Eliminar del-admin.pdf'), findsOneWidget);
   });
 
   test('modelos y cuerpos', () {

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
 import '../../core/auth/sesion_controller.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
@@ -64,7 +65,7 @@ class CategoriaDetallePage extends ConsumerWidget {
           child: _SubcategoriasActivas(cat.subcategorias),
         );
         return ContenidoPagina(
-          onRefresh: () => ref.refresh(categoriaProvider(id).future),
+          onRefresh: () => recargar(ref, categoriaProvider(id).future),
           children: [
             EncabezadoPagina(
               titulo: cat.nombre,

@@ -10,6 +10,7 @@ import '../../../core/widgets/badges.dart';
 import '../../../core/widgets/dialogos.dart';
 import '../../../core/widgets/estados.dart';
 import '../../../core/widgets/pagina.dart';
+import '../../../core/widgets/pestanas.dart';
 import '../comun/comentarios_tab.dart';
 import '../comun/detalle_campos.dart';
 import '../comun/detalle_layout.dart';
@@ -213,7 +214,7 @@ class _DetalleAdminState extends ConsumerState<DetalleAdminPage> {
     final soyCreador = s.usuarioCreadorId == miId;
     return VistaDetalleSolicitud(
       pendiente: _pendiente,
-      onRefresh: () async => ref.refresh(solicitudProvider(_id).future),
+      onRefresh: () => recargar(ref, solicitudProvider(_id).future),
       encabezado: EncabezadoPagina(
         titulo: s.codigo,
         rutaVolver: '/admin/solicitudes',

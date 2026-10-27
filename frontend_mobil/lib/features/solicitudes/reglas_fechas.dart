@@ -113,10 +113,6 @@ DateTime _diaPlaza(DateTime instante) {
   return DateTime.utc(p.year, p.month, p.day);
 }
 
-/// Email básico (mismo regex que el web).
-bool emailBasicoValido(String email) =>
-    RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email.trim());
-
 /// Teléfono de 8 a 20 caracteres: dígitos, espacios, `+`, `-` y paréntesis.
 bool telefonoBasicoValido(String telefono) =>
     RegExp(r'^[0-9+\-\s()]{8,20}$').hasMatch(telefono.trim());

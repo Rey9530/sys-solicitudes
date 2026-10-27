@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -76,6 +77,56 @@ void main() {
     await tester.tap(find.byKey(const Key('adjuntos-subir')));
     await tester.pumpAndSettle();
     expect(subidos, ['foto.png|image/png']);
+  });
+
+  testWidgets('cambiar de pestaña durante la subida no descarta archivos', (
+    tester,
+  ) async {
+    final subidos = <String>[];
+    final primera = Completer<void>();
+    var cambios = 0;
+    final visible = ValueNotifier(true);
+    addTearDown(visible.dispose);
+    await tester.pumpWidget(
+      envolver(
+        () => Scaffold(
+          body: ValueListenableBuilder<bool>(
+            valueListenable: visible,
+            builder: (_, ver, _) => ver
+                ? AdjuntosSeccion(
+                    adjuntos: const [],
+                    puedeSubir: true,
+                    subir: (nombre, bytes, mime) async {
+                      if (subidos.isEmpty) await primera.future;
+                      subidos.add(nombre);
+                    },
+                    alCambiar: () => cambios++,
+                  )
+                : const Text('Otra pestaña'),
+          ),
+        ),
+        overrides: [
+          ...overridesBase(apiFalsa({}), sesion: sesionDe(Rol.inquilino)),
+          selectorArchivosProvider.overrideWithValue(
+            _SelectorFalso([
+              ArchivoElegido('a.pdf', Uint8List(10)),
+              ArchivoElegido('b.png', Uint8List(10)),
+            ]),
+          ),
+        ],
+      ),
+    );
+    await tester.tap(find.byKey(const Key('adjuntos-subir')));
+    await tester.pump();
+    expect(find.text('Subiendo 2 archivo(s)…'), findsOneWidget);
+
+    // Se cambia de pestaña mientras sube el primero: la sección se desmonta.
+    visible.value = false;
+    await tester.pump();
+    primera.complete();
+    await tester.pumpAndSettle();
+    expect(subidos, ['a.pdf', 'b.png']);
+    expect(cambios, 1);
   });
 
   testWidgets('con el máximo de adjuntos oculta los botones de subida', (

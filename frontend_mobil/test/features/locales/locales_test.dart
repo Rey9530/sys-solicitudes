@@ -203,7 +203,8 @@ void main() {
         ),
       );
       await tester.enterText(find.byKey(const Key('local-codigo')), 'L 101!');
-      await tester.enterText(find.byKey(const Key('local-energia')), '12a');
+      // Pasa el filtro (dígitos y guiones) pero no el formato.
+      await tester.enterText(find.byKey(const Key('local-energia')), '12--3');
       await tester.enterText(find.byKey(const Key('local-area')), '-5');
       await tester.tap(find.byKey(const Key('local-crear')));
       await tester.pumpAndSettle();
@@ -214,6 +215,31 @@ void main() {
       expect(find.text('Solo dígitos y guiones'), findsOneWidget);
       expect(find.text('Debe ser mayor que 0'), findsOneWidget);
       expect(peticionesFalsas, isEmpty);
+    });
+
+    testWidgets('medidores con teclado de texto: aceptan guion y descartan '
+        'letras', (tester) async {
+      await tester.pumpWidget(
+        envolver(
+          () => _en(const LocalFormPage()),
+          overrides: overridesBase(
+            apiFalsa(_rutas()),
+            sesion: sesionDe(Rol.adminPlaza),
+          ),
+        ),
+      );
+      for (final campo in ['local-energia', 'local-agua']) {
+        final texto = find.descendant(
+          of: find.byKey(Key(campo)),
+          matching: find.byType(TextField),
+        );
+        expect(
+          tester.widget<TextField>(texto).keyboardType,
+          TextInputType.text,
+        );
+        await tester.enterText(find.byKey(Key(campo)), '18-622259-1 ab');
+        expect(tester.widget<TextField>(texto).controller!.text, '18-622259-1');
+      }
     });
 
     testWidgets('código duplicado se muestra bajo el campo', (tester) async {

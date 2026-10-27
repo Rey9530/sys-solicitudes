@@ -8,5 +8,5 @@ import 'configuracion_modelos.dart';
 final configuracionProvider = FutureProvider.autoDispose
     .family<DatosConfiguracion, String>(
       (ref, plazaId) =>
-          cargarConfiguracion(ref.read(apiClientProvider), plazaId),
+          cargarConfiguracion(ref.watch(apiClientProvider), plazaId),
     );

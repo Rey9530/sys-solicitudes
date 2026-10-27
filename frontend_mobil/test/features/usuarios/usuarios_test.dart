@@ -1,10 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/auth/sesion.dart';
+import 'package:frontend_mobil/core/auth/sesion_controller.dart';
 import 'package:frontend_mobil/features/usuarios/matriz_permisos_page.dart';
 import 'package:frontend_mobil/features/usuarios/usuario_plaza_page.dart';
 import 'package:frontend_mobil/features/usuarios/usuarios_api.dart';
+import 'package:frontend_mobil/features/usuarios/usuarios_modelos.dart';
 import 'package:frontend_mobil/features/usuarios/usuarios_plaza_page.dart';
+import 'package:frontend_mobil/features/usuarios/usuarios_providers.dart';
 import 'package:http/http.dart' as http;
 
 import '../../helpers/api_falsa.dart';
@@ -291,6 +297,57 @@ void main() {
       });
       expect(find.text('Editar usuario'), findsNothing);
       expect(find.text('Usuario actualizado'), findsOneWidget);
+      // Editar a otro usuario no toca la sesión.
+      expect(_peticiones('GET', '/auth/me'), isEmpty);
+    });
+
+    testWidgets('editar el propio rol de staff relee la sesión (usuario y '
+        'permisos)', (tester) async {
+      const yo = Sesion(
+        usuario: Usuario(
+          id: 'u-1',
+          email: 'yo@demo.com',
+          nombre: 'Yo',
+          rol: Rol.adminPlaza,
+          plazaId: 'plaza-demo',
+          rolStaffId: 'rol-tec',
+        ),
+        permisos: ['*'],
+      );
+      final actualizado = _usuario(1, rolId: 'rol-sup');
+      await _montar(
+        tester,
+        () => const UsuariosPlazaPage(),
+        _rutas(
+          extra: {
+            'PATCH /usuarios/:id': (_) => actualizado,
+            'GET /auth/me': (_) => actualizado,
+            'GET /auth/me/permisos': (_) => {
+              'permisos': ['usuarios_plaza.listar', 'usuarios_plaza.editar'],
+            },
+          },
+        ),
+        sesion: yo,
+      );
+      await _tocar(tester, find.text('Editar').first);
+      await _elegir(
+        tester,
+        find.byKey(const Key('usuario-rol')),
+        'Supervisor nocturno (supervisor-nocturno)',
+      );
+      await tester.tap(find.byKey(const Key('editar-guardar')));
+      await tester.pumpAndSettle();
+
+      expect(_peticiones('GET', '/auth/me'), hasLength(1));
+      expect(_peticiones('GET', '/auth/me/permisos'), hasLength(1));
+      final sesion = ProviderScope.containerOf(
+        tester.element(find.byType(UsuariosPlazaPage)),
+      ).read(sesionProvider).value!;
+      expect(sesion.usuario.rolStaffId, 'rol-sup');
+      expect(sesion.permisos, [
+        'usuarios_plaza.listar',
+        'usuarios_plaza.editar',
+      ]);
     });
 
     testWidgets('editar muestra ULTIMO_ADMIN_SISTEMA bajo el rol', (
@@ -497,6 +554,57 @@ void main() {
           await _tocar(tester, find.text('Cancelar').last);
         },
       );
+    });
+
+    testWidgets('"Editar" espera a que carguen los roles (si no, el selector '
+        'del diálogo queda vacío)', (tester) async {
+      final todos = Completer<List<RolStaff>>();
+      final activos = Completer<List<RolStaff>>();
+      final roles = [for (final r in _roles) RolStaff.fromJson(r)];
+      final overrides = [
+        ...overridesBase(apiFalsa(_rutas()), sesion: sesionDe(Rol.adminPlaza)),
+        rolesStaffTodosProvider.overrideWith((ref) => todos.future),
+        rolesStaffActivosProvider.overrideWith((ref) => activos.future),
+      ];
+      bool editarHabilitado() => tester
+          .widget<ButtonStyleButton>(
+            find
+                .ancestor(
+                  of: find.text('Editar').first,
+                  matching: find.byWidgetPredicate(
+                    (w) => w is ButtonStyleButton,
+                  ),
+                )
+                .first,
+          )
+          .enabled;
+
+      // Detalle del usuario.
+      await tester.pumpWidget(
+        envolver(
+          () => const Scaffold(body: UsuarioPlazaPage(id: 'u-1')),
+          overrides: overrides,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(editarHabilitado(), isFalse);
+      todos.complete(roles);
+      await tester.pumpAndSettle();
+      expect(editarHabilitado(), isTrue);
+
+      // Lista de usuarios.
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpWidget(
+        envolver(
+          () => const Scaffold(body: UsuariosPlazaPage()),
+          overrides: overrides,
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(editarHabilitado(), isFalse);
+      activos.complete(roles.where((r) => r.activo).toList());
+      await tester.pumpAndSettle();
+      expect(editarHabilitado(), isTrue);
     });
 
     testWidgets('detalle de usuario responsive', (tester) async {

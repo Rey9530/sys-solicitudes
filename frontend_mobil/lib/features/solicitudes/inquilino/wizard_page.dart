@@ -140,9 +140,15 @@ class _WizardState extends ConsumerState<_Wizard> {
     }
     setState(() => _enviando = true);
     final api = ref.read(apiClientProvider);
+    // Se toma antes de los await: si se sale del wizard mientras guarda,
+    // `ref` ya no se puede usar y la lista igual debe recargarse.
+    final contenedor = ProviderScope.containerOf(context, listen: false);
     final payload = _form.payload();
     String id;
     String codigo;
+    // Adjuntos que no se pudieron subir: se avisan juntos al final (cada
+    // aviso tapa al anterior).
+    final fallidos = <String>[];
     try {
       if (_edicion) {
         id = widget.solicitud!.id;
@@ -155,8 +161,8 @@ class _WizardState extends ConsumerState<_Wizard> {
         for (final a in _archivos) {
           try {
             await subirAdjuntoSolicitud(api, id, a.nombre, a.bytes, a.mime);
-          } on Object catch (e) {
-            if (mounted) mostrarError(context, 'Adjunto "${a.nombre}": $e');
+          } on Object {
+            fallidos.add(a.nombre);
           }
         }
       }
@@ -172,33 +178,45 @@ class _WizardState extends ConsumerState<_Wizard> {
       try {
         await enviar(api, id);
       } on Object catch (e) {
-        _invalidar(id);
+        _invalidar(contenedor, id);
         if (!mounted) return;
         setState(() => _enviando = false);
+        final sinSubir = fallidos.isEmpty
+            ? ''
+            : '\nTampoco se subieron: ${fallidos.join(', ')}';
         mostrarError(
           context,
-          'Guardada como borrador, pero no se pudo enviar: $e',
+          'Guardada como borrador, pero no se pudo enviar: $e$sinSubir',
         );
         _irAlDetalle(id);
         return;
       }
     }
-    _invalidar(id);
+    _invalidar(contenedor, id);
     if (!mounted) return;
     setState(() => _enviando = false);
     final numero = codigo.isEmpty ? '' : ' $codigo';
-    mostrarExito(
-      context,
-      enviarAhora
-          ? 'Solicitud$numero enviada: quedó en cola de asignación'
-          : 'Borrador$numero guardado',
-    );
+    final hecho = enviarAhora
+        ? 'Solicitud$numero enviada'
+        : 'Borrador$numero guardado';
+    if (fallidos.isEmpty) {
+      mostrarExito(
+        context,
+        enviarAhora ? '$hecho: quedó en cola de asignación' : hecho,
+      );
+    } else {
+      mostrarError(
+        context,
+        '$hecho, pero no se subieron: ${fallidos.join(', ')}',
+      );
+    }
     _irAlDetalle(id);
   }
 
-  void _invalidar(String id) {
-    ref.invalidate(misSolicitudesProvider);
-    ref.invalidate(solicitudProvider(id));
+  /// Recarga la lista y el detalle de [id].
+  void _invalidar(ProviderContainer contenedor, String id) {
+    contenedor.invalidate(misSolicitudesProvider);
+    contenedor.invalidate(solicitudProvider(id));
   }
 
   /// Al crear, el detalle reemplaza al wizard (atrás vuelve a la lista); al

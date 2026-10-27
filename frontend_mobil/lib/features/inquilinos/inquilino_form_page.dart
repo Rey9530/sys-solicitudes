@@ -6,8 +6,8 @@ import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
-import '../contratos/catalogo_comun.dart';
 import 'inquilino_campos.dart';
 import 'inquilinos_api.dart';
 import 'inquilinos_providers.dart';
@@ -83,22 +83,26 @@ class _InquilinoFormPageState extends ConsumerState<InquilinoFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ParesDeCampos(
-                      campos: const [campoRazonSocial, campoNombreComercial],
-                      controladores: _c,
-                    ),
-                    FilaCampos(
-                      children: [
-                        CampoTextoInquilino(
-                          campo: campoIdentificacion,
-                          controlador: _c['identificacion']!,
-                          errorText: _errorIdentificacion,
-                        ),
-                        CampoTextoInquilino(
-                          campo: campoNrc,
-                          controlador: _c['numeroNrc']!,
-                        ),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: RejillaCampos(
+                        maxColumnas: 2,
+                        children: [
+                          ...textosInquilino(const [
+                            campoRazonSocial,
+                            campoNombreComercial,
+                          ], _c),
+                          CampoTextoInquilino(
+                            campo: campoIdentificacion,
+                            controlador: _c['identificacion']!,
+                            errorText: _errorIdentificacion,
+                          ),
+                          CampoTextoInquilino(
+                            campo: campoNrc,
+                            controlador: _c['numeroNrc']!,
+                          ),
+                        ],
+                      ),
                     ),
                     CampoTextoInquilino(
                       campo: campoRepresentante,

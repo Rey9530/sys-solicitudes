@@ -212,3 +212,19 @@ class SlaSemaforo extends StatelessWidget {
     );
   }
 }
+
+/// Badge de estado activo/inactivo. [femenino] para "Activa"/"Inactiva".
+class BadgeActivo extends StatelessWidget {
+  const BadgeActivo(this.activo, {super.key, this.femenino = false});
+
+  final bool activo;
+  final bool femenino;
+
+  @override
+  Widget build(BuildContext context) {
+    final texto = femenino
+        ? (activo ? 'Activa' : 'Inactiva')
+        : (activo ? 'Activo' : 'Inactivo');
+    return BadgePlazapp(texto, activo ? Tono.ok : Tono.neutral);
+  }
+}

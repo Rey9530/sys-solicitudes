@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../auth/sesion_controller.dart';
 
+/// ¿La sesión tiene [permiso]? (código o lista = OR). Para decidir si se pasan
+/// acciones a una lista; los botones sueltos usan [Can].
+bool puedeHacer(WidgetRef ref, Object permiso) =>
+    ref.watch(sesionProvider).value?.puede(permiso) ?? false;
+
 /// Muestra [child] solo si la sesión tiene [permiso] (código o lista = OR).
 /// Igual que `<Can>` del web: el backend vuelve a validar siempre.
 class Can extends ConsumerWidget {

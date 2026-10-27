@@ -10,12 +10,6 @@ import 'usuarios_modelos.dart';
 /// (`activo=false`) para poder reactivarlos.
 typedef FiltroUsuarios = ({int pagina, String? buscar, bool deshabilitados});
 
-/// Texto de formulario → valor del payload (`null` si queda vacío).
-String? textoOpcional(String texto) {
-  final t = texto.trim();
-  return t.isEmpty ? null : t;
-}
-
 /// Contraseña temporal del alta, igual que el web:
 /// `'Tmp' + base64url(9 bytes aleatorios) + '1a'` (cumple la política).
 String generarPasswordTemporal([Random? aleatorio]) {

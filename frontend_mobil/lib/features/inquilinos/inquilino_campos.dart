@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/format/validaciones.dart';
+import '../../core/widgets/campo_select.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
-import '../contratos/catalogo_comun.dart';
 import 'inquilinos_modelos.dart';
 
 /// Campos del formulario de inquilino compartidos por el alta y la edición
@@ -140,36 +142,14 @@ class CampoTextoInquilino extends StatelessWidget {
   }
 }
 
-/// Campos de dos en dos (una columna en teléfono).
-class ParesDeCampos extends StatelessWidget {
-  const ParesDeCampos({
-    super.key,
-    required this.campos,
-    required this.controladores,
-  });
-
-  final List<CampoInquilino> campos;
-  final Map<String, TextEditingController> controladores;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (var i = 0; i < campos.length; i += 2)
-          FilaCampos(
-            children: [
-              for (final campo in campos.skip(i).take(2))
-                CampoTextoInquilino(
-                  campo: campo,
-                  controlador: controladores[campo.clave]!,
-                ),
-            ],
-          ),
-      ],
-    );
-  }
-}
+/// Campos de texto del inquilino, para ponerlos en una [RejillaCampos].
+List<Widget> textosInquilino(
+  List<CampoInquilino> campos,
+  Map<String, TextEditingController> controladores,
+) => [
+  for (final campo in campos)
+    CampoTextoInquilino(campo: campo, controlador: controladores[campo.clave]!),
+];
 
 /// Secciones comunes al alta y la edición: canales, contactos,
 /// clasificación y otros.
@@ -192,57 +172,63 @@ class SeccionesInquilino extends StatelessWidget {
       children: [
         Seccion(
           titulo: 'Canales del inquilino',
-          child: ParesDeCampos(campos: _canales, controladores: controladores),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: RejillaCampos(
+              maxColumnas: 2,
+              children: textosInquilino(_canales, controladores),
+            ),
+          ),
         ),
         Seccion(
           titulo: 'Contacto 1',
-          child: ParesDeCampos(
-            campos: _contacto(1),
-            controladores: controladores,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: RejillaCampos(
+              maxColumnas: 2,
+              children: textosInquilino(_contacto(1), controladores),
+            ),
           ),
         ),
         Seccion(
           titulo: 'Contacto 2 (opcional)',
-          child: ParesDeCampos(
-            campos: _contacto(2),
-            controladores: controladores,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: RejillaCampos(
+              maxColumnas: 2,
+              children: textosInquilino(_contacto(2), controladores),
+            ),
           ),
         ),
         Seccion(
           titulo: 'Clasificación',
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              FilaCampos(
-                children: [
-                  CampoSeleccion<String>(
-                    key: const Key('inquilino-tipoCliente'),
-                    etiqueta: 'Tipo de cliente',
-                    valor: tipoCliente,
-                    opciones: const [
-                      (null, '— Sin clasificar —'),
-                      ...tiposCliente,
-                    ],
-                    onChanged: onTipoCliente,
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: RejillaCampos(
+              maxColumnas: 2,
+              children: [
+                CampoSelect<String>(
+                  key: const Key('inquilino-tipoCliente'),
+                  label: 'Tipo de cliente',
+                  valor: tipoCliente,
+                  opcionVacia: '— Sin clasificar —',
+                  opciones: tiposCliente,
+                  onChanged: onTipoCliente,
+                ),
+                CampoTextoInquilino(
+                  campo: const CampoInquilino(
+                    'giroAutorizado',
+                    'Giro autorizado',
+                    160,
                   ),
-                  CampoTextoInquilino(
-                    campo: const CampoInquilino(
-                      'giroAutorizado',
-                      'Giro autorizado',
-                      160,
-                    ),
-                    controlador: controladores['giroAutorizado']!,
-                  ),
-                ],
-              ),
-              ParesDeCampos(
-                campos: const [
+                  controlador: controladores['giroAutorizado']!,
+                ),
+                ...textosInquilino(const [
                   CampoInquilino('categoria', 'Categoría', 120),
                   CampoInquilino('subcategoria', 'Subcategoría', 120),
-                ],
-                controladores: controladores,
-              ),
-            ],
+                ], controladores),
+              ],
+            ),
           ),
         ),
         Seccion(

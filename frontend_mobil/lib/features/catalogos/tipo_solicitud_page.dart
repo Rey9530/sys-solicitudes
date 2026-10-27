@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
 import '../../core/auth/sesion_controller.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
@@ -34,7 +35,7 @@ class TipoSolicitudPage extends ConsumerWidget {
       value: datos,
       onRetry: () => ref.invalidate(tipoSolicitudProvider(id)),
       data: (tipo) => ContenidoPagina(
-        onRefresh: () => ref.refresh(tipoSolicitudProvider(id).future),
+        onRefresh: () => recargar(ref, tipoSolicitudProvider(id).future),
         children: [
           EncabezadoPagina(
             titulo: tipo.etiqueta,

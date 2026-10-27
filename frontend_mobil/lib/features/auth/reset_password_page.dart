@@ -37,9 +37,9 @@ class _ResetPasswordPageState extends ConsumerState<ResetPasswordPage> {
     });
     try {
       await solicitarResetPassword(ref.read(apiClientProvider), _email.text);
-      setState(() => _enviado = true);
+      if (mounted) setState(() => _enviado = true);
     } on ApiError catch (e) {
-      setState(() => _error = e.mensaje);
+      if (mounted) setState(() => _error = e.mensaje);
     } finally {
       if (mounted) setState(() => _enviando = false);
     }

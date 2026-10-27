@@ -6,13 +6,17 @@ import '../../core/adjuntos/adjuntos_seccion.dart';
 import '../../core/adjuntos/mime_permitidos.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/fechas.dart';
+import '../../core/format/validaciones.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/can.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
+import '../../core/widgets/pestanas.dart';
 import '../contratos/catalogo_comun.dart';
 import 'local_form_page.dart';
 import 'locales_api.dart';
@@ -48,28 +52,28 @@ class LocalDetallePage extends ConsumerWidget {
               badges: [EstadoLocalBadge(local.estado)],
               rutaVolver: '/admin/locales',
             ),
-            PestanasInline(
+            Pestanas(
               pestanas: [
                 Pestana(
                   'Datos',
-                  _EditarLocalForm(
+                  () => _EditarLocalForm(
                     key: ValueKey(local.updatedAt),
                     detalle: detalle,
                   ),
                 ),
                 Pestana(
                   'Contratos',
-                  ContratosMini(contratos: detalle.historicoContratos),
+                  () => ContratosMini(contratos: detalle.historicoContratos),
                   contador: detalle.historicoContratos.length,
                 ),
                 if (verAdjuntos)
                   Pestana(
                     'Adjuntos',
-                    _AdjuntosLocal(id: id),
+                    () => _AdjuntosLocal(id: id),
                     contador: adjuntos?.length,
                   ),
                 if (puedeHacer(ref, 'solicitudes.bandeja.ver'))
-                  Pestana('Solicitudes', _SolicitudesLocal(localId: id)),
+                  Pestana('Solicitudes', () => _SolicitudesLocal(localId: id)),
               ],
             ),
             const SizedBox(height: 16),
@@ -156,93 +160,102 @@ class _EditarLocalFormState extends ConsumerState<_EditarLocalForm> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilaCampos(
-              children: [
-                TextFormField(
-                  key: const Key('editar-local-modulo'),
-                  controller: _modulo,
-                  textCapitalization: TextCapitalization.characters,
-                  inputFormatters: [LengthLimitingTextInputFormatter(20)],
-                  decoration: const InputDecoration(
-                    labelText: 'Módulo',
-                    hintText: 'A',
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: RejillaCampos(
+                maxColumnas: 2,
+                children: [
+                  TextFormField(
+                    key: const Key('editar-local-modulo'),
+                    controller: _modulo,
+                    textCapitalization: TextCapitalization.characters,
+                    inputFormatters: [LengthLimitingTextInputFormatter(20)],
+                    decoration: const InputDecoration(
+                      labelText: 'Módulo',
+                      hintText: 'A',
+                    ),
                   ),
-                ),
-                TextFormField(
-                  key: const Key('editar-local-nivel'),
-                  controller: _nivel,
-                  inputFormatters: [LengthLimitingTextInputFormatter(10)],
-                  decoration: const InputDecoration(
-                    labelText: 'Nivel',
-                    hintText: '1',
+                  TextFormField(
+                    key: const Key('editar-local-nivel'),
+                    controller: _nivel,
+                    inputFormatters: [LengthLimitingTextInputFormatter(10)],
+                    decoration: const InputDecoration(
+                      labelText: 'Nivel',
+                      hintText: '1',
+                    ),
                   ),
-                ),
-              ],
+                  TextFormField(
+                    initialValue: _local.codigo,
+                    enabled: false,
+                    decoration: const InputDecoration(
+                      labelText: 'Local',
+                      helperText: 'El local es inmutable.',
+                    ),
+                  ),
+                  if (_conVigente)
+                    CampoSelect<String>(
+                      key: const Key('editar-local-estado'),
+                      label: 'Estado',
+                      valor: 'alquilado',
+                      opciones: const [('alquilado', 'alquilado')],
+                      // Solo lectura.
+                      enabled: false,
+                      onChanged: (_) {},
+                      ayuda: 'Con contrato vigente el estado se gestiona desde contratos.',
+                    )
+                  else
+                    CampoSelect<String>(
+                      key: const Key('editar-local-estado'),
+                      label: 'Estado',
+                      valor: _estado,
+                      opciones: [
+                        for (final e in estadosLocalSinContrato)
+                          (e, estadoLocalCrudo(e)),
+                      ],
+                      onChanged: (v) => setState(() => _estado = v),
+                    ),
+                ],
+              ),
             ),
-            FilaCampos(
-              children: [
-                TextFormField(
-                  initialValue: _local.codigo,
-                  enabled: false,
-                  decoration: const InputDecoration(
-                    labelText: 'Local',
-                    helperText: 'El local es inmutable.',
-                  ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: TextFormField(
+                key: const Key('editar-local-area'),
+                controller: _area,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
-                if (_conVigente)
-                  const CampoSeleccion<String>(
-                    key: Key('editar-local-estado'),
-                    etiqueta: 'Estado',
-                    valor: 'alquilado',
-                    opciones: [('alquilado', 'alquilado')],
-                    onChanged: null,
-                    ayuda: 'Con contrato vigente el estado se gestiona desde contratos.',
-                  )
-                else
-                  CampoSeleccion<String>(
-                    key: const Key('editar-local-estado'),
-                    etiqueta: 'Estado',
-                    valor: _estado,
-                    opciones: [
-                      for (final e in estadosLocalSinContrato)
-                        (e, estadoLocalCrudo(e)),
-                    ],
-                    onChanged: (v) => setState(() => _estado = v),
-                  ),
-              ],
+                validator: validarAreaLocal,
+                decoration: const InputDecoration(labelText: 'Área (m²)'),
+              ),
             ),
-            FilaCampos(
-              children: [
-                TextFormField(
-                  key: const Key('editar-local-area'),
-                  controller: _area,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: RejillaCampos(
+                maxColumnas: 2,
+                children: [
+                  TextFormField(
+                    key: const Key('editar-local-energia'),
+                    controller: _energia,
+                    keyboardType: TextInputType.text,
+                    inputFormatters: formatoMedidor,
+                    validator: validarMedidor,
+                    decoration: const InputDecoration(
+                      labelText: 'Medidor energía',
+                    ),
                   ),
-                  validator: validarAreaLocal,
-                  decoration: const InputDecoration(labelText: 'Área (m²)'),
-                ),
-              ],
-            ),
-            FilaCampos(
-              children: [
-                TextFormField(
-                  key: const Key('editar-local-energia'),
-                  controller: _energia,
-                  keyboardType: TextInputType.number,
-                  validator: validarMedidor,
-                  decoration: const InputDecoration(
-                    labelText: 'Medidor energía',
+                  TextFormField(
+                    key: const Key('editar-local-agua'),
+                    controller: _agua,
+                    keyboardType: TextInputType.text,
+                    inputFormatters: formatoMedidor,
+                    validator: validarMedidor,
+                    decoration: const InputDecoration(
+                      labelText: 'Medidor agua',
+                    ),
                   ),
-                ),
-                TextFormField(
-                  key: const Key('editar-local-agua'),
-                  controller: _agua,
-                  keyboardType: TextInputType.number,
-                  validator: validarMedidor,
-                  decoration: const InputDecoration(labelText: 'Medidor agua'),
-                ),
-              ],
+                ],
+              ),
             ),
             Align(
               alignment: Alignment.centerRight,
@@ -271,6 +284,8 @@ class _AdjuntosLocal extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final adjuntos = ref.watch(adjuntosLocalProvider(id));
+    // Fuera de los callbacks: la subida sigue aunque esta pestaña se desmonte.
+    final api = ref.watch(apiClientProvider);
     return AsyncView(
       value: adjuntos,
       onRetry: () => ref.invalidate(adjuntosLocalProvider(id)),
@@ -281,13 +296,8 @@ class _AdjuntosLocal extends ConsumerWidget {
         soloExtensiones: extensionesImagen,
         puedeSubir: puedeHacer(ref, 'locales.adjuntos.subir'),
         puedeEliminar: puedeHacer(ref, 'locales.adjuntos.eliminar'),
-        subir: (nombre, bytes, mime) => subirAdjuntoLocal(
-          ref.read(apiClientProvider),
-          id,
-          nombre,
-          bytes,
-          mime,
-        ),
+        subir: (nombre, bytes, mime) =>
+            subirAdjuntoLocal(api, id, nombre, bytes, mime),
         alCambiar: () => ref.invalidate(adjuntosLocalProvider(id)),
       ),
     );

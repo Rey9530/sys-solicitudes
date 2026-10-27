@@ -1,14 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/api/api_client.dart';
 import 'package:frontend_mobil/core/auth/sesion.dart';
 import 'package:frontend_mobil/core/auth/token_storage.dart';
+import 'package:frontend_mobil/core/plaza/plaza_seleccionada.dart';
 import 'package:frontend_mobil/features/superadmin/dashboard_global_page.dart';
 import 'package:frontend_mobil/features/superadmin/nueva_plaza_sheet.dart';
 import 'package:frontend_mobil/features/superadmin/plazas_api.dart';
 import 'package:frontend_mobil/features/superadmin/plazas_page.dart';
+import 'package:frontend_mobil/features/superadmin/plazas_providers.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -125,6 +129,92 @@ void main() {
     final borrado = peticionesFalsas.singleWhere((r) => r.method == 'DELETE');
     expect(borrado.url.path, '/api/v1/plazas/p-2');
     expect(find.text('Plaza desactivada'), findsOneWidget);
+  });
+
+  testWidgets('desactivar la plaza elegida la deselecciona aunque se salga '
+      'de la pantalla durante el DELETE', (tester) async {
+    final borrado = Completer<http.Response>();
+    final almacen = MemoryTokenStorage();
+    await almacen.guardar(
+      Tokens('A', 'R', DateTime.now().add(const Duration(hours: 1))),
+    );
+    final api = ApiClient(
+      baseUrl: 'http://api.test/api/v1',
+      tokens: almacen,
+      cliente: MockClient((req) async {
+        if (req.method == 'DELETE') return borrado.future;
+        return http.Response(
+          jsonEncode(_rutas()['GET /plazas']!(req)),
+          200,
+          headers: {'content-type': 'application/json; charset=utf-8'},
+        );
+      }),
+    );
+    final visible = ValueNotifier(true);
+    addTearDown(visible.dispose);
+    await tester.pumpWidget(
+      envolver(
+        () => ValueListenableBuilder<bool>(
+          valueListenable: visible,
+          builder: (_, ver, _) => ver ? _plazas() : const Text('Otra'),
+        ),
+        overrides: overridesBase(api, sesion: sesionDe(Rol.superadmin)),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final contenedor = ProviderScope.containerOf(
+      tester.element(find.byType(PlazasPage)),
+    );
+    await contenedor
+        .read(plazaSeleccionadaProvider.notifier)
+        .seleccionar('p-2');
+
+    await _tocar(tester, find.byKey(const Key('desactivar-p-2')));
+    await tester.tap(find.text('Sí, desactivar'));
+    await tester.pump();
+    // Se sale de la pantalla con el DELETE en vuelo.
+    visible.value = false;
+    await tester.pumpAndSettle();
+    borrado.complete(http.Response('', 204));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(contenedor.read(plazaSeleccionadaProvider), isNull);
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getString('sa_plaza'), isNull);
+  });
+
+  testWidgets('tirar para recargar termina con la lista nueva', (tester) async {
+    var nombre = 'Plaza antes';
+    await tester.pumpWidget(
+      envolver(
+        _plazas,
+        overrides: overridesBase(
+          apiFalsa({
+            'GET /plazas': (_) => {
+              'items': [_plaza('p-1', nombre)],
+              'total': 1,
+              'page': 1,
+              'pageSize': 50,
+              'totalPages': 1,
+            },
+          }),
+          sesion: sesionDe(Rol.superadmin),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final contenedor = ProviderScope.containerOf(
+      tester.element(find.byType(PlazasPage)),
+    );
+
+    nombre = 'Plaza después';
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    final lista = contenedor.read(listaPlazasProvider);
+    expect(lista.isLoading, isFalse);
+    expect(lista.value!.single.nombreComercial, 'Plaza después');
   });
 
   testWidgets('vacío muestra el texto del web', (tester) async {

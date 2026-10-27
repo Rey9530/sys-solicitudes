@@ -8,12 +8,13 @@ import 'package:intl/intl.dart';
 import '../../core/format/fechas.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/badges.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/campos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
-import '../reportes/widgets/rejilla_campos.dart';
 import 'auditoria_api.dart';
 import 'auditoria_modelos.dart';
 import 'auditoria_providers.dart';
@@ -109,7 +110,7 @@ class _AuditoriaPageState extends ConsumerState<AuditoriaPage> {
     final c = ColoresPlazapp.of(context);
     final total = lista.value?.total;
     return ContenidoPagina(
-      onRefresh: () async => ref.invalidate(auditoriaProvider),
+      onRefresh: () => recargar(ref, auditoriaProvider(_f).future),
       children: [
         EncabezadoPagina(
           titulo: 'Auditoría',
@@ -135,8 +136,9 @@ class _AuditoriaPageState extends ConsumerState<AuditoriaPage> {
                       ),
                       onSubmitted: (_) => _filtrar(),
                     ),
-                    SelectorFiltro<String>(
-                      etiqueta: 'Tipo de entidad',
+                    CampoSelect<String>(
+                      label: 'Tipo de entidad',
+                      opcionVacia: 'Todos',
                       valor: _entidadTipo,
                       opciones: [for (final t in tiposEntidadAuditoria) (t, t)],
                       onChanged: (v) => setState(() => _entidadTipo = v),
@@ -261,7 +263,7 @@ class DetalleAuditoria extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = registro;
     final c = ColoresPlazapp.of(context);
-    final ruta = rutaEntidadAuditada(r.entidadTipo, r.entidadId);
+    final ruta = rutaEntidadAuditada(r);
     final quien = r.usuarioNombre != null
         ? '${r.usuarioNombre} <${r.usuarioEmail ?? ''}>'
         : r.usuarioId != null

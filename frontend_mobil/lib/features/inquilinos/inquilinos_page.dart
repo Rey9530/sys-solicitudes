@@ -3,14 +3,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/api/api_providers.dart';
+import '../../core/api/payload.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/celdas.dart';
 import '../../core/widgets/dialogos.dart';
 import '../../core/widgets/estados.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/lista_responsive.dart';
 import '../../core/widgets/pagina.dart';
 import '../../core/widgets/paginador.dart';
-import '../contratos/catalogo_comun.dart';
 import 'inquilinos_api.dart';
 import 'inquilinos_modelos.dart';
 import 'inquilinos_providers.dart';
@@ -42,8 +44,7 @@ class _InquilinosPageState extends ConsumerState<InquilinosPage> {
   }
 
   void _aplicar() {
-    String? valor(TextEditingController c) =>
-        c.text.trim().isEmpty ? null : c.text.trim();
+    String? valor(TextEditingController c) => textoOpcional(c.text);
     final razon = valor(_razon);
     final ident = valor(_identificacion);
     if (razon == _filtro.razonSocial && ident == _filtro.identificacion) {
@@ -122,8 +123,9 @@ class _InquilinosPageState extends ConsumerState<InquilinosPage> {
             ),
           ],
         ),
-        PanelFiltros(
-          children: [
+        TarjetaFiltros(
+          enLinea: true,
+          campos: [
             CampoFiltro(
               ancho: 240,
               child: _campoTexto(
@@ -140,7 +142,9 @@ class _InquilinosPageState extends ConsumerState<InquilinosPage> {
                 'Identificación',
               ),
             ),
-            OutlinedButton(onPressed: _aplicar, child: const Text('Filtrar')),
+          ],
+          onFiltrar: _aplicar,
+          acciones: [
             if (hayFiltros)
               TextButton(
                 onPressed: _limpiar,

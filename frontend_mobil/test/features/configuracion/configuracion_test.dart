@@ -1,10 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:frontend_mobil/core/adjuntos/adjuntos.dart';
 import 'package:frontend_mobil/core/auth/sesion.dart';
 import 'package:frontend_mobil/features/configuracion/configuracion_page.dart';
+import 'package:frontend_mobil/features/configuracion/configuracion_providers.dart';
 
 import '../../helpers/api_falsa.dart';
 import '../../helpers/pantallas.dart';
@@ -130,6 +132,41 @@ void main() {
         }
       },
     );
+  });
+
+  testWidgets('tirar para recargar termina con los datos nuevos', (
+    tester,
+  ) async {
+    var nombre = 'Plaza antes';
+    final rutas = _rutas();
+    final plaza = rutas['GET /plazas/:id']!;
+    rutas['GET /plazas/:id'] = (req) => {
+      ...plaza(req)! as Map<String, Object?>,
+      'nombreComercial': nombre,
+    };
+    await tester.pumpWidget(
+      envolver(
+        _pagina,
+        overrides: overridesBase(
+          apiFalsa(rutas),
+          sesion: sesionDe(Rol.adminPlaza),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final contenedor = ProviderScope.containerOf(
+      tester.element(find.byType(ConfiguracionPage)),
+    );
+
+    nombre = 'Plaza después';
+    await tester
+        .widget<RefreshIndicator>(find.byType(RefreshIndicator))
+        .onRefresh();
+    // Al terminar el indicador ya están los datos nuevos (antes solo se
+    // invalidaba y el indicador se iba mientras seguía cargando).
+    final datos = contenedor.read(configuracionProvider('plaza-demo'));
+    expect(datos.isLoading, isFalse);
+    expect(datos.value!.plaza.nombreComercial, 'Plaza después');
   });
 
   testWidgets('HEX inválido bloquea "Guardar color"', (tester) async {

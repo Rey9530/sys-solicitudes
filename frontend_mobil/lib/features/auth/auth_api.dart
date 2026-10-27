@@ -1,4 +1,5 @@
 import '../../core/api/api_client.dart';
+import '../../core/format/validaciones.dart';
 
 /// Pide el enlace de restablecimiento (el backend responde igual exista o no
 /// el correo). El enlace del email abre el web.
@@ -41,6 +42,5 @@ String? validarPasswordNueva(String? v) {
 String? validarEmail(String? v) {
   final valor = (v ?? '').trim();
   if (valor.isEmpty) return 'Este campo es obligatorio.';
-  final ok = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(valor);
-  return ok ? null : 'Correo electrónico inválido.';
+  return esEmailValido(valor) ? null : 'Correo electrónico inválido.';
 }

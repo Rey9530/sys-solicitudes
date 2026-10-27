@@ -6,20 +6,26 @@ import 'package:go_router/go_router.dart';
 import '../../core/api/api_error.dart';
 import '../../core/api/api_providers.dart';
 import '../../core/format/montos.dart';
+import '../../core/format/validaciones.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
+import '../../core/widgets/campo_select.dart';
 import '../../core/widgets/campos.dart';
 import '../../core/widgets/can.dart';
+import '../../core/widgets/filtros.dart';
 import '../../core/widgets/pagina.dart';
 import '../inquilinos/inquilinos_providers.dart';
 import '../locales/locales_providers.dart';
-import 'catalogo_comun.dart';
 import 'contratos_api.dart';
 import 'contratos_modelos.dart';
 import 'contratos_providers.dart';
 
 /// Primera fecha seleccionable en los contratos (hay contratos antiguos).
 final primeraFechaContrato = DateTime.utc(2000);
+
+/// Última fecha seleccionable: el backend no pone tope (contratos largos o
+/// con avisos lejanos), así que no se usa el tope de `CampoFecha` (+5 años).
+final ultimaFechaContrato = DateTime.utc(2100, 12, 31);
 
 /// `/admin/contratos/nuevo` — crear contrato (espejo de
 /// `nuevo-contrato-form.tsx`). El monto mensual no se edita: se calcula como
@@ -173,6 +179,7 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
     label: etiqueta,
     valorYmd: _fechas[clave],
     primera: primeraFechaContrato,
+    ultima: ultimaFechaContrato,
     permitirVacio: true,
     errorText: error,
     onChanged: (v) => setState(() => _fechas[clave] = v),
@@ -206,9 +213,9 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    CampoSeleccion<String>(
+                    CampoSelect<String>(
                       key: const Key('contrato-localId'),
-                      etiqueta: 'Local (solo disponibles) *',
+                      label: 'Local (solo disponibles) *',
                       hint: 'Selecciona un local…',
                       valor: _localId,
                       opciones: [
@@ -234,9 +241,9 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
                         ),
                       ),
                     const SizedBox(height: 12),
-                    CampoSeleccion<String>(
+                    CampoSelect<String>(
                       key: const Key('contrato-inquilinoId'),
-                      etiqueta: 'Inquilino *',
+                      label: 'Inquilino *',
                       hint: 'Selecciona un inquilino…',
                       valor: _inquilinoId,
                       opciones: [
@@ -254,52 +261,50 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    FilaCampos(
-                      children: [
-                        CampoFecha(
-                          key: const Key('contrato-fechaInicio'),
-                          label: 'Fecha de inicio *',
-                          valorYmd: _fechaInicio,
-                          primera: primeraFechaContrato,
-                          errorText: _errorInicio,
-                          onChanged: (v) => setState(() => _fechaInicio = v),
-                        ),
-                        CampoFecha(
-                          key: const Key('contrato-fechaFin'),
-                          label: 'Fecha de fin (vacío = indefinido)',
-                          valorYmd: _fechaFin,
-                          primera: primeraFechaContrato,
-                          permitirVacio: true,
-                          errorText: _errorFin,
-                          onChanged: (v) => setState(() => _fechaFin = v),
-                        ),
-                      ],
-                    ),
-                    FilaCampos(
-                      children: [
-                        _numero(
-                          'plazoMeses',
-                          'Plazo (meses)',
-                          min: 1,
-                          max: 1200,
-                          entero: true,
-                        ),
-                        _numero(
-                          'periodoGraciaDias',
-                          'Período de gracia (días)',
-                          max: 3650,
-                          entero: true,
-                        ),
-                      ],
-                    ),
-                    FilaCampos(
-                      children: [
-                        _fecha(
-                          'fechaEntregaLocal',
-                          'Fecha de entrega del local',
-                        ),
-                        _fecha('inicioOperaciones', 'Inicio de operaciones'),
-                      ],
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: RejillaCampos(
+                        maxColumnas: 2,
+                        children: [
+                          CampoFecha(
+                            key: const Key('contrato-fechaInicio'),
+                            label: 'Fecha de inicio *',
+                            valorYmd: _fechaInicio,
+                            primera: primeraFechaContrato,
+                            ultima: ultimaFechaContrato,
+                            errorText: _errorInicio,
+                            onChanged: (v) => setState(() => _fechaInicio = v),
+                          ),
+                          CampoFecha(
+                            key: const Key('contrato-fechaFin'),
+                            label: 'Fecha de fin (vacío = indefinido)',
+                            valorYmd: _fechaFin,
+                            primera: primeraFechaContrato,
+                            ultima: ultimaFechaContrato,
+                            permitirVacio: true,
+                            errorText: _errorFin,
+                            onChanged: (v) => setState(() => _fechaFin = v),
+                          ),
+                          _numero(
+                            'plazoMeses',
+                            'Plazo (meses)',
+                            min: 1,
+                            max: 1200,
+                            entero: true,
+                          ),
+                          _numero(
+                            'periodoGraciaDias',
+                            'Período de gracia (días)',
+                            max: 3650,
+                            entero: true,
+                          ),
+                          _fecha(
+                            'fechaEntregaLocal',
+                            'Fecha de entrega del local',
+                          ),
+                          _fecha('inicioOperaciones', 'Inicio de operaciones'),
+                        ],
+                      ),
                     ),
                     _fecha(
                       'avisoTerminacion',
@@ -314,64 +319,60 @@ class _ContratoFormPageState extends ConsumerState<ContratoFormPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    FilaCampos(
-                      children: [
-                        TextFormField(
-                          key: const Key('contrato-montoMensual'),
-                          controller: _monto,
-                          readOnly: true,
-                          validator: (_) => _montoMensual > 1000000000
-                              ? 'Debe estar entre 0 y 1000000000'
-                              : null,
-                          decoration: const InputDecoration(
-                            labelText: 'Monto mensual',
-                            helperText: '(calculado automáticamente)',
-                            suffixIcon: Icon(Icons.lock_outline, size: 18),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: RejillaCampos(
+                        maxColumnas: 2,
+                        children: [
+                          TextFormField(
+                            key: const Key('contrato-montoMensual'),
+                            controller: _monto,
+                            readOnly: true,
+                            validator: (_) => _montoMensual > 1000000000
+                                ? 'Debe estar entre 0 y 1000000000'
+                                : null,
+                            decoration: const InputDecoration(
+                              labelText: 'Monto mensual',
+                              helperText: '(calculado automáticamente)',
+                              suffixIcon: Icon(Icons.lock_outline, size: 18),
+                            ),
                           ),
-                        ),
-                        TextFormField(
-                          key: const Key('contrato-moneda'),
-                          controller: _moneda,
-                          textCapitalization: TextCapitalization.characters,
-                          inputFormatters: [
-                            LengthLimitingTextInputFormatter(3),
-                          ],
-                          onChanged: (_) => setState(() {}),
-                          validator: (v) =>
-                              RegExp(r'^[A-Z]{3}$')
-                                  .hasMatch((v ?? '').trim().toUpperCase())
-                              ? null
-                              : 'Moneda debe ser código ISO 4217 (3 letras '
-                                    'mayúsculas)',
-                          decoration: const InputDecoration(
-                            labelText: 'Moneda (ISO 4217)',
+                          TextFormField(
+                            key: const Key('contrato-moneda'),
+                            controller: _moneda,
+                            textCapitalization: TextCapitalization.characters,
+                            inputFormatters: [
+                              LengthLimitingTextInputFormatter(3),
+                            ],
+                            onChanged: (_) => setState(() {}),
+                            validator: (v) =>
+                                RegExp(r'^[A-Z]{3}$')
+                                    .hasMatch((v ?? '').trim().toUpperCase())
+                                ? null
+                                : 'Moneda debe ser código ISO 4217 (3 letras '
+                                      'mayúsculas)',
+                            decoration: const InputDecoration(
+                              labelText: 'Moneda (ISO 4217)',
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                    FilaCampos(
-                      children: [
-                        _numero(
-                          'areaMt2MedicionReal',
-                          'Área m² (medición real)',
-                          max: 1000000,
-                        ),
-                        _numero(
-                          'cuotaArrendamiento',
-                          'Canon arrendamiento',
-                          max: 1000000000,
-                        ),
-                      ],
-                    ),
-                    FilaCampos(
-                      children: [
-                        _numero('cuotaCam', 'CAM', max: 1000000000),
-                        _numero(
-                          'depositoGarantia',
-                          'Depósito de garantía',
-                          max: 1000000000,
-                        ),
-                      ],
+                          _numero(
+                            'areaMt2MedicionReal',
+                            'Área m² (medición real)',
+                            max: 1000000,
+                          ),
+                          _numero(
+                            'cuotaArrendamiento',
+                            'Canon arrendamiento',
+                            max: 1000000000,
+                          ),
+                          _numero('cuotaCam', 'CAM', max: 1000000000),
+                          _numero(
+                            'depositoGarantia',
+                            'Depósito de garantía',
+                            max: 1000000000,
+                          ),
+                        ],
+                      ),
                     ),
                     _fecha('fechaPagoDeposito', 'Fecha de pago del depósito'),
                     const SizedBox(height: 12),

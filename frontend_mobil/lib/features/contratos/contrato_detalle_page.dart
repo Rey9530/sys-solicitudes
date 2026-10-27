@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/adjuntos/adjuntos_seccion.dart';
 import '../../core/api/api_providers.dart';
+import '../../core/auth/sesion_controller.dart';
 import '../../core/format/fechas.dart';
 import '../../core/format/montos.dart';
+import '../../core/format/validaciones.dart';
 import '../../core/theme/colores.dart';
 import '../../core/widgets/avisos.dart';
 import '../../core/widgets/badges.dart';
@@ -14,7 +16,6 @@ import '../../core/widgets/estados.dart';
 import '../../core/widgets/pagina.dart';
 import '../inquilinos/inquilinos_providers.dart';
 import '../locales/locales_providers.dart';
-import 'catalogo_comun.dart';
 import 'cerrar_contrato_sheet.dart';
 import 'contrato_form_page.dart';
 import 'contratos_api.dart';
@@ -254,6 +255,9 @@ class AdjuntosContrato extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Fuera de los callbacks: la subida sigue aunque esta sección se desmonte.
+    final api = ref.watch(apiClientProvider);
+    final usuarioId = ref.watch(sesionProvider).value?.usuario.id;
     return AsyncView(
       value: ref.watch(adjuntosContratoProvider(contratoId)),
       onRetry: () => ref.invalidate(adjuntosContratoProvider(contratoId)),
@@ -267,13 +271,12 @@ class AdjuntosContrato extends ConsumerWidget {
         puedeSubir: esInquilino || puedeHacer(ref, 'contratos.adjuntos.subir'),
         puedeEliminar:
             esInquilino || puedeHacer(ref, 'contratos.adjuntos.eliminar'),
-        subir: (nombre, bytes, mime) => subirAdjuntoContrato(
-          ref.read(apiClientProvider),
-          contratoId,
-          nombre,
-          bytes,
-          mime,
-        ),
+        // El backend solo deja borrar al admin o a quien subió el archivo.
+        eliminable: esInquilino
+            ? (a) => a.usuarioSubioId != null && a.usuarioSubioId == usuarioId
+            : null,
+        subir: (nombre, bytes, mime) =>
+            subirAdjuntoContrato(api, contratoId, nombre, bytes, mime),
         alCambiar: () => ref.invalidate(adjuntosContratoProvider(contratoId)),
       ),
     );
