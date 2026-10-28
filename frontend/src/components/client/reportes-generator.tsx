@@ -72,8 +72,9 @@ export function ReportesGenerator({
     <div className="space-y-4">
       <div className="card filters">
         <div className="grid gap-1">
-          <label className={labelClass}>Entidad</label>
+          <label htmlFor="rep-entidad" className={labelClass}>Entidad</label>
           <select
+            id="rep-entidad"
             className={selectClass}
             value={entidad}
             onChange={(e) => cambiarEntidad(e.target.value)}
@@ -89,8 +90,9 @@ export function ReportesGenerator({
         {entidad === 'solicitudes' && (
           <>
             <div className="grid gap-1">
-              <label className={labelClass}>Estado</label>
+              <label htmlFor="rep-estado" className={labelClass}>Estado</label>
               <select
+                id="rep-estado"
                 className={selectClass}
                 value={filtros.estado ?? ''}
                 onChange={(e) => setF('estado', e.target.value)}
@@ -104,8 +106,9 @@ export function ReportesGenerator({
               </select>
             </div>
             <div className="grid gap-1">
-              <label className={labelClass}>Tipo</label>
+              <label htmlFor="rep-tipo" className={labelClass}>Tipo</label>
               <select
+                id="rep-tipo"
                 className={selectClass}
                 value={filtros.tipo ?? ''}
                 onChange={(e) => setF('tipo', e.target.value)}
@@ -119,8 +122,9 @@ export function ReportesGenerator({
               </select>
             </div>
             <div className="grid gap-1">
-              <label className={labelClass}>Local</label>
+              <label htmlFor="rep-local" className={labelClass}>Local</label>
               <select
+                id="rep-local"
                 className={selectClass}
                 value={filtros.localId ?? ''}
                 onChange={(e) => setF('localId', e.target.value)}
@@ -134,8 +138,9 @@ export function ReportesGenerator({
               </select>
             </div>
             <div className="grid gap-1">
-              <label className={labelClass}>Inquilino</label>
+              <label htmlFor="rep-inquilino" className={labelClass}>Inquilino</label>
               <select
+                id="rep-inquilino"
                 className={selectClass}
                 value={filtros.inquilinoId ?? ''}
                 onChange={(e) => setF('inquilinoId', e.target.value)}
@@ -149,8 +154,9 @@ export function ReportesGenerator({
               </select>
             </div>
             <div className="grid gap-1">
-              <label className={labelClass}>Desde</label>
+              <label htmlFor="rep-desde" className={labelClass}>Desde</label>
               <input
+                id="rep-desde"
                 type="date"
                 className={selectClass}
                 value={filtros.fechaDesde ?? ''}
@@ -158,8 +164,9 @@ export function ReportesGenerator({
               />
             </div>
             <div className="grid gap-1">
-              <label className={labelClass}>Hasta</label>
+              <label htmlFor="rep-hasta" className={labelClass}>Hasta</label>
               <input
+                id="rep-hasta"
                 type="date"
                 className={selectClass}
                 value={filtros.fechaHasta ?? ''}
@@ -171,8 +178,9 @@ export function ReportesGenerator({
 
         {entidad === 'locales' && (
           <div className="grid gap-1">
-            <label className={labelClass}>Estado</label>
+            <label htmlFor="rep-estado-2" className={labelClass}>Estado</label>
             <select
+              id="rep-estado-2"
               className={selectClass}
               value={filtros.estado ?? ''}
               onChange={(e) => setF('estado', e.target.value)}
@@ -189,8 +197,9 @@ export function ReportesGenerator({
 
         {entidad === 'inquilinos' && (
           <div className="grid gap-1">
-            <label className={labelClass}>Buscar</label>
+            <label htmlFor="rep-buscar" className={labelClass}>Buscar</label>
             <input
+              id="rep-buscar"
               className={selectClass}
               placeholder="razón social…"
               value={filtros.search ?? ''}
@@ -200,8 +209,9 @@ export function ReportesGenerator({
         )}
 
         <div className="grid gap-1">
-          <label className={labelClass}>Formato</label>
+          <label htmlFor="rep-formato" className={labelClass}>Formato</label>
           <select
+            id="rep-formato"
             className={selectClass}
             value={formato}
             onChange={(e) => setFormato(e.target.value)}

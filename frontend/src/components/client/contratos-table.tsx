@@ -10,6 +10,7 @@ import {
   ResponsiveDataView,
   type ResponsiveColumn,
 } from '@/components/client/responsive/responsive-data-view';
+import { formatFechaDMY } from '@/lib/datetime';
 
 export function ContratosTable({
   contratos,
@@ -58,14 +59,14 @@ export function ContratosTable({
       header: 'Inicio',
       cardLabel: 'Inicio',
       className: 'muted whitespace-nowrap',
-      cell: (c) => c.fechaInicio,
+      cell: (c) => formatFechaDMY(c.fechaInicio),
     },
     {
       key: 'fin',
       header: 'Fin',
       cardLabel: 'Fin',
       className: 'muted whitespace-nowrap',
-      cell: (c) => c.fechaFin ?? 'Indefinido',
+      cell: (c) => (c.fechaFin ? formatFechaDMY(c.fechaFin) : 'Indefinido'),
     },
     {
       // T-V14+: canon arrendamiento (Excel W) si está poblado; fallback a montoMensual.

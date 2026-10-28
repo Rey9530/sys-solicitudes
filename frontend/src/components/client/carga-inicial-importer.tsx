@@ -34,6 +34,7 @@ import {
   analizarCargaInicialAction,
   ejecutarCargaInicialAction,
 } from '@/app/(admin-plaza)/admin/contratos/actions';
+import { formatFechaDMY } from '@/lib/datetime';
 
 const PLANTILLA_URL = '/plantillas/plantilla-carga-inicial.xlsx';
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
@@ -463,7 +464,7 @@ function columnasResultado(
             <AccionBadge accion={f.contrato.accion} filaOrigen={null} ejecutado={ejecutado} />
             {f.contrato.fechaInicio && (
               <span className="muted text-xs whitespace-nowrap">
-                Desde {f.contrato.fechaInicio}
+                Desde {formatFechaDMY(f.contrato.fechaInicio)}
                 {f.contrato.montoMensual !== null && ` · USD ${f.contrato.montoMensual.toFixed(2)}`}
               </span>
             )}

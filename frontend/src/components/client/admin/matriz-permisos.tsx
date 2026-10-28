@@ -248,6 +248,8 @@ export function MatrizPermisos({
                       if (el) el.indeterminate = someChecked;
                     }}
                     onChange={(e) => toggleAll(rolActivo.id, m.permisos, e.target.checked)}
+                    aria-label={`Marcar todos los permisos de ${m.modulo}`}
+                    className="matriz-todos"
                     style={{ marginRight: 4 }}
                   />
                   todos
@@ -294,6 +296,7 @@ export function MatrizPermisos({
       <div className="flex flex-wrap items-center gap-3">
         <Input
           type="search"
+          aria-label="Buscar permiso"
           placeholder="Buscar permiso (código o descripción)…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

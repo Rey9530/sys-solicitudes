@@ -10,7 +10,7 @@ import { signIn, auth } from '@/auth';
  */
 export type LoginResult =
   | { ok: true; rol: string }
-  | { ok: false; error: 'invalid' | 'locked' | 'unknown' };
+  | { ok: false; error: 'invalid' | 'locked' | 'plaza_inactiva' | 'unknown' };
 
 export async function loginAction(input: { email: string; password: string }): Promise<LoginResult> {
   const parsed = LoginSchema.safeParse(input);
@@ -28,7 +28,8 @@ export async function loginAction(input: { email: string; password: string }): P
     if (error instanceof AuthError) {
       if (error.type === 'CredentialsSignin') {
         const code = (error as AuthError & { code?: string }).code;
-        return { ok: false, error: code === 'locked' ? 'locked' : 'invalid' };
+        if (code === 'locked' || code === 'plaza_inactiva') return { ok: false, error: code };
+        return { ok: false, error: 'invalid' };
       }
       return { ok: false, error: 'unknown' };
     }

@@ -161,7 +161,7 @@ export function TipoSolicitudForm({ tipo }: { tipo: SolicitudTipoConfigOutput })
           </p>
         </div>
 
-        <div className="flex items-center justify-between rounded-md border border-gray-200 bg-gray-50 p-3">
+        <div className="flex items-center justify-between rounded-md border border-[var(--border)] bg-[var(--surface-2)] p-3">
           <div>
             <Label className="text-sm font-semibold">Estado</Label>
             <p className="text-xs text-gray-500">

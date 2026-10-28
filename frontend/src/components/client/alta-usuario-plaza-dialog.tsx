@@ -108,7 +108,7 @@ export function AltaUsuarioPlazaDialog({
               Usuario creado. Comparte esta contraseña temporal de forma segura — no se
               volverá a mostrar:
             </p>
-            <p className="rounded-md bg-gray-100 p-3 text-center font-mono text-lg font-semibold">
+            <p className="rounded-md bg-[var(--surface-3)] p-3 text-center font-mono text-lg font-semibold">
               {passwordTemporal}
             </p>
             <Button className="w-full" onClick={() => onOpenChange(false)}>

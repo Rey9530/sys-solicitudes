@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { sinVacios } from '@/lib/form-resolver';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { CerrarContratoSchema, type ContratoOutput } from '@app/contracts';
@@ -22,6 +23,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { formatFechaDMY } from '@/lib/datetime';
 
 /** Cierre de contrato (T-055/T-060): finalizado o cancelado + motivo. */
 export function CerrarContratoDialog({ contrato }: { contrato: ContratoOutput }) {
@@ -33,7 +35,7 @@ export function CerrarContratoDialog({ contrato }: { contrato: ContratoOutput })
     handleSubmit,
     formState: { errors },
   } = useForm<FormValues>({
-    resolver: zodResolver(CerrarContratoSchema),
+    resolver: sinVacios(zodResolver(CerrarContratoSchema)),
     defaultValues: { estado: 'finalizado' },
   });
 
@@ -62,7 +64,8 @@ export function CerrarContratoDialog({ contrato }: { contrato: ContratoOutput })
         <DialogHeader>
           <DialogTitle>Cerrar contrato</DialogTitle>
           <DialogDescription>
-            {contrato.fechaInicio} → {contrato.fechaFin ?? 'indefinido'}. Esta acción no se
+            {formatFechaDMY(contrato.fechaInicio)} →{' '}
+            {contrato.fechaFin ? formatFechaDMY(contrato.fechaFin) : 'indefinido'}. Esta acción no se
             puede deshacer.
           </DialogDescription>
         </DialogHeader>

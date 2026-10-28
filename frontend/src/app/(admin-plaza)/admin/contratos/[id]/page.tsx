@@ -9,7 +9,7 @@ import { AdjuntosContrato } from '@/components/client/adjuntos-contrato';
 import { PageHeader } from '@/components/ui/page-header';
 import { Banner } from '@/components/ui/banner';
 import { Card } from '@/components/ui/card';
-import { formatDateInPlazaTz } from '@/lib/datetime';
+import { formatDateInPlazaTz, formatFechaDMY } from '@/lib/datetime';
 
 export const metadata: Metadata = { title: 'Detalle de contrato' };
 
@@ -45,21 +45,21 @@ export default async function ContratoDetailPage({
       {contrato.enVentanaT7 ? (
         <div className="mb-4">
           <Banner tone="danger">
-            Este contrato vence en 7 días o menos ({contrato.fechaFin}). Renueva o cierra.
+            Este contrato vence en 7 días o menos ({formatFechaDMY(contrato.fechaFin)}). Renueva o cierra.
           </Banner>
         </div>
       ) : contrato.enVentanaT30 ? (
         <div className="mb-4">
-          <Banner tone="warn">Este contrato vence en 30 días o menos ({contrato.fechaFin}).</Banner>
+          <Banner tone="warn">Este contrato vence en 30 días o menos ({formatFechaDMY(contrato.fechaFin)}).</Banner>
         </div>
       ) : null}
 
       <PageHeader
         breadcrumb={[{ label: 'Contratos', href: '/admin/contratos' }, { label: contrato.localCodigo ?? '' }]}
         title={
-          <>
+          <span>
             <span className="mono">{contrato.localCodigo}</span> · {contrato.inquilinoRazonSocial}
-          </>
+          </span>
         }
         badges={<ContratoEstadoBadge estado={contrato.estado} />}
         actions={
@@ -100,15 +100,15 @@ export default async function ContratoDetailPage({
           </div>
           <div>
             <div className="dt">Fecha entrega del local</div>
-            <div className="dd">{contrato.fechaEntregaLocal ?? '—'}</div>
+            <div className="dd">{formatFechaDMY(contrato.fechaEntregaLocal)}</div>
           </div>
           <div>
             <div className="dt">Inicio de operaciones</div>
-            <div className="dd">{contrato.inicioOperaciones ?? '—'}</div>
+            <div className="dd">{formatFechaDMY(contrato.inicioOperaciones)}</div>
           </div>
           <div>
             <div className="dt">Aviso de terminación</div>
-            <div className="dd">{contrato.avisoTerminacion ?? '—'}</div>
+            <div className="dd">{formatFechaDMY(contrato.avisoTerminacion)}</div>
           </div>
         </dl>
       </Card>
@@ -148,7 +148,7 @@ export default async function ContratoDetailPage({
             </div>
             <div>
               <div className="dt">Fecha pago del depósito</div>
-              <div className="dd">{contrato.fechaPagoDeposito ?? '—'}</div>
+              <div className="dd">{formatFechaDMY(contrato.fechaPagoDeposito)}</div>
             </div>
             {/* Totales derivados Y/Z/AA — T-V14+ */}
             <div className="full">
@@ -184,11 +184,11 @@ export default async function ContratoDetailPage({
           <dl className="dl">
             <div>
               <div className="dt">Inicio</div>
-              <div className="dd">{contrato.fechaInicio}</div>
+              <div className="dd">{formatFechaDMY(contrato.fechaInicio)}</div>
             </div>
             <div>
               <div className="dt">Fin</div>
-              <div className="dd">{contrato.fechaFin ?? 'Indefinido'}</div>
+              <div className="dd">{contrato.fechaFin ? formatFechaDMY(contrato.fechaFin) : 'Indefinido'}</div>
             </div>
             <div>
               <div className="dt">Estado</div>

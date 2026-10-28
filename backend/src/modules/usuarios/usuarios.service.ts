@@ -181,10 +181,14 @@ export class UsuariosService {
    */
   async findAll(query: ListUsuariosQuery, actor: AuthenticatedUser) {
     const plazaId = this.requirePlaza(actor);
-    const { page, pageSize, rol, search } = query;
+    const { page, pageSize, rol, search, activo } = query;
 
+    // Fix 2026-10-27 (auditoría F6): `activo=false` lista los deshabilitados
+    // (soft delete) para poder reactivarlos desde la UI; antes el filtro se
+    // ignoraba y nunca aparecían. Sin filtro (o `true`) se mantiene "solo
+    // activos": lo usan los selectores de responsable, reasignación, etc.
     const where: Prisma.usuarioWhereInput = {
-      deleted_at: null,
+      deleted_at: activo === false ? { not: null } : null,
       ...(rol ? { rol: { codigo: rol } } : {}),
       ...(search
         ? {
@@ -351,9 +355,18 @@ export class UsuariosService {
   }
 
   /**
-   * T-059-bis: edición de nombre y teléfono desde el panel admin (no se
-   * expone `rolStaffId` ni `activo` aquí; esos cambios se hacen en el CRUD
-   * completo T-034).
+   * T-059-bis: edición de nombre y teléfono desde el panel admin. `activo` se
+   * cambia con disable/reactivate.
+   *
+   * Fix 2026-10-27 (auditoría F5): también aplica `rolStaffId` a un
+   * `admin_plaza`. Antes el diálogo "Editar usuario" lo enviaba, el backend lo
+   * ignoraba y respondía 200, y no había otro endpoint para cambiar el rol.
+   * Reglas:
+   *  - solo para `admin_plaza`; nunca `null` (un admin sin rol de staff recibe
+   *    todos los permisos por compatibilidad legacy → sería una escalada);
+   *  - el rol debe existir en la plaza y estar activo (misma regla del alta);
+   *  - no se puede dejar la plaza sin ningún usuario activo con un rol de
+   *    sistema (`es_sistema`): 409 `ULTIMO_ADMIN_SISTEMA`.
    */
   async update(
     id: string,
@@ -375,11 +388,13 @@ export class UsuariosService {
           message: 'El usuario no existe en esta plaza.',
         });
       }
+      const rolStaffId = await this.resolverCambioRolStaff(tx, before, dto.rolStaffId);
       const updated = await tx.usuario.update({
         where: { id },
         data: {
           ...(dto.nombre !== undefined ? { nombre: dto.nombre } : {}),
           ...(dto.telefono !== undefined ? { telefono: dto.telefono } : {}),
+          ...(rolStaffId !== undefined ? { rol_staff_id: rolStaffId } : {}),
         },
         include: { rol: { select: { codigo: true } } },
       });
@@ -397,6 +412,54 @@ export class UsuariosService {
       ...meta,
     });
     return this.toOutput(updated, rolCodigo);
+  }
+
+  /**
+   * Valida un cambio de `rol_staff_id` (F5). Devuelve el id a guardar o
+   * `undefined` si no hay cambio. Corre dentro de `withTenant` (RLS de plaza).
+   */
+  private async resolverCambioRolStaff(
+    tx: Prisma.TransactionClient,
+    before: { id: string; rol_staff_id: string | null; rol: { codigo: string } },
+    rolStaffId: string | null | undefined,
+  ): Promise<string | undefined> {
+    if (rolStaffId === undefined || rolStaffId === before.rol_staff_id) return undefined;
+    if (before.rol.codigo !== 'admin_plaza' || rolStaffId === null) {
+      throw new BadRequestException({
+        code: 'ROL_STAFF_INVALIDO',
+        title: 'Solicitud inválida',
+        message: 'Solo un administrador de plaza puede cambiar de rol de staff, y siempre a un rol concreto.',
+      });
+    }
+    const nuevo = await tx.rol_staff.findFirst({ where: { id: rolStaffId, activo: true } });
+    if (!nuevo) {
+      throw new BadRequestException({
+        code: 'ROL_STAFF_NO_EXISTE',
+        title: 'Solicitud inválida',
+        message: 'El rol de staff indicado no existe o está inactivo.',
+      });
+    }
+    if (!nuevo.es_sistema && before.rol_staff_id) {
+      const actual = await tx.rol_staff.findFirst({ where: { id: before.rol_staff_id } });
+      if (actual?.es_sistema) {
+        const otrosSistema = await tx.usuario.count({
+          where: {
+            id: { not: before.id },
+            deleted_at: null,
+            rol_staff: { es_sistema: true, activo: true },
+          },
+        });
+        if (otrosSistema === 0) {
+          throw new ConflictException({
+            code: 'ULTIMO_ADMIN_SISTEMA',
+            title: 'Conflicto',
+            message:
+              'Es el único usuario con el rol de administrador del sistema; asigna ese rol a otra persona antes de cambiarlo.',
+          });
+        }
+      }
+    }
+    return rolStaffId;
   }
 
   /**

@@ -14,7 +14,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 |---|---|
 | Entender el producto | `README.md` → `docs/01-vision-general.md` → `docs/03-modulos-del-sistema.md` |
 | Implementar | `docs/01` → `docs/02-stack-tecnologico.md` → `docs/04-modelo-de-datos.md` → `docs/07-arquitectura.md` → `docs/03` → `docs/05-flujo-de-solicitudes.md` → `docs/06-roles-y-permisos.md` |
-| Probar / QA | `docs/05-flujo-de-solicitudes.md` (state machine) → `docs/06-roles-y-permisos.md` (matriz) |
+| Probar / QA | `docs/05-flujo-de-solicitudes.md` (state machine) → `docs/06-roles-y-permisos.md` (matriz) → `docs/08-auditoria-qa-y-mejoras.md` (suite Playwright, bugs y mejoras pendientes) |
 
 ## Stack confirmado y decisiones clave
 
@@ -23,7 +23,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **ORM:** Prisma 7. Migraciones versionadas con `prisma migrate deploy` en arranque.
 - **Validación:** Zod en paquete compartido `packages/contracts`, usado por NestJS (`ZodValidationPipe`) y por React Hook Form en frontend.
 - **BD:** PostgreSQL 16, compartida, esquema compartido, discriminador `plaza_id` en cada tabla de negocio. RLS activo como segunda capa de defensa.
-- **Auth:** Auth.js (NextAuth v5) en frontend + JWT HS256 compartido con NestJS (mismo `JWT_SECRET`). Access 15 min, refresh 7 días rotado (decisión D3).
+- **Auth:** Auth.js (NextAuth v5) en frontend + JWT HS256 compartido con NestJS (mismo `JWT_SECRET`). Access 1 h, refresh 14 días rotado (T-V13; la decisión original D3 era 15 min / 7 días).
 - **Storage:** MinIO (S3-compatible). Buckets por tenant: `solicitudes-adjuntos-{plaza_id}`. URLs pre-firmadas con 15 min de expiración. Límite 25 MB/archivo.
 - **Reportes:** jsreport 4.13 como contenedor Docker separado (imagen `jsreport/jsreport:4.13.0`); el backend no instala librerías de generación y solo hace de proxy HTTP al servicio de jsreport (ver `docs/02-stack-tecnologico.md` §2.12).
 - **Email:** SMTP con Nodemailer + cola en tabla `email_log` y worker con `@nestjs/schedule` (reintentos 1m/5m/30m).
@@ -289,7 +289,7 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de inst
 
 ### Diálogos de decisión en el frontend (SweetAlert2, NO `window.confirm`)
 
-> **Regla obligatoria (adoptada 2026-06-10, refactor de T-059-bis).** Toda confirmación destructiva o de decisión (deshabilitar, eliminar, resetear, reactivar, cerrar contrato, cancelar solicitud, etc.) **debe** usar `confirmAction` desde `frontend/src/lib/sweetalert.ts` (SweetAlert2 v11.x). **Prohibido** `window.confirm(...)` o `window.alert(...)` nativos. Toasts efímeros no modales siguen yendo por `sonner` (`toast.success` / `toast.error`). Detalle y justificación en `docs/07-arquitectura.md` §7.4.5 y `docs/02-stack-tecnologico.md` §2.10.
+> **Regla obligatoria (adoptada 2026-06-10, refactor de T-059-bis).** Toda confirmación destructiva o de decisión (deshabilitar, eliminar, resetear, reactivar, cerrar contrato, cancelar solicitud, etc.) **debe** usar `confirmAction` desde `frontend/src/lib/sweetalert.ts` (SweetAlert2 v11.x). **Prohibido** `window.confirm(...)`, `window.alert(...)` o `window.prompt(...)` nativos. Si la decisión pide un texto (motivo, comentario) se usa `promptAction` del mismo wrapper: devuelve `null` al cancelar y quien lo llama **debe abortar** (bug 2026-10-27: el `prompt()` nativo de Cancelar/Liberar ejecutaba la acción aunque el usuario pulsara Cancelar). Toasts efímeros no modales siguen yendo por `sonner` (`toast.success` / `toast.error`). Detalle y justificación en `docs/07-arquitectura.md` §7.4.5 y `docs/02-stack-tecnologico.md` §2.10.
 
 **Procedimiento al añadir una acción destructiva o de decisión:**
 1. Importar `confirmAction` desde `@/lib/sweetalert`.
@@ -297,11 +297,11 @@ Versiones verificadas en `https://registry.npmjs.org/<pkg>/latest` antes de inst
 3. Para acciones destructivas usar `icon: 'warning'` (enfoca el botón Cancelar por defecto).
 4. Para decisiones neutras (ej. "reactivar") usar `icon: 'question'`.
 5. En `confirmButtonText` usar la forma afirmativa específica: `"Sí, deshabilitar"`, `"Sí, eliminar"`, `"Sí, reactivar"`, etc. (no solo "Aceptar").
-6. Verificar con `npm run lint` y `npm run type-check` que no quedan llamadas a `window.confirm` / `window.alert` en `src/`.
+6. Verificar con `npm run lint` y `npm run type-check` que no quedan llamadas a `window.confirm` / `window.alert` / `prompt` en `src/`.
 
 **Búsqueda rápida para auditoría:**
 ```bash
-Get-ChildItem -Path "frontend\src" -Recurse -Include "*.ts","*.tsx" | Select-String -Pattern '\bconfirm\(|\bwindow\.alert\b'
+Get-ChildItem -Path "frontend\src" -Recurse -Include "*.ts","*.tsx" | Select-String -Pattern '\bconfirm\(|\bprompt\(|\bwindow\.alert\b'
 ```
 
 Si aparece algún match en código que NO sea el wrapper `lib/sweetalert.ts` o un comentario JSDoc, es un **bug** que debe corregirse.

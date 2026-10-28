@@ -32,6 +32,11 @@ class AccountLockedError extends CredentialsSignin {
   override code = 'locked';
 }
 
+/** La plaza del usuario fue desactivada (backend 403 `PLAZA_INACTIVA`, F7). */
+class PlazaInactivaError extends CredentialsSignin {
+  override code = 'plaza_inactiva';
+}
+
 interface BackendLoginResponse {
   accessToken: string;
   refreshToken: string;
@@ -109,6 +114,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (res.status === 429) {
           // Cuenta bloqueada por lockout.
           throw new AccountLockedError();
+        }
+        if (res.status === 403) {
+          const body = (await res.json().catch(() => null)) as { code?: string } | null;
+          if (body?.code === 'PLAZA_INACTIVA') throw new PlazaInactivaError();
         }
         if (!res.ok) {
           // Credenciales inválidas u otro error → null = CredentialsSignin genérico.

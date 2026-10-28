@@ -76,3 +76,20 @@ export async function irASemanaDe(page: Page, fecha: string, hoy: string) {
     timeout: 15_000,
   });
 }
+
+/**
+ * Espera a que React haya hidratado el elemento (tiene sus props de React
+ * enganchadas). En `next dev` la primera visita compila los chunks y un
+ * `fill()` previo a la hidratación se pierde: React restaura el valor inicial
+ * del input no controlado y el formulario envía el dato viejo.
+ */
+export async function esperarHidratacion(page: Page, selector: string) {
+  await page.waitForFunction(
+    (sel) => {
+      const el = document.querySelector(sel);
+      return !!el && Object.keys(el).some((k) => k.startsWith('__reactProps'));
+    },
+    selector,
+    { timeout: 30_000 },
+  );
+}

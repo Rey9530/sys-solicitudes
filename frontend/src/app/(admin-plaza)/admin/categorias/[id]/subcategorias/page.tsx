@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { CategoriaOutput, SubcategoriaDetailOutput } from '@app/contracts';
 import { apiFetch } from '@/lib/api';
+import { PageHeader } from '@/components/ui/page-header';
 import { SubcategoriasManager, type StaffOption } from '@/components/client/subcategorias-manager';
 
 export const metadata: Metadata = { title: 'Subcategorías' };
@@ -43,22 +43,16 @@ export default async function SubcategoriasPage({ params }: { params: Promise<{ 
     : [];
 
   return (
-    <div className="space-y-6">
-      <div>
-        <p className="text-sm text-gray-500">
-          <Link href="/admin/categorias" className="hover:underline">
-            Categorías
-          </Link>{' '}
-          /{' '}
-          <Link href={`/admin/categorias/${categoria.id}`} className="hover:underline">
-            {categoria.nombre}
-          </Link>
-        </p>
-        <h1 className="text-2xl font-bold text-gray-900">Subcategorías de {categoria.nombre}</h1>
-        <p className="text-sm text-gray-500">
-          {subs.total} subcategoría(s) · cada una con 1 responsable y hasta 5 supervisores.
-        </p>
-      </div>
+    <div className="page wide">
+      <PageHeader
+        breadcrumb={[
+          { label: 'Categorías', href: '/admin/categorias' },
+          { label: categoria.nombre, href: `/admin/categorias/${categoria.id}` },
+          { label: 'Subcategorías' },
+        ]}
+        title={`Subcategorías de ${categoria.nombre}`}
+        subtitle={`${subs.total} subcategoría(s) · cada una con 1 responsable y hasta 5 supervisores.`}
+      />
       <SubcategoriasManager
         categoriaId={categoria.id}
         subcategorias={subs.items}

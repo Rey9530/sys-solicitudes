@@ -33,7 +33,7 @@ export default async function EditarSolicitudPage({
     <div className="page narrow">
       <PageHeader
         title={`Editar ${solicitud.codigo}`}
-        subtitle="El cambio de local solo está permitido en borrador y requerida_subsanacion (S-FS-F)."
+        subtitle="Puedes editar la solicitud (incluido el local) mientras esté en borrador o requiera subsanación."
         breadcrumb={[
           { label: 'Mis solicitudes', href: '/inquilino/solicitudes' },
           { label: solicitud.codigo, href: `/inquilino/solicitudes/${solicitud.id}` },

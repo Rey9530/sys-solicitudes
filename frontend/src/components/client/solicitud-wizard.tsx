@@ -286,7 +286,7 @@ export function SolicitudWizard({
         break;
       case 'remodelacion':
         if (extra.fecha_inicio_estimada)
-          rows.push(['Fecha inicio estimada', extra.fecha_inicio_estimada]);
+          rows.push(['Fecha inicio estimada', formatFechaDMY(extra.fecha_inicio_estimada)]);
         if (extra.duracion_dias) rows.push(['Duración (días)', extra.duracion_dias]);
         if (extra.empresa_constructora)
           rows.push(['Empresa constructora', extra.empresa_constructora]);
@@ -534,8 +534,9 @@ export function SolicitudWizard({
         {step === 1 && (
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label>Tipo de solicitud *</Label>
+              <Label htmlFor="wz-tipo">Tipo de solicitud *</Label>
               <select
+                id="wz-tipo"
                 className={selectClass}
                 value={tipo}
                 onChange={(e) => {
@@ -554,8 +555,9 @@ export function SolicitudWizard({
             {/* T-V21: categoría y subcategoría obligatorias para TODO tipo
                 (antes 'otro' se eximía y describía la categoría en texto libre). */}
             <div className="grid gap-1.5">
-              <Label>Categoría *</Label>
+              <Label htmlFor="wz-categoria">Categoría *</Label>
               <select
+                id="wz-categoria"
                 className={selectClass}
                 value={categoriaId}
                 onChange={(e) => {
@@ -572,8 +574,9 @@ export function SolicitudWizard({
               </select>
             </div>
             <div className="grid gap-1.5">
-              <Label>Subcategoría *</Label>
+              <Label htmlFor="wz-subcategoria">Subcategoría *</Label>
               <select
+                id="wz-subcategoria"
                 className={selectClass}
                 value={subcategoriaId}
                 onChange={(e) => setSubcategoriaId(e.target.value)}
@@ -593,8 +596,9 @@ export function SolicitudWizard({
         {step === 2 && (
           <div className="grid gap-4">
             <div className="grid gap-1.5">
-              <Label>Local *</Label>
+              <Label htmlFor="wz-local">Local *</Label>
               <select
+                id="wz-local"
                 className={selectClass}
                 value={localId}
                 onChange={(e) => setLocalId(e.target.value)}
@@ -608,12 +612,13 @@ export function SolicitudWizard({
               </select>
             </div>
             <div className="grid gap-1.5">
-              <Label>Título *</Label>
-              <Input maxLength={120} value={titulo} onChange={(e) => setTitulo(e.target.value)} />
+              <Label htmlFor="wz-titulo">Título *</Label>
+              <Input id="wz-titulo" maxLength={120} value={titulo} onChange={(e) => setTitulo(e.target.value)} />
             </div>
             <div className="grid gap-1.5">
-              <Label>Descripción *</Label>
+              <Label htmlFor="wz-descripcion">Descripción *</Label>
               <textarea
+                id="wz-descripcion"
                 rows={4}
                 maxLength={4000}
                 className="textarea"
@@ -712,8 +717,9 @@ export function SolicitudWizard({
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <Label>Fecha inicio *</Label>
+                  <Label htmlFor="wz-fecha-inicio">Fecha inicio *</Label>
                   <Input
+                    id="wz-fecha-inicio"
                     type="date"
                     value={fechaInicio}
                     min={
@@ -730,8 +736,9 @@ export function SolicitudWizard({
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Fecha fin *</Label>
+                  <Label htmlFor="wz-fecha-fin">Fecha fin *</Label>
                   <Input
+                    id="wz-fecha-fin"
                     type="date"
                     value={fechaFin}
                     min={fechaInicio || undefined}
@@ -744,16 +751,18 @@ export function SolicitudWizard({
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Hora inicio *</Label>
+                  <Label htmlFor="wz-hora-inicio">Hora inicio *</Label>
                   <Input
+                    id="wz-hora-inicio"
                     type="time"
                     value={horaInicio}
                     onChange={(e) => setHoraInicio(e.target.value)}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Hora fin *</Label>
+                  <Label htmlFor="wz-hora-fin">Hora fin *</Label>
                   <Input
+                    id="wz-hora-fin"
                     type="time"
                     value={horaFin}
                     onChange={(e) => setHoraFin(e.target.value)}
@@ -789,8 +798,9 @@ export function SolicitudWizard({
             {tipo === 'mantenimiento' && (
               <div className="wz-extra">
                 <div className="grid gap-1.5">
-                  <Label>Área afectada *</Label>
+                  <Label htmlFor="wz-area-afectada">Área afectada *</Label>
                   <Input
+                    id="wz-area-afectada"
                     maxLength={200}
                     value={extra.area_afectada}
                     onChange={(e) => setX('area_afectada', e.target.value)}
@@ -810,16 +820,18 @@ export function SolicitudWizard({
               <div className="wz-extra">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="grid gap-1.5">
-                    <Label>Fecha inicio estimada *</Label>
+                    <Label htmlFor="wz-fecha-inicio-estimada">Fecha inicio estimada *</Label>
                     <Input
+                      id="wz-fecha-inicio-estimada"
                       type="date"
                       value={extra.fecha_inicio_estimada}
                       onChange={(e) => setX('fecha_inicio_estimada', e.target.value)}
                     />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label>Duración (días) *</Label>
+                    <Label htmlFor="wz-duracion-dias">Duración (días) *</Label>
                     <Input
+                      id="wz-duracion-dias"
                       type="number"
                       min={1}
                       max={365}
@@ -829,16 +841,18 @@ export function SolicitudWizard({
                   </div>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Empresa constructora *</Label>
+                  <Label htmlFor="wz-empresa-constructora">Empresa constructora *</Label>
                   <Input
+                    id="wz-empresa-constructora"
                     maxLength={160}
                     value={extra.empresa_constructora}
                     onChange={(e) => setX('empresa_constructora', e.target.value)}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label>Monto presupuesto (USD) *</Label>
+                  <Label htmlFor="wz-monto-presupuesto">Monto presupuesto (USD) *</Label>
                   <Input
+                    id="wz-monto-presupuesto"
                     type="number"
                     min={0}
                     step="0.01"
@@ -1011,7 +1025,7 @@ function BloqueAsistentes({
               return (
                 <li
                   key={i}
-                  className="grid grid-cols-1 gap-2 rounded-md border border-gray-200 p-3 md:grid-cols-2"
+                  className="grid grid-cols-1 gap-2 rounded-md border border-[var(--border)] p-3 md:grid-cols-2"
                 >
                   <div className="grid gap-1.5">
                     <Label htmlFor={`asistente-${i}-nombre`}>Nombre *</Label>
@@ -1123,9 +1137,9 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
           className: [
             'flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-6 text-center transition-colors',
             isDragReject
-              ? 'border-red-400 bg-red-50'
+              ? 'border-[var(--danger-bd)] bg-[var(--danger-bg)]'
               : isDragActive
-                ? 'border-blue-500 bg-blue-50'
+                ? 'border-[var(--primary)] bg-[var(--primary-soft)]'
                 : 'wz-drop',
             lleno ? 'pointer-events-none opacity-50' : 'cursor-pointer',
           ]
@@ -1190,7 +1204,7 @@ function AdjuntosCard({ files, onAdd, onRemove }: AdjuntosCardProps) {
               <button
                 type="button"
                 onClick={() => onRemove(i)}
-                className="shrink-0 rounded p-1 wz-t3 hover:bg-red-50 hover:text-red-600"
+                className="shrink-0 rounded p-1 wz-t3 hover:bg-[var(--danger-bg)] hover:text-[var(--danger-fg)]"
                 aria-label={`Quitar ${f.name}`}
               >
                 <X className="h-4 w-4" />
@@ -1315,7 +1329,7 @@ function ResumenCard(props: ResumenCardProps) {
           label="Modo emerg."
           value={
             esEmergencia ? (
-              <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+              <span className="badge b-danger">
                 Sí · máx. 3/mes
               </span>
             ) : (

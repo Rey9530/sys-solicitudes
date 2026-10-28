@@ -8,7 +8,8 @@ import { defineConfig, devices } from '@playwright/test';
  */
 export default defineConfig({
   testDir: './e2e',
-  timeout: 60_000,
+  // Holgado: un login limitado (5/min) espera el Retry-After (~60 s) antes de reintentar.
+  timeout: 150_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,

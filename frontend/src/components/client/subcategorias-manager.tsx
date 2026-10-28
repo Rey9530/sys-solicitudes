@@ -35,6 +35,7 @@ import {
 } from '@/components/client/responsive/responsive-data-view';
 import { Can } from '@/components/client/can';
 import { confirmAction } from '@/lib/sweetalert';
+import { cn } from '@/lib/utils';
 
 export interface StaffOption {
   id: string;
@@ -120,7 +121,7 @@ export function SubcategoriasManager({
           <Button
             variant="ghost"
             size="sm"
-            className="text-red-600 hover:bg-red-50"
+            className="text-red-600 hover:bg-[var(--danger-bg)]"
             disabled={pendingId === s.id}
             onClick={() => onDelete(s)}
           >
@@ -158,11 +159,7 @@ export function SubcategoriasManager({
       header: 'Supervisores',
       cardLabel: 'Supervisores',
       cell: (s) => (
-        <span
-          className={`rounded px-2 py-0.5 text-xs font-semibold ${
-            s.supervisores.length >= 5 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-          }`}
-        >
+        <span className={cn('badge', s.supervisores.length >= 5 ? 'b-danger' : 'b-neutral')}>
           {s.supervisores.length}/5
         </span>
       ),
@@ -172,11 +169,8 @@ export function SubcategoriasManager({
       header: 'Estado',
       cardLabel: 'Estado',
       cell: (s) => (
-        <span
-          className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-            s.activo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
-          }`}
-        >
+        <span className={cn('badge', s.activo ? 'b-ok' : 'b-neutral')}>
+          <span className="bdot" />
           {s.activo ? 'Activa' : 'Inactiva'}
         </span>
       ),
@@ -477,11 +471,7 @@ function SupervisoresDialog({
         <DialogHeader>
           <DialogTitle>
             Supervisores de {sub.nombre}{' '}
-            <span
-              className={`ml-1 rounded px-2 py-0.5 text-xs font-semibold ${
-                alLimite ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-              }`}
-            >
+            <span className={cn('badge ml-1', alLimite ? 'b-danger' : 'b-neutral')}>
               {sub.supervisores.length}/5
             </span>
           </DialogTitle>
@@ -502,7 +492,7 @@ function SupervisoresDialog({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-red-600 hover:bg-red-50"
+                    className="text-red-600 hover:bg-[var(--danger-bg)]"
                     disabled={pending}
                     onClick={() => onRemove(s.id)}
                   >

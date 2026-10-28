@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { sinVacios } from '@/lib/form-resolver';
 import { toast } from 'sonner';
 import {
   UpdateInquilinoSchema,
@@ -42,7 +43,7 @@ export function EditarInquilinoForm({
     handleSubmit,
     formState: { errors },
   } = useForm<UpdateInquilinoInput>({
-    resolver: zodResolver(UpdateInquilinoSchema),
+    resolver: sinVacios(zodResolver(UpdateInquilinoSchema), null),
     defaultValues: {
       nombreComercial: inquilino.nombreComercial,
       representanteLegal: inquilino.representanteLegal,
@@ -110,12 +111,12 @@ export function EditarInquilinoForm({
         </h2>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label>Razón social</Label>
-            <Input value={inquilino.razonSocial} disabled />
+            <Label htmlFor="inq-razon-social">Razón social</Label>
+            <Input id="inq-razon-social" value={inquilino.razonSocial} disabled />
           </div>
           <div className="grid gap-1.5">
-            <Label>Identificación (NIT)</Label>
-            <Input value={inquilino.identificacion ?? '—'} disabled />
+            <Label htmlFor="inq-identificacion">Identificación (NIT)</Label>
+            <Input id="inq-identificacion" value={inquilino.identificacion ?? '—'} disabled />
           </div>
         </div>
         <p className="-mt-2 text-xs text-gray-400">

@@ -6,6 +6,7 @@ import { ContratoEstadoBadge } from '@/components/estado-badge';
 import { AdjuntosContrato } from '@/components/client/adjuntos-contrato';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
+import { formatFechaDMY } from '@/lib/datetime';
 
 export const metadata: Metadata = { title: 'Mi contrato' };
 
@@ -28,9 +29,9 @@ export default async function InquilinoContratoDetailPage({
       <PageHeader
         breadcrumb={[{ label: 'Mis contratos', href: '/inquilino/contratos' }, { label: contrato.localCodigo ?? '' }]}
         title={
-          <>
+          <span>
             Local <span className="mono">{contrato.localCodigo}</span>
-          </>
+          </span>
         }
         badges={<ContratoEstadoBadge estado={contrato.estado} />}
       />
@@ -39,11 +40,11 @@ export default async function InquilinoContratoDetailPage({
         <dl className="dl">
           <div>
             <div className="dt">Inicio</div>
-            <div className="dd">{contrato.fechaInicio}</div>
+            <div className="dd">{formatFechaDMY(contrato.fechaInicio)}</div>
           </div>
           <div>
             <div className="dt">Fin</div>
-            <div className="dd">{contrato.fechaFin ?? 'Indefinido'}</div>
+            <div className="dd">{contrato.fechaFin ? formatFechaDMY(contrato.fechaFin) : 'Indefinido'}</div>
           </div>
           <div>
             <div className="dt">Monto mensual</div>

@@ -269,6 +269,13 @@ export class PlazasService {
       await this.prismaAdmin.plaza.findFirst({ where: { id, deleted_at: null } }),
     );
     await this.prismaAdmin.plaza.update({ where: { id }, data: { deleted_at: new Date() } });
+    // F7 (auditoría 2026-10-27): cortar las sesiones de la plaza. El login y el
+    // refresh ya rechazan plazas desactivadas; revocar los refresh tokens hace
+    // que las sesiones abiertas terminen al expirar su access token (≤ 1 h).
+    await this.prismaAdmin.refresh_token.updateMany({
+      where: { revoked_at: null, usuario: { plaza_id: id } },
+      data: { revoked_at: new Date() },
+    });
     await this.auditoria.record({
       accion: 'plaza.delete',
       entidadTipo: 'plaza',

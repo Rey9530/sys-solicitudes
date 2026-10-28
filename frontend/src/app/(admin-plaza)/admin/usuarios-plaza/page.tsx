@@ -62,6 +62,8 @@ export default async function UsuariosPlazaPage({
     pageSize: '20',
   });
   if (sp.search) usrQs.set('search', sp.search);
+  // Deshabilitados: el backend solo los lista con `activo=false` (para reactivarlos).
+  if (sp.activo === 'false') usrQs.set('activo', 'false');
 
   const [usrRes, rsActivosRes, rsTodosRes, catalogoRes] = await Promise.all([
     apiFetch(`/usuarios?${usrQs.toString()}`),
@@ -122,7 +124,7 @@ export default async function UsuariosPlazaPage({
             content: (
               <>
                 <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                  <UsuariosPlazaFiltros search={sp.search} />
+                  <UsuariosPlazaFiltros search={sp.search} activo={sp.activo} />
                   <AltaUsuarioPlazaDialog rolesStaff={rolesActivos} />
                 </div>
                 <UsuariosPlazaTable usuarios={usuarios.items} rolesStaff={rolesActivos} />

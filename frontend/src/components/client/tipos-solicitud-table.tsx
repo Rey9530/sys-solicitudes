@@ -43,7 +43,7 @@ export function TiposSolicitudTable({ tipos }: { tipos: SolicitudTipoConfigOutpu
       key: 'codigo',
       header: 'Código',
       cardLabel: 'Código',
-      cell: (t) => <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">{t.codigo}</code>,
+      cell: (t) => <code className="rounded bg-[var(--surface-3)] px-1.5 py-0.5 text-xs">{t.codigo}</code>,
     },
     {
       key: 'descripcion',

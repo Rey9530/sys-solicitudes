@@ -6,6 +6,9 @@ import { request, type APIRequestContext } from '@playwright/test';
 export const CUENTAS = {
   inquilino: { email: 'inquilino@demo.com', password: 'Plazapp2026!' },
   admin: { email: 'admin@demo.com', password: 'Plazapp2026!' },
+  superadmin: { email: 'superadmin@plazapp.com', password: 'Plazapp2026!' },
+  /** Admin de otra plaza (qa-b): solo para pruebas de aislamiento multi-tenant. */
+  adminOtraPlaza: { email: 'admin@qa-b.com', password: 'Plazapp2026!' },
 } as const;
 
 export const API_URL = process.env.E2E_API_URL ?? 'http://localhost:4000/api/v1';
@@ -226,4 +229,25 @@ export async function feedCalendario(
   const items = await json<FeedItem[]>(await ctx.get(`${API_URL}/calendario`, { params: { from, to } }));
   await ctx.dispose();
   return items;
+}
+
+/**
+ * Categoría (no creada por la suite) con al menos una subcategoría activa.
+ * Las pruebas crean categorías `E2E …` sin subcategorías, así que "la primera
+ * categoría" no sirve para crear solicitudes.
+ */
+export async function categoriaConSubcategoria(
+  ctx: APIRequestContext,
+): Promise<{ categoriaId: string; subcategoriaId: string }> {
+  const cats = await json<{ items: { id: string; nombre: string; activo: boolean }[] }>(
+    await ctx.get(`${API_URL}/categorias`, { params: { page: 1, pageSize: 100 } }),
+  );
+  for (const c of cats.items.filter((x) => x.activo !== false && !/E2E/i.test(x.nombre))) {
+    const subs = await json<{ items: { id: string; activo: boolean }[] }>(
+      await ctx.get(`${API_URL}/categorias/${c.id}/subcategorias`),
+    );
+    const sub = subs.items.find((s) => s.activo);
+    if (sub) return { categoriaId: c.id, subcategoriaId: sub.id };
+  }
+  throw new Error('No hay categorías con subcategorías activas (datos seed)');
 }

@@ -31,11 +31,13 @@ export function Tabs({ tabs, activeKey, onChange }: TabsProps) {
   };
   return (
     <div>
-      <div className="tabs">
+      <div className="tabs" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.key}
             type="button"
+            role="tab"
+            aria-selected={active === t.key}
             onClick={() => handleClick(t.key)}
             className={active === t.key ? 'tab active' : 'tab'}
           >
@@ -44,7 +46,7 @@ export function Tabs({ tabs, activeKey, onChange }: TabsProps) {
           </button>
         ))}
       </div>
-      <div>{tabs.find((t) => t.key === active)?.content}</div>
+      <div role="tabpanel">{tabs.find((t) => t.key === active)?.content}</div>
     </div>
   );
 }
