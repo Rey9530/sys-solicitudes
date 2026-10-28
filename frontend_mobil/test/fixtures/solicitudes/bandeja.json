@@ -1,0 +1,280 @@
+{
+  "items": [
+    {
+      "id": "11be0400-48f8-4531-9a88-01a86239e576",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "localId": "238f1630-89bc-4cd1-be8a-0a0066ac7dac",
+      "inquilinoId": "00000000-0000-0000-0000-000000000001",
+      "usuarioCreadorId": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+      "adminAsignadoId": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+      "categoriaId": "bd1f6dc6-7324-42cc-bec2-ca546ebdb3b9",
+      "subcategoriaId": "e8aeb93e-1a25-4584-9566-070829418899",
+      "codigo": "SOL-DEMO-139",
+      "tipo": "mantenimiento",
+      "prioridad": "B",
+      "titulo": "E2E-FLUJO-1793130540595",
+      "descripcion": "Fuga de agua en el baño del local. Creada por la suite e2e.",
+      "estado": "cerrada",
+      "camposExtra": {
+        "asistentes": [
+          {
+            "nombre": "Técnico E2E",
+            "documento": "00000000-0"
+          }
+        ],
+        "area_afectada": "Baño del local",
+        "asistentes_estimados": 1,
+        "requiere_ingreso_a_local": false
+      },
+      "fechaEventoInicio": "2026-10-30",
+      "fechaEventoFin": "2026-10-30",
+      "horaInicio": "09:00",
+      "horaFin": "12:00",
+      "empresaNombre": "Fontanería E2E S.A.",
+      "empresaResponsable": "Responsable E2E",
+      "empresaTelefono": "+503 7000 0000",
+      "empresaEmail": "e2e@example.com",
+      "emergenciaContacto": "Contacto E2E",
+      "emergenciaTelefono": "+503 7000 0001",
+      "esEmergencia": false,
+      "enviadaAt": "2026-10-27T19:49:08.475Z",
+      "asignadaAt": "2026-10-27T19:49:09.396Z",
+      "decisionAt": "2026-10-27T19:49:09.976Z",
+      "resultadoCierre": "exitoso",
+      "cierreComentario": null,
+      "cerradaAt": "2026-10-27T19:49:10.344Z",
+      "createdAt": "2026-10-27T19:49:03.659Z",
+      "updatedAt": "2026-10-27T19:49:10.344Z",
+      "localCodigo": "L-SOL-1",
+      "categoriaNombre": "Eventos",
+      "subcategoriaNombre": "Evento",
+      "adminAsignado": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "slaStatus": null
+    },
+    {
+      "id": "30e1ee96-c762-4ecd-8750-266dd58997b2",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "localId": "238f1630-89bc-4cd1-be8a-0a0066ac7dac",
+      "inquilinoId": "00000000-0000-0000-0000-000000000001",
+      "usuarioCreadorId": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+      "adminAsignadoId": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+      "categoriaId": "bd1f6dc6-7324-42cc-bec2-ca546ebdb3b9",
+      "subcategoriaId": "e8aeb93e-1a25-4584-9566-070829418899",
+      "codigo": "SOL-DEMO-138",
+      "tipo": "evento",
+      "prioridad": "B",
+      "titulo": "E2E-CAL-CERRADA-1793130531243",
+      "descripcion": "Solicitud creada por la suite e2e del calendario.",
+      "estado": "cerrada",
+      "camposExtra": {
+        "asistentes": [
+          {
+            "nombre": "Asistente E2E",
+            "documento": "00000000-0"
+          }
+        ],
+        "asistentes_estimados": 1,
+        "requiere_aprobacion_especial": false
+      },
+      "fechaEventoInicio": "2026-10-30",
+      "fechaEventoFin": "2026-10-30",
+      "horaInicio": "10:00",
+      "horaFin": "11:00",
+      "empresaNombre": "E2E Eventos S.A.",
+      "empresaResponsable": "Responsable E2E",
+      "empresaTelefono": "+503 7000 0000",
+      "empresaEmail": "e2e@example.com",
+      "emergenciaContacto": "Contacto E2E",
+      "emergenciaTelefono": "+503 7000 0001",
+      "esEmergencia": false,
+      "enviadaAt": "2026-10-27T19:48:51.253Z",
+      "asignadaAt": "2026-10-27T19:48:51.266Z",
+      "decisionAt": "2026-10-27T19:48:51.278Z",
+      "resultadoCierre": "exitoso",
+      "cierreComentario": "Cerrada por la suite e2e.",
+      "cerradaAt": "2026-10-27T19:48:51.295Z",
+      "createdAt": "2026-10-27T19:48:51.247Z",
+      "updatedAt": "2026-10-27T19:48:51.295Z",
+      "localCodigo": "L-SOL-1",
+      "categoriaNombre": "Eventos",
+      "subcategoriaNombre": "Evento",
+      "adminAsignado": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "slaStatus": null
+    },
+    {
+      "id": "b0f9f95f-75f3-44dc-ab0d-d0dbc745a1aa",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "localId": "238f1630-89bc-4cd1-be8a-0a0066ac7dac",
+      "inquilinoId": "00000000-0000-0000-0000-000000000001",
+      "usuarioCreadorId": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+      "adminAsignadoId": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+      "categoriaId": "bd1f6dc6-7324-42cc-bec2-ca546ebdb3b9",
+      "subcategoriaId": "e8aeb93e-1a25-4584-9566-070829418899",
+      "codigo": "SOL-DEMO-137",
+      "tipo": "evento",
+      "prioridad": "B",
+      "titulo": "E2E-CAL-1793130531170",
+      "descripcion": "Solicitud creada por la suite e2e del calendario.",
+      "estado": "aprobada",
+      "camposExtra": {
+        "asistentes": [
+          {
+            "nombre": "Asistente E2E",
+            "documento": "00000000-0"
+          }
+        ],
+        "asistentes_estimados": 1,
+        "requiere_aprobacion_especial": false
+      },
+      "fechaEventoInicio": "2026-10-30",
+      "fechaEventoFin": "2026-10-30",
+      "horaInicio": "15:42",
+      "horaFin": "17:42",
+      "empresaNombre": "E2E Eventos S.A.",
+      "empresaResponsable": "Responsable E2E",
+      "empresaTelefono": "+503 7000 0000",
+      "empresaEmail": "e2e@example.com",
+      "emergenciaContacto": "Contacto E2E",
+      "emergenciaTelefono": "+503 7000 0001",
+      "esEmergencia": false,
+      "enviadaAt": "2026-10-27T19:48:51.188Z",
+      "asignadaAt": "2026-10-27T19:48:51.201Z",
+      "decisionAt": "2026-10-27T19:48:51.217Z",
+      "resultadoCierre": null,
+      "cierreComentario": null,
+      "cerradaAt": null,
+      "createdAt": "2026-10-27T19:48:51.175Z",
+      "updatedAt": "2026-10-27T19:48:51.217Z",
+      "localCodigo": "L-SOL-1",
+      "categoriaNombre": "Eventos",
+      "subcategoriaNombre": "Evento",
+      "adminAsignado": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "slaStatus": null
+    },
+    {
+      "id": "52c35af9-ac35-4046-ab68-5e20b9b5b9bf",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "localId": "238f1630-89bc-4cd1-be8a-0a0066ac7dac",
+      "inquilinoId": "00000000-0000-0000-0000-000000000001",
+      "usuarioCreadorId": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+      "adminAsignadoId": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+      "categoriaId": "bd1f6dc6-7324-42cc-bec2-ca546ebdb3b9",
+      "subcategoriaId": "e8aeb93e-1a25-4584-9566-070829418899",
+      "codigo": "SOL-DEMO-136",
+      "tipo": "mantenimiento",
+      "prioridad": "B",
+      "titulo": "E2E-FLUJO-1793130393335",
+      "descripcion": "Fuga de agua en el baño del local. Creada por la suite e2e.",
+      "estado": "cerrada",
+      "camposExtra": {
+        "asistentes": [
+          {
+            "nombre": "Técnico E2E",
+            "documento": "00000000-0"
+          }
+        ],
+        "area_afectada": "Baño del local",
+        "asistentes_estimados": 1,
+        "requiere_ingreso_a_local": false
+      },
+      "fechaEventoInicio": "2026-10-30",
+      "fechaEventoFin": "2026-10-30",
+      "horaInicio": "09:00",
+      "horaFin": "12:00",
+      "empresaNombre": "Fontanería E2E S.A.",
+      "empresaResponsable": "Responsable E2E",
+      "empresaTelefono": "+503 7000 0000",
+      "empresaEmail": "e2e@example.com",
+      "emergenciaContacto": "Contacto E2E",
+      "emergenciaTelefono": "+503 7000 0001",
+      "esEmergencia": false,
+      "enviadaAt": "2026-10-27T19:46:42.224Z",
+      "asignadaAt": "2026-10-27T19:46:43.098Z",
+      "decisionAt": "2026-10-27T19:46:43.682Z",
+      "resultadoCierre": "exitoso",
+      "cierreComentario": null,
+      "cerradaAt": "2026-10-27T19:46:44.132Z",
+      "createdAt": "2026-10-27T19:46:37.656Z",
+      "updatedAt": "2026-10-27T19:46:44.132Z",
+      "localCodigo": "L-SOL-1",
+      "categoriaNombre": "Eventos",
+      "subcategoriaNombre": "Evento",
+      "adminAsignado": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "slaStatus": null
+    },
+    {
+      "id": "e64d23c7-4f4c-436a-995a-0c0eaaee1995",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "localId": "238f1630-89bc-4cd1-be8a-0a0066ac7dac",
+      "inquilinoId": "00000000-0000-0000-0000-000000000001",
+      "usuarioCreadorId": "587022c9-83b0-4260-8205-bdc5ce3ba2ce",
+      "adminAsignadoId": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+      "categoriaId": "bd1f6dc6-7324-42cc-bec2-ca546ebdb3b9",
+      "subcategoriaId": "e8aeb93e-1a25-4584-9566-070829418899",
+      "codigo": "SOL-DEMO-132",
+      "tipo": "evento",
+      "prioridad": "B",
+      "titulo": "E2E-CAL-CERRADA-1793130161934",
+      "descripcion": "Solicitud creada por la suite e2e del calendario.",
+      "estado": "cerrada",
+      "camposExtra": {
+        "asistentes": [
+          {
+            "nombre": "Asistente E2E",
+            "documento": "00000000-0"
+          }
+        ],
+        "asistentes_estimados": 1,
+        "requiere_aprobacion_especial": false
+      },
+      "fechaEventoInicio": "2026-10-30",
+      "fechaEventoFin": "2026-10-30",
+      "horaInicio": "10:00",
+      "horaFin": "11:00",
+      "empresaNombre": "E2E Eventos S.A.",
+      "empresaResponsable": "Responsable E2E",
+      "empresaTelefono": "+503 7000 0000",
+      "empresaEmail": "e2e@example.com",
+      "emergenciaContacto": "Contacto E2E",
+      "emergenciaTelefono": "+503 7000 0001",
+      "esEmergencia": false,
+      "enviadaAt": "2026-10-27T19:42:41.976Z",
+      "asignadaAt": "2026-10-27T19:42:42.020Z",
+      "decisionAt": "2026-10-27T19:42:42.085Z",
+      "resultadoCierre": "exitoso",
+      "cierreComentario": "Cerrada por la suite e2e.",
+      "cerradaAt": "2026-10-27T19:42:42.195Z",
+      "createdAt": "2026-10-27T19:42:41.946Z",
+      "updatedAt": "2026-10-27T19:42:42.195Z",
+      "localCodigo": "L-SOL-1",
+      "categoriaNombre": "Eventos",
+      "subcategoriaNombre": "Evento",
+      "adminAsignado": {
+        "id": "37279721-ef7e-4e5e-a8dc-585eef1e3d4b",
+        "nombre": "Admin Demo",
+        "email": "admin@demo.com"
+      },
+      "slaStatus": null
+    }
+  ],
+  "total": 142,
+  "page": 1,
+  "pageSize": 5,
+  "totalPages": 29
+}

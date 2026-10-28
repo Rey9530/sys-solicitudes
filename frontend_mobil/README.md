@@ -1,148 +1,92 @@
-# Plazapp — App móvil Flutter
+# Plazapp — app móvil (Flutter)
 
-Cliente móvil nativo (Android + iOS) del portal SaaS multi-plaza Plazapp.
+App iOS y Android (teléfono y tablet) que hace lo mismo que el portal web de Plazapp para los tres
+roles (superadmin, administrador de plaza e inquilino), hablando directo con el backend NestJS.
 
-- **Backend:** NestJS 10 + Prisma 7 + PostgreSQL (compartido con el web en `../backend`).
-- **Web counterpart:** Next.js 16 en `../frontend` (sistema de diseño espejo).
-- **Repo raíz:** `F:\sys-solicitudes\` (monorepo).
+- Diseño: `../docs/superpowers/specs/2026-10-27-app-movil-flutter-design.md`
+- Reglas de código: [`AGENTS.md`](AGENTS.md)
+- Versiones de paquetes: [`CHANGELOG.md`](CHANGELOG.md)
 
----
+## Requisitos
 
-## Quickstart
+- Flutter **3.47.8** (Dart 3.13.7): `flutter --version`.
+- Xcode (simulador iOS) y/o Android Studio (emulador Android, JDK incluido).
+- Backend local levantado en `:4000` (ver `../README.md`: `docker compose up -d` y
+  `npm run start:dev` en `backend/`).
 
-### Pre-requisitos
-
-- Flutter 3.41+ estable ([instalar](https://docs.flutter.dev/get-started/install))
-- Dart 3.11+
-- Android SDK 34+ (o Xcode 15+ para iOS)
-- Backend Plazapp corriendo en `localhost:4000` (ver `../backend/README.md`)
-
-### Setup
+## Correr la app
 
 ```bash
-cd F:\sys-solicitudes\frontend_mobil
+cd frontend_mobil
 flutter pub get
-flutter run
-```
 
-### Conectar al backend
-
-Por defecto el app apunta a `http://10.0.2.2:4000/api/v1` (loopback al backend desde un emulador Android).
-
-```bash
-# Android emulator (loopback automático al host)
+# Simulador iOS (el backend local se ve como localhost)
+open -a Simulator
 flutter run
 
-# iOS simulator
-flutter run --dart-define=API_BASE_URL=http://localhost:4000/api/v1
+# Emulador Android (el backend local se ve como 10.0.2.2, ya es el valor por defecto)
+flutter emulators --launch Medium_Phone_API_36.1
+flutter run
 
-# Backend en LAN (device físico)
+# Otro backend (dispositivo físico en la LAN, staging, producción)
 flutter run --dart-define=API_BASE_URL=http://192.168.0.50:4000/api/v1
-
-# Staging
-flutter run --dart-define=API_BASE_URL=https://staging.plazapp.com/api/v1
 ```
 
-### Build
+En debug se permite HTTP sin TLS solo hacia la red local (Android: manifest de `debug`; iOS:
+`NSAllowsLocalNetworking`). Un build release exige HTTPS.
+
+Cuentas de desarrollo (seed del backend): `superadmin@plazapp.com`, `admin@demo.com`,
+`inquilino@demo.com`, contraseña `Plazapp2026!`.
+
+## Pruebas
 
 ```bash
-flutter build apk --debug                # debug APK
-flutter build apk --release              # release APK
-flutter build ios --debug --no-codesign  # debug iOS (sin firma)
+flutter analyze
+flutter test                      # unitarias + widget tests (incluye barrido responsive)
 ```
 
----
+Los widget tests corren sin dispositivo ni backend: la API se simula con `apiFalsa`
+(`test/helpers/api_falsa.dart`) y `probarEnTamanos` (`test/helpers/pantallas.dart`) pinta
+cada pantalla a 360, 390, 768 y 1024 px, en claro y oscuro, y falla si algo se desborda.
 
-## Estructura
+## Pruebas E2E (simulador / emulador)
 
-```
-lib/
-├── main.dart                     # bootstrap
-├── app.dart                      # MaterialApp + theme + providers
-├── core/
-│   ├── theme/                    # design system (colors, text, spacing)
-│   ├── network/                  # Dio + JWT interceptor
-│   ├── storage/                  # secure storage + prefs
-│   └── router/                   # go_router
-├── features/
-│   ├── auth/                     # login + role selector
-│   ├── shell/                    # inquilino + admin shells + inicio
-│   ├── solicitudes/              # list + detail + dominio
-│   └── dashboard/                # KPI dashboard (admin)
-├── widgets/                      # widgets compartidos cross-feature
-└── shared/
+Playwright no maneja emuladores; el equivalente oficial de Flutter es
+[`integration_test`](https://docs.flutter.dev/testing/integration-tests): la app real corre
+en el simulador/emulador contra el **backend local** y la prueba toca la UI como un usuario.
 
-assets/fonts/                     # GeneralSans + JetBrainsMono TTFs
+Requisitos: stack local levantado (`docker compose up -d` y `npm run start:dev` en `backend/`,
+API en `:4000`) con el seed de desarrollo.
+
+```bash
+scripts/e2e.sh ios-phone                     # todas, iPhone 17 Pro
+scripts/e2e.sh ios-tablet                    # todas, iPad Pro 11"
+scripts/e2e.sh android                       # todas, emulador Android (lo arranca si hace falta)
+scripts/e2e.sh ios-phone integration_test/flujo_solicitud_test.dart   # una sola
 ```
 
-Ver [`AGENTS.md`](./AGENTS.md) para las reglas operativas completas (lints, multi-tenancy, naming, etc.).
+Los simuladores se pueden cambiar con `IPHONE_UDID`, `IPAD_UDID` y `ANDROID_AVD`
+(`xcrun simctl list devices`, `emulator -list-avds`). Las capturas quedan en
+`build/capturas/<dispositivo>/` para revisión visual.
 
----
+Para Android se usa un emulador propio del proyecto, `Plazapp_E2E`, con 8 GB de datos (el APK de
+depuración pesa ~170 MB y un AVD compartido con otras apps se queda sin espacio:
+`INSTALL_FAILED_INSUFFICIENT_STORAGE`). Se crea una vez con:
 
-## Sistema de diseño
+```bash
+export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"
+echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n Plazapp_E2E \
+  -k "system-images;android-36.1;google_apis_playstore;arm64-v8a" -d medium_phone
+sed -i '' 's/^disk.dataPartition.size=.*/disk.dataPartition.size=8G/' \
+  ~/.android/avd/Plazapp_E2E.avd/config.ini
+```
 
-Réplica 1:1 del frontend web (`../frontend/src/app/globals.css`). Tokens semánticos + componentes custom + light/dark + theming dinámico por tenant.
+| Prueba | Qué cubre |
+|---|---|
+| `humo_test.dart` | Login de admin e inquilino, shell del rol y cierre de sesión. |
+| `login_roles_test.dart` | Credenciales inválidas, inicio de cada rol, rutas de otro rol que redirigen, puerta de plaza del superadmin, rutas protegidas sin sesión. |
+| `navegacion_completa_test.dart` | Todas las pantallas del menú de cada rol (y del superadmin con plaza): ninguna termina en error; una captura por pantalla. |
+| `flujo_solicitud_test.dart` | Ciclo completo: wizard → borrador → enviar → tomar → subsanación → reenviar → tomar → aprobar → cerrar, con historial. Crea una solicitud `E2E-MOVIL-…` en la plaza demo. |
 
-### Componentes incluidos en MVP
-
-| Widget | Archivo | Réplica de |
-|---|---|---|
-| `PlazButton` | `lib/widgets/plaz_button.dart` | `.btn`, `.btn-*` |
-| `PlazCard` | `lib/widgets/plaz_card.dart` | `.card`, `.card-head`, `.card-foot` |
-| `StatusBadge` | `lib/widgets/status_badge.dart` | `.badge`, `.b-{tone}` |
-| `PriorityChip` | `lib/widgets/priority_chip.dart` | `.prio .prio-{A..F}` |
-| `SlaSemaphore` | `lib/widgets/sla_semaphore.dart` | `.sla .sla-{green,amber,red}` |
-| `KpiCard` | `lib/widgets/kpi_card.dart` | `.kpi`, `.tint-*` |
-| `EmptyState` | `lib/widgets/empty_state.dart` | `.empty` |
-| `BannerPlaz` | `lib/widgets/banner_plaz.dart` | `.banner .banner-*` |
-| `AvatarHsl` | `lib/widgets/avatar_hsl.dart` | `.avatar` (gradiente HSL por hash) |
-| `showPlazConfirm` | `lib/widgets/confirm_dialog.dart` | SweetAlert2 wrapper |
-
-### Tema por tenant
-
-`PlazappColors.brand` se inyecta desde `GET /api/v1/plazas/:id` (campo `colorPrimario`). La escala completa (`p50..p700`, `soft`, `ring`) se deriva con `Color.lerp(primary, white|black, factor)` — replica exacta del `color-mix(in srgb, ...)` del CSS.
-
----
-
-## Credenciales de prueba (del backend seed)
-
-| Email | Password | Rol |
-|---|---|---|
-| `inquilino@demo.com` | (ver seed) | `inquilino` |
-| `admin@demo.com` | (ver seed) | `admin_plaza` |
-| `superadmin@demo.com` | (ver seed) | `superadmin` |
-
-Consultar `backend/prisma/seed.ts` para los passwords exactos.
-
----
-
-## Roadmap
-
-### MVP (en este repo)
-- ✅ Login + role selector + 2 shells (inquilino/admin)
-- ✅ Bandeja de solicitudes + detalle + acciones contextuales
-- ✅ Dashboard admin con KPIs + charts
-- ✅ Tema light/dark + brand por tenant
-- ✅ Multi-tenancy (plaza_id en JWT)
-- ✅ JWT refresh transparente
-
-### Fase 2
-- Wizard de nueva solicitud (flutter_form_builder + adjuntos)
-- Calendario interactivo (table_calendar)
-- Push notifications (firebase_messaging + deep-links)
-- Tests automatizados
-
-### Fase 3
-- Generación de reportes PDF (vía jsreport)
-- i18n full
-- Tablet/desktop layouts pulidos
-
----
-
-## Referencias
-
-- **Plan original:** `C:\Users\Reynaldo\.claude\plans\analiza-el-diseno-de-purring-sonnet.md`
-- **Diseño web tokens:** `../frontend/src/app/globals.css`
-- **API docs:** `http://localhost:4000/api/docs` (Swagger, cuando el backend está levantado)
-- **Zod contracts:** `../packages/contracts/`
-- **CLAUDE.md raíz:** `../CLAUDE.md`
+> El login está limitado a 5 intentos/min por IP: `iniciarSesion` (`integration_test/helpers.dart`)
+> espera el `Retry-After` y reintenta, así que una corrida completa puede pausar ~1 min.

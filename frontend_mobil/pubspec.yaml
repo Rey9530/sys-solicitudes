@@ -1,93 +1,50 @@
 name: frontend_mobil
-description: "Plazapp — App móvil de gestión de solicitudes para centros comerciales"
+description: "Plazapp — app móvil (iOS/Android) del portal de solicitudes."
 publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.11.5
+  sdk: ^3.13.7
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Dependencias — verificadas en pub.dev (jul 2026).
-# Filosofía: provider (NO BLoC/Riverpod/GetIt), dio + interceptor propio para JWT,
-# flutter_secure_storage + shared_preferences para persistencia, sin ORMs locales
-# (no hive/isar/drift), sin generación pesada (no freezed/retrofit).
-# ─────────────────────────────────────────────────────────────────────────────
+# Solo paquetes oficiales (flutter.dev / dart.dev / tools.dart.dev) o de
+# publisher verificado con alta adopción. Versión, publisher y motivo de cada
+# uno en CHANGELOG.md. Regla del owner: nada desconocido ni abandonado.
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
 
-  # UI / iconografía
-  cupertino_icons: ^1.0.8
-  lucide_icons: ^0.257.0           # mirror 1:1 de lucide-react del web
-
   # Estado
-  provider: ^6.1.5                 # ChangeNotifier + Selector + Consumer
-
-  # HTTP
-  dio: ^5.11.0                     # Singleton con QueuedInterceptor para refresh JWT
-
-  # Persistencia
-  flutter_secure_storage: ^10.3.1  # JWT + plaza activa (Keychain/EncryptedSharedPrefs)
-  shared_preferences: ^2.5.5       # Último tenant, tema, filtros cacheados
-
-  # Routing
-  go_router: ^17.3.0               # StatefulShellRoute.indexedStack para shells
-
-  # Formularios (solo para formularios grandes: crear solicitud, perfil)
-  flutter_form_builder: ^10.3.0
-  form_builder_validators: ^11.3.0
-
-  # Widgets del dominio
-  table_calendar: ^3.2.0           # Mirror del FullCalendar del web
-  fl_chart: ^1.2.0                 # Dashboard (barras / líneas / pie)
-
-  # Archivos / cámara
-  image_picker: ^1.2.3             # Fotos
-  file_picker: ^11.0.2             # PDFs y documentos
-
-  # Notificaciones push (Fase 2)
-  firebase_messaging: ^16.4.3
-  firebase_core: ^4.12.1
-
-  # i18n / formato
-  intl: ^0.20.2                    # DateFormat, NumberFormat, locale 'es' (pin por flutter_localizations)
-
-  # Logging
-  logger: ^2.7.0                   # Pretty console + opcional file
+  flutter_riverpod: ^3.4.3
+  # Navegación
+  go_router: ^18.1.1
+  # HTTP (multipart incluido) y MIME declarado de los adjuntos
+  http: ^1.6.0
+  http_parser: ^4.1.2
+  mime: ^2.1.0
+  # Persistencia: tokens cifrados y preferencias
+  flutter_secure_storage: ^11.2.0
+  shared_preferences: ^2.5.6
+  # Formatos en español
+  intl: ^0.20.3
+  # Archivos, cámara, descargas
+  file_picker: ^13.3.0
+  image_picker: ^1.2.4
+  path_provider: ^2.1.6
+  share_plus: ^13.3.1
+  url_launcher: ^6.3.3
+  # Gráficas del dashboard
+  fl_chart: ^1.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   flutter_lints: ^6.0.0
-  build_runner: ^2.15.1            # Para json_serializable (cuando se use); 2.15.2 requiere meta incompatible con flutter_test
-  json_serializable: ^6.14.0
 
 flutter:
   uses-material-design: true
-
-  # assets (vacío por ahora; los íconos/logos vendrán en Fase 4+)
-
-  # Fuentes locales — replican la identidad visual del web
-  fonts:
-    - family: GeneralSans
-      fonts:
-        - asset: assets/fonts/GeneralSans-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/GeneralSans-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/GeneralSans-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/GeneralSans-Bold.ttf
-          weight: 700
-    - family: JetBrainsMono
-      fonts:
-        - asset: assets/fonts/JetBrainsMono-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/JetBrainsMono-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/JetBrainsMono-SemiBold.ttf
-          weight: 600
-        - asset: assets/fonts/JetBrainsMono-Bold.ttf
-          weight: 700
+  assets:
+    - assets/plantillas/

@@ -1,108 +1,57 @@
-// lib/app.dart
-//
-// Root widget. Cablea:
-//   - ThemeData (light + dark) + ThemeExtension<PlazappColors>
-//   - go_router con AuthController como refreshListenable
-//   - Providers globales: AuthController, ApiClient, TokenStore, PrefsStore
-//   - ThemeMode reactivo al estado persistido
-
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'core/network/api_client.dart';
-import 'core/router/app_router.dart';
-import 'core/storage/prefs_store.dart';
-import 'core/theme/brand_colors.dart';
-import 'core/theme/plazapp_colors.dart';
-import 'core/theme/plazapp_theme.dart';
-import 'features/auth/controllers/auth_controller.dart';
-import 'features/auth/data/auth_repository.dart';
+import 'core/auth/sesion_controller.dart';
+import 'core/navegacion/router.dart';
+import 'core/plaza/plaza_seleccionada.dart';
+import 'core/theme/colores.dart';
+import 'core/theme/tema.dart';
 
-class PlazappApp extends StatelessWidget {
-  const PlazappApp({
-    super.key,
-    required this.apiClient,
-    required this.authRepo,
-    required this.authController,
-    required this.prefsStore,
-    required this.initialThemeMode,
-    required this.initialBrand,
-  });
-
-  final ApiClient apiClient;
-  final AuthRepository authRepo;
-  final AuthController authController;
-  final PrefsStore prefsStore;
-  final ThemeMode initialThemeMode;
-  final BrandColors initialBrand;
+/// Raíz de la app: router, tema (con el color de la plaza) y español.
+class PlazappApp extends ConsumerStatefulWidget {
+  const PlazappApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        Provider<ApiClient>.value(value: apiClient),
-        Provider<AuthRepository>.value(value: authRepo),
-        ChangeNotifierProvider<AuthController>.value(value: authController),
-      ],
-      child: _ThemedApp(
-        initialThemeMode: initialThemeMode,
-        initialBrand: initialBrand,
-      ),
+  ConsumerState<PlazappApp> createState() => _PlazappAppState();
+}
+
+class _PlazappAppState extends ConsumerState<PlazappApp> {
+  late final AppLifecycleListener _ciclo;
+
+  @override
+  void initState() {
+    super.initState();
+    // Al volver a primer plano se releen los permisos (pueden haber cambiado).
+    _ciclo = AppLifecycleListener(
+      onResume: () => ref.read(sesionProvider.notifier).refrescarPermisos(),
     );
   }
-}
-
-class _ThemedApp extends StatefulWidget {
-  const _ThemedApp({required this.initialThemeMode, required this.initialBrand});
-
-  final ThemeMode initialThemeMode;
-  final BrandColors initialBrand;
 
   @override
-  State<_ThemedApp> createState() => _ThemedAppState();
-}
-
-class _ThemedAppState extends State<_ThemedApp> {
-  late ThemeMode _themeMode = widget.initialThemeMode;
-  late BrandColors _brand = widget.initialBrand;
-
-  // Cuando llegue un nuevo tenant, _brand se actualiza vía AuthController.
+  void dispose() {
+    _ciclo.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final router = AppRouter.build(context.read<AuthController>());
-
+    final plaza = ref.watch(plazaActualProvider).value;
+    final primario = colorDesdeHex(plaza?.colorPrimario);
     return MaterialApp.router(
       title: 'Plazapp',
       debugShowCheckedModeBanner: false,
-      themeMode: _themeMode,
-      theme: PlazappTheme.light(brand: _brand),
-      darkTheme: PlazappTheme.dark(brand: _brand),
-      // Reconstruir con el brand dinámico para que ThemeExtension<PlazappColors>
-      // se reinyecte con el color del tenant actual.
-      builder: (context, child) {
-        return _BrandScope(
-          brand: _brand,
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
-      routerConfig: router,
+      routerConfig: ref.watch(routerProvider),
+      theme: temaClaro(primario),
+      darkTheme: temaOscuro(primario),
+      themeMode: ref.watch(temaModoProvider),
+      locale: const Locale('es'),
+      supportedLocales: const [Locale('es')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
     );
   }
 }
-
-/// Inyecta el BrandColors actual en un InheritedWidget para que cualquier
-/// widget pueda leerlo sin pasar por Theme.of (útil para CustomPaint / gradients
-/// fuera del Theme tree).
-class _BrandScope extends InheritedWidget {
-  const _BrandScope({required this.brand, required super.child});
-
-  final BrandColors brand;
-
-  @override
-  bool updateShouldNotify(_BrandScope old) => old.brand != brand;
-}
-
-// Re-export para evitar import extra en consumidores.
-// ignore: unused_element
-const _colorsRef = PlazappColors;

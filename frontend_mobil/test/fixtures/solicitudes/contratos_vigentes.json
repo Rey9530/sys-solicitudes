@@ -1,0 +1,37 @@
+{
+  "items": [
+    {
+      "id": "00000000-0000-0000-0000-000000000002",
+      "plazaId": "1531e155-8ab5-466c-aff9-70e96d2135a5",
+      "localId": "238f1630-89bc-4cd1-be8a-0a0066ac7dac",
+      "inquilinoId": "00000000-0000-0000-0000-000000000001",
+      "fechaInicio": "2026-07-01",
+      "fechaFin": "2027-07-28",
+      "montoMensual": 1250,
+      "moneda": "USD",
+      "condiciones": "Contrato demo generado por seed (solo dev).",
+      "estado": "vigente",
+      "fechaFinEfectiva": null,
+      "motivoFin": null,
+      "plazoMeses": null,
+      "areaMt2MedicionReal": null,
+      "cuotaArrendamiento": null,
+      "cuotaCam": null,
+      "depositoGarantia": null,
+      "fechaPagoDeposito": null,
+      "fechaEntregaLocal": null,
+      "periodoGraciaDias": null,
+      "inicioOperaciones": null,
+      "avisoTerminacion": null,
+      "condicionesIncrementoCanon": null,
+      "createdAt": "2026-08-11T17:44:59.831Z",
+      "updatedAt": "2026-08-11T17:44:59.831Z",
+      "localCodigo": "L-SOL-1",
+      "inquilinoRazonSocial": "Tienda Sol S.A. de C.V."
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "pageSize": 100,
+  "totalPages": 1
+}

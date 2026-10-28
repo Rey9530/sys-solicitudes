@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Frontend Mobil</string>
+	<string>Plazapp</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -66,5 +66,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Solo red local (backend de desarrollo en localhost/LAN). ATS sigue activo para el resto. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>Plazapp usa la cámara para adjuntar fotos a tus solicitudes.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Plazapp usa tus fotos para adjuntarlas a tus solicitudes.</string>
 </dict>
 </plist>
